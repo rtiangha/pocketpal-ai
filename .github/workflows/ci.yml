@@ -2,8 +2,7 @@ name: CI Pipeline
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [ "*" ]
   push:
     branches:
       - main
@@ -14,12 +13,12 @@ permissions:
 jobs:
   # Detect if changes are translation-only (src/locales/ files)
   detect-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       translation_only: ${{ steps.check.outputs.translation_only }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -52,24 +51,24 @@ jobs:
 
   # Job for linting, type checking, unit testing
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       # Step 1: Check out the repository
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       # Cache node_modules
       - name: Cache node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
 
       # Step 2: Set up Node.js environment
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
-          node-version: '22.21.0'
+          node-version: '26.13.1'
           cache: 'yarn'
 
       - name: Install Yarn
@@ -104,7 +103,7 @@ jobs:
   # Restores the shared node_modules cache but never saves it: this job installs
   # other commits' dependencies and skips llama.rn's native postinstall.
   perf:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: detect-changes
     if: github.event_name == 'pull_request' && needs.detect-changes.outputs.translation_only != 'true'
     timeout-minutes: 30
@@ -112,14 +111,14 @@ jobs:
       RNLLAMA_SKIP_POSTINSTALL: '1'
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 2
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
-          node-version: '22.21.0'
+          node-version: '26.13.1'
           cache: 'yarn'
 
       - name: Install Yarn
@@ -127,7 +126,7 @@ jobs:
 
       - name: Restore node_modules
         id: nm
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
@@ -139,7 +138,7 @@ jobs:
 
       - name: Upload perf results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: render-perf
           path: .reassure/
@@ -147,7 +146,7 @@ jobs:
 
   # Job for Android build
   build-android:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [build-and-test, detect-changes]
     if: needs.detect-changes.outputs.translation_only != 'true'
     env:
@@ -157,7 +156,7 @@ jobs:
       ORG_GRADLE_PROJECT_rnllamaBuildFromSource: 'true'
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       # Must precede setup-node and setup-java: /opt/hostedtoolcache is where
       # those install. The Hexagon SDK adds ~3.1 GB on top of a from-source build.
@@ -169,14 +168,14 @@ jobs:
 
       # Set up Node.js environment
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
-          node-version: '22.21.0'
+          node-version: '26.13.1'
           cache: 'yarn'
 
       # Cache node_modules
       - name: Cache node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
@@ -203,13 +202,13 @@ jobs:
       # decides the variant set and a patch changes the sources, so changing
       # either must invalidate the configured build tree.
       - name: Cache llama.rn native build tree
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: node_modules/llama.rn/android/.cxx
           key: ${{ runner.os }}-cxx-${{ hashFiles('yarn.lock', 'patches/**', 'scripts/android-payload-manifest.json') }}
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -336,7 +335,7 @@ jobs:
       # uploads whether or not the check passed. The APK below does not.
       - name: Upload payload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: payload-report
           path: payload-report.txt
@@ -384,11 +383,24 @@ jobs:
       - name: Verify the Plus store gate
         run: scripts/verify-plus-gate.sh android/app/build/outputs/apk/prod/release/app-prod-release.apk --ungated
 
+      - name: Sign app APK
+        uses: kevin-david/zipalign-sign-android-release@v2
+        id: sign_app
+        with:
+          releaseDirectory: android/app/build/outputs/apk/prod/release
+          signingKeyBase64: ${{ secrets.DROID_KEYSTORE_B64 }}
+          alias: ${{ secrets.DROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.DROID_KEYSTORE_PASS }}
+          keyPassword: ${{ secrets.DROID_KEY_PASS }}
+          zipAlign: true
+        env:
+          BUILD_TOOLS_VERSION: "36.0.0"
+
       - name: Upload Android APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-release-apk
-          path: android/app/build/outputs/apk/prod/release/app-prod-release.apk
+          path: android/app/build/outputs/apk/prod/release/app-prod-release-signed.apk
 
   # Job for iOS build
   build-ios:
@@ -399,18 +411,18 @@ jobs:
       NODE_OPTIONS: '--max-old-space-size=8192'
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       # Set up Node.js environment
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v7
         with:
-          node-version: '22.21.0'
+          node-version: '26.13.1'
           cache: 'yarn'
 
       # Cache node_modules
       - name: Cache node_modules
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: node_modules
           key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
