@@ -25,23 +25,23 @@ inputs:
   sdk-version:
     description: Hexagon SDK version
     required: false
-    default: 6.4.0.2
+    default: 6.7.0.0
   tools-version:
     description: Hexagon Tools version inside the SDK
     required: false
-    default: 19.0.04
+    default: 21.0.04
   sdk-sha256:
     description: >-
       SHA-256 of the release tarball. Bumping the version means bumping this in
       the same reviewed diff.
     required: false
-    default: b4a57a774795cf12da19a777a5d306e970905bf9758a4c4765e5e4593428ae0b
+    default: 00725fc449916d7b9af2c2a3c6b54d61f3c872d5dbc1d3ca3fd2f839b1d5dc70
   consumed-sha256:
     description: >-
       Digest over only the SDK files the Android build reads or links. Checked
       on every run so a restored cache is verified, not just a fresh download.
     required: false
-    default: f56685ec2513933ab6465c44e40e8ce0263bc40751961aa2468da9cbcdfe7409
+    default: 6f9c4c84074f935853f96fa3b9b2de9c067d601058062decc413d366660868bb
 
 runs:
   using: composite
@@ -49,7 +49,7 @@ runs:
     # The digest is part of the key, so a cache entry written under a different
     # tarball can never be restored under this one.
     - name: Cache Hexagon SDK
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.hexagon-sdk
         key: hexagon-sdk-${{ inputs.sdk-version }}-${{ inputs.sdk-sha256 }}
