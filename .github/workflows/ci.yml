@@ -53,6 +53,12 @@ jobs:
   build-and-test:
     runs-on: ubuntu-26.04
     steps:
+      # Upgrade system gcc
+      - name: Upgrade system gcc
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: gcc-16
+
       # Step 1: Check out the repository
       - name: Check out code
         uses: actions/checkout@v7
