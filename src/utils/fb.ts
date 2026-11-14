@@ -1,8 +1,5 @@
 import {getApp} from '@react-native-firebase/app';
-import {
-  ReactNativeFirebaseAppCheckProvider,
-  initializeAppCheck as fbInitializeAppCheck,
-} from '@react-native-firebase/app-check';
+import {initializeAppCheck as fbInitializeAppCheck} from '@react-native-firebase/app-check';
 
 import {APPCHECK_DEBUG_TOKEN_ANDROID, APPCHECK_DEBUG_TOKEN_IOS} from '@env';
 
@@ -33,21 +30,24 @@ export const initializeAppCheck = async () => {
       return;
     }
 
-    // const rnfbProvider = appCheck().newReactNativeFirebaseAppCheckProvider();
-    const rnfbProvider = new ReactNativeFirebaseAppCheckProvider();
-
-    rnfbProvider.configure({
-      android: {
-        provider: __DEV__ ? 'debug' : 'playIntegrity',
-        debugToken: APPCHECK_DEBUG_TOKEN_ANDROID,
-      },
-      apple: {
-        provider: __DEV__ ? 'debug' : 'appAttestWithDeviceCheckFallback',
-        debugToken: APPCHECK_DEBUG_TOKEN_IOS,
-      },
-    });
+    // Pass the provider as a plain config object: since app-check 23.6+
+    // the package root only exports ReactNativeFirebaseAppCheckProvider as
+    // a type (the class is shadowed by a type-only re-export), so `new`
+    // on it fails typecheck with TS2693. The runtime accepts a
+    // { providerOptions } config directly (ReactNativeFirebaseAppCheckProviderConfig).
     appCheckInstance = await fbInitializeAppCheck(getApp(), {
-      provider: rnfbProvider,
+      provider: {
+        providerOptions: {
+          android: {
+            provider: __DEV__ ? 'debug' : 'playIntegrity',
+            debugToken: APPCHECK_DEBUG_TOKEN_ANDROID,
+          },
+          apple: {
+            provider: __DEV__ ? 'debug' : 'appAttestWithDeviceCheckFallback',
+            debugToken: APPCHECK_DEBUG_TOKEN_IOS,
+          },
+        },
+      },
       isTokenAutoRefreshEnabled: true,
     });
 
