@@ -15,18 +15,11 @@ export type AsrTier = 'base' | 'small' | 'large-turbo';
  * source of truth is the file system.
  */
 export type AsrDownloadState =
-  | 'not_installed'
-  | 'downloading'
-  | 'ready'
-  | 'error';
+  'not_installed' | 'downloading' | 'ready' | 'error';
 
 /** Voice capture state machine. */
 export type CaptureState =
-  | 'idle'
-  | 'requesting_perm'
-  | 'recording'
-  | 'transcribing'
-  | 'error';
+  'idle' | 'requesting_perm' | 'recording' | 'transcribing' | 'error';
 
 /** Discrete error kinds surfaced inline in the composer. */
 export type AsrErrorKind =

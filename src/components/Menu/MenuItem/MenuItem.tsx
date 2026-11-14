@@ -15,8 +15,10 @@ import {useTheme} from '../../../hooks';
 
 import {createStyles} from './styles';
 
-export interface MenuItemProps
-  extends Omit<PaperMenuItemProps, 'title' | 'titleStyle'> {
+export interface MenuItemProps extends Omit<
+  PaperMenuItemProps,
+  'title' | 'titleStyle'
+> {
   label: string;
   labelStyle?: StyleProp<TextStyle>;
   danger?: boolean;

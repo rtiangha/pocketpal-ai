@@ -5,11 +5,7 @@ import {mockModelStore} from './modelStore';
 type DownloadState = 'not_installed' | 'downloading' | 'ready' | 'error';
 type AsrTier = 'base' | 'small' | 'large-turbo';
 type CaptureState =
-  | 'idle'
-  | 'requesting_perm'
-  | 'recording'
-  | 'transcribing'
-  | 'error';
+  'idle' | 'requesting_perm' | 'recording' | 'transcribing' | 'error';
 type AsrErrorKind =
   | 'permission_denied'
   | 'permission_blocked'

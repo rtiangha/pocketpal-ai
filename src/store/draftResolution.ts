@@ -6,9 +6,7 @@ import {CacheType, DraftConfig, Model, ModelOrigin} from '../utils/types';
 // latch its first value and never recompute.
 
 export type DraftCandidate =
-  | {mode: 'off'}
-  | {mode: 'embedded'}
-  | {mode: 'paired'; draftModel: Model};
+  {mode: 'off'} | {mode: 'embedded'} | {mode: 'paired'; draftModel: Model};
 
 // A model paired with itself is loaded twice, so it never counts as its own draft.
 export const resolveDraftModelId = (

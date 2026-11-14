@@ -1,23 +1,23 @@
 diff --git a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListRenderer.kt b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListRenderer.kt
-index 2bac5b1..a0c0431 100644
+index d8a5396..c024c13 100644
 --- a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListRenderer.kt
 +++ b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/ListRenderer.kt
-@@ -68,7 +68,9 @@ class ListRenderer(
-     // TODO: LineHeightSpan may also clip superscript/subscript glyphs that extend
-     // outside the normal line bounds. A similar "skip" strategy as for images may
-     // be needed here once super/subscript usage in practice is better understood.
--    applyLineHeightSkippingImages(builder, start, builder.length, style.lineHeight)
+@@ -92,7 +92,9 @@ class ListRenderer(
+     // MarginBottomSpans in both the measuring StaticLayout and the TextView's copy
+     // of the text (see SPAN_FLAGS_LINE_HEIGHT_PRIORITY). The span is added after the
+     // children, so without the flag the two disagree on which runs last.
+-    applyLineHeightSkippingImages(builder, start, builder.length, style.lineHeight, SPAN_FLAGS_LINE_HEIGHT_PRIORITY)
 +    // A quote sizes its own lines and spacers; the list's span would grow them to a
 +    // full line, and only in the view, which reads spans in insertion order.
-+    applyLineHeightSkippingImages(builder, start, builder.length, style.lineHeight, skipBlockquotes = true)
++    applyLineHeightSkippingImages(builder, start, builder.length, style.lineHeight, SPAN_FLAGS_LINE_HEIGHT_PRIORITY, skipBlockquotes = true)
  
      // Item spacing and external bottom margin are only handled by the root-level list
      if (depth == 0) {
 diff --git a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/NodeRenderer.kt b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/NodeRenderer.kt
-index a0f37cd..e243c0c 100644
+index 7381fa2..7024124 100644
 --- a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/NodeRenderer.kt
 +++ b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/renderer/NodeRenderer.kt
-@@ -112,6 +112,7 @@ class RendererFactory(
+@@ -143,6 +143,7 @@ class RendererFactory(
        put(MarkdownASTNode.NodeType.ThematicBreak, ThematicBreakRenderer(config))
        put(MarkdownASTNode.NodeType.BlankLine, BlankLineRenderer(config))
        put(MarkdownASTNode.NodeType.Spoiler, SpoilerRenderer())
@@ -92,48 +92,8 @@ index 0000000..7aac7c0
 +
 +/** Marks a table row drawn as text, so Copy as Markdown indents it instead of repeating the item marker. */
 +class TableTextRowSpan
-diff --git a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/segments/TableContainerView.kt b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/segments/TableContainerView.kt
-index 1100ee4..414377b 100644
---- a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/segments/TableContainerView.kt
-+++ b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/segments/TableContainerView.kt
-@@ -252,7 +252,7 @@ class TableContainerView(
-         isClickable = false
-         isLongClickable = false
-         isFocusable = true
--        isScreenReaderFocusable = true
-+        ViewCompat.setScreenReaderFocusable(this, true)
-         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
-         contentDescription = description
-         if (isHeaderRow) ViewCompat.setAccessibilityHeading(this, true)
-diff --git a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/spans/FadeInSpan.kt b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/spans/FadeInSpan.kt
-index 12ad32f..fee67e5 100644
---- a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/spans/FadeInSpan.kt
-+++ b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/spans/FadeInSpan.kt
-@@ -1,16 +1,20 @@
- package com.swmansion.enriched.markdown.spans
- 
-+import android.os.Build
- import android.text.TextPaint
- import android.text.style.CharacterStyle
- import androidx.annotation.FloatRange
- 
- class FadeInSpan : CharacterStyle() {
--  @set:FloatRange(from = 0.0, to = 1.0)
-+  @setparam:FloatRange(from = 0.0, to = 1.0)
-   var alpha: Float = 0f
- 
-   override fun updateDrawState(tp: TextPaint) {
-     tp.color = multiplyAlpha(tp.color, alpha)
--    tp.underlineColor = multiplyAlpha(tp.underlineColor, alpha)
-+    // Public from API 29; below that, underlines are drawn in `color`, which is already faded.
-+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-+      tp.underlineColor = multiplyAlpha(tp.underlineColor, alpha)
-+    }
-   }
- 
-   private fun multiplyAlpha(
 diff --git a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/conversion/MarkdownExtractor.kt b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/conversion/MarkdownExtractor.kt
-index 2957f98..a16fef5 100644
+index ec5a034..b8c0e33 100644
 --- a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/conversion/MarkdownExtractor.kt
 +++ b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/conversion/MarkdownExtractor.kt
 @@ -4,6 +4,7 @@ import android.text.Spannable
@@ -158,7 +118,7 @@ index 2957f98..a16fef5 100644
  
      if (result.isAtLineStart() && !segmentText.startsWith("\n")) {
 diff --git a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/span/BlockSpacing.kt b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/span/BlockSpacing.kt
-index 296673b..abaf1ac 100644
+index e5baf08..a2b050b 100644
 --- a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/span/BlockSpacing.kt
 +++ b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/utils/text/span/BlockSpacing.kt
 @@ -1,6 +1,7 @@
@@ -169,7 +129,7 @@ index 296673b..abaf1ac 100644
  import com.swmansion.enriched.markdown.spans.CodeBlockSpan
  import com.swmansion.enriched.markdown.spans.ImageSpan
  import com.swmansion.enriched.markdown.spans.LineHeightSpan
-@@ -22,6 +23,7 @@ fun applyLineHeightSkippingImages(
+@@ -66,6 +67,7 @@ fun applyLineHeightSkippingImages(
    end: Int,
    lineHeight: Float,
    spanFlags: Int = SPAN_FLAGS_EXCLUSIVE_EXCLUSIVE,
@@ -177,7 +137,7 @@ index 296673b..abaf1ac 100644
  ) {
    val blockImageRanges =
      builder
-@@ -34,7 +36,14 @@ fun applyLineHeightSkippingImages(
+@@ -78,7 +80,14 @@ fun applyLineHeightSkippingImages(
        .getSpans(start, end, CodeBlockSpan::class.java)
        .map { builder.getSpanStart(it) to builder.getSpanEnd(it) }
  
@@ -193,23 +153,6 @@ index 296673b..abaf1ac 100644
  
    var pos = start
    for ((exStart, exEnd) in excludedRanges) {
-diff --git a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/views/ContextMenuPopup.kt b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/views/ContextMenuPopup.kt
-index 37082b4..b07e36e 100644
---- a/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/views/ContextMenuPopup.kt
-+++ b/node_modules/react-native-enriched-markdown/android/src/main/java/com/swmansion/enriched/markdown/views/ContextMenuPopup.kt
-@@ -105,9 +105,11 @@ object ContextMenuPopup {
-     val screenW = context.resources.displayMetrics.widthPixels
-     val margin = 8f.dp
- 
-+    // Not coerceIn: it throws when the popup is wider than the screen.
-     val x =
-       (centerX - container.measuredWidth / 2)
--        .coerceIn(margin, screenW - container.measuredWidth - margin)
-+        .coerceAtMost(screenW - container.measuredWidth - margin)
-+        .coerceAtLeast(margin)
-     val y =
-       (topY - container.measuredHeight - margin)
-         .coerceAtLeast(margin)
 diff --git a/node_modules/react-native-enriched-markdown/ios/renderer/RendererFactory.m b/node_modules/react-native-enriched-markdown/ios/renderer/RendererFactory.m
 index a555419..0c7d5bb 100644
 --- a/node_modules/react-native-enriched-markdown/ios/renderer/RendererFactory.m
@@ -302,10 +245,10 @@ index a555419..0c7d5bb 100644
        return nil;
    }
 diff --git a/node_modules/react-native-enriched-markdown/ios/utils/MarkdownExtractor.m b/node_modules/react-native-enriched-markdown/ios/utils/MarkdownExtractor.m
-index 3c4241c..b416877 100644
+index 90c8450..ee33afe 100644
 --- a/node_modules/react-native-enriched-markdown/ios/utils/MarkdownExtractor.m
 +++ b/node_modules/react-native-enriched-markdown/ios/utils/MarkdownExtractor.m
-@@ -14,6 +14,8 @@
+@@ -17,6 +17,8 @@
  #import "RuntimeKeys.h"
  #import "ThematicBreakAttachment.h"
  
@@ -314,7 +257,7 @@ index 3c4241c..b416877 100644
  #pragma mark - Extraction Context
  
  typedef struct {
-@@ -318,17 +320,24 @@ NSString *_Nullable extractMarkdownFromAttributedString(NSAttributedString *attr
+@@ -327,17 +329,24 @@ NSString *_Nullable extractMarkdownFromAttributedString(NSAttributedString *attr
                            NSMutableString *prefixedSegment = [NSMutableString string];
  
                            if (listDepthNum && ![text hasPrefix:@"\n"]) {

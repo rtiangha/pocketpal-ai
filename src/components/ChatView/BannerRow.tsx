@@ -37,8 +37,7 @@ function deriveHeavyTalentName(
   messages: MessageType.Any[],
 ): string | undefined {
   const latestTurn = messages.find(m => m.type === 'assistant_turn') as
-    | MessageType.AssistantTurn
-    | undefined;
+    MessageType.AssistantTurn | undefined;
   for (const step of latestTurn?.steps ?? []) {
     for (const call of step.toolCalls ?? []) {
       const name = call.function?.name;

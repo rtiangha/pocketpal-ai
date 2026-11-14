@@ -19,9 +19,8 @@ const config = {
     sourceExts: [...sourceExts, 'svg'],
   },
   transformer: {
-    babelTransformerPath: require.resolve(
-      'react-native-svg-transformer/react-native',
-    ),
+    babelTransformerPath:
+      require.resolve('react-native-svg-transformer/react-native'),
     getTransformOptions: async () => ({
       transform: {
         experimentalImportSupport: false,

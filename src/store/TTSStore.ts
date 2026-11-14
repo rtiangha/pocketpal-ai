@@ -65,10 +65,7 @@ export type TTSPlaybackState =
  * persisted; the source of truth is the file system.
  */
 export type NeuralDownloadState =
-  | 'not_installed'
-  | 'downloading'
-  | 'ready'
-  | 'error';
+  'not_installed' | 'downloading' | 'ready' | 'error';
 
 /** Alias preserved for external consumers that imported the v1.2 name. */
 export type SupertonicDownloadState = NeuralDownloadState;

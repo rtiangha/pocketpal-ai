@@ -998,7 +998,7 @@ const PAETH = (a, b, c) => {
 function decodePng(buffer) {
   const chunks = [];
   const idat = [];
-  for (let at = 8; at < buffer.length; ) {
+  for (let at = 8; at < buffer.length;) {
     const length = buffer.readUInt32BE(at);
     const type = buffer.subarray(at + 4, at + 8).toString('ascii');
     chunks.push(type);

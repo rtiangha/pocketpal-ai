@@ -27,8 +27,7 @@ import type {Samplers} from '../utils/samplerParams';
 export interface OpenAIChatMessage {
   role: string;
   content?:
-    | string
-    | Array<{type: string; text?: string; image_url?: {url?: string}}>;
+    string | Array<{type: string; text?: string; image_url?: {url?: string}}>;
 }
 
 /** OpenAI-style function tool definition. Mirrors the shape PACT
@@ -45,10 +44,7 @@ export interface OpenAIToolDefinition {
 /** OpenAI tool_choice — `'auto' | 'none' | 'required'` for the simple
  * case, or `{type:'function', function:{name}}` to pin a single tool. */
 export type OpenAIToolChoice =
-  | 'auto'
-  | 'none'
-  | 'required'
-  | {type: 'function'; function: {name: string}};
+  'auto' | 'none' | 'required' | {type: 'function'; function: {name: string}};
 
 /** OpenAI-compatible response_format. `json_schema` is the structured-output
  * mode supported by OpenAI, llama.cpp server, LM Studio, Ollama, and most

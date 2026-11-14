@@ -338,8 +338,7 @@ describe('runAgent', () => {
       }),
     );
     const finished = events.find(e => e.type === 'run_finished') as
-      | Extract<AgentEvent, {type: 'run_finished'}>
-      | undefined;
+      Extract<AgentEvent, {type: 'run_finished'}> | undefined;
     expect(finished).toBeDefined();
     expect(finished!.result.hitMaxTurns).toBe(true);
     expect(events.find(e => e.type === 'run_failed')).toBeUndefined();
@@ -2339,9 +2338,10 @@ describe('runAgent', () => {
         searchAccess(new TavilyProvider(() => 'key')),
       );
       const searchExecute = jest.spyOn(webSearch, 'execute');
-      const calculate = jest.fn(
-        async (): Promise<TalentResult> => ({type: 'text', summary: '4'}),
-      );
+      const calculate = jest.fn(async (): Promise<TalentResult> => ({
+        type: 'text',
+        summary: '4',
+      }));
       const calls = [
         ...[0, 1, 2, 3, 4].map(i =>
           toolCall(`c${i}`, 'web_search', {query: `q${i}`}),
@@ -2463,9 +2463,10 @@ describe('runAgent', () => {
 
     it('a Stop during the start events runs no local talent and cancels every call in call order', async () => {
       const controller = new AbortController();
-      const calculate = jest.fn(
-        async (): Promise<TalentResult> => ({type: 'text', summary: '4'}),
-      );
+      const calculate = jest.fn(async (): Promise<TalentResult> => ({
+        type: 'text',
+        summary: '4',
+      }));
       const iterator = run(
         batchEngine(
           [0, 1, 2, 3, 4, 5].map(i => toolCall(`c${i}`, 'calculate')),

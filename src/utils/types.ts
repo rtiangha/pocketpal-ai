@@ -86,10 +86,7 @@ export namespace MessageType {
   export type DerivedAny = DateHeader | DerivedMessage;
 
   export type PartialAny =
-    | PartialCustom
-    | PartialFile
-    | PartialImage
-    | PartialText;
+    PartialCustom | PartialFile | PartialImage | PartialText;
 
   interface Base {
     author: User;
@@ -99,12 +96,7 @@ export namespace MessageType {
     roomId?: string;
     status?: 'delivered' | 'error' | 'seen' | 'sending' | 'sent';
     type:
-      | 'assistant_turn'
-      | 'custom'
-      | 'file'
-      | 'image'
-      | 'text'
-      | 'unsupported';
+      'assistant_turn' | 'custom' | 'file' | 'image' | 'text' | 'unsupported';
     updatedAt?: number;
   }
 
@@ -117,8 +109,7 @@ export namespace MessageType {
   }
 
   export interface DerivedAssistantTurn
-    extends DerivedMessageProps,
-      AssistantTurn {
+    extends DerivedMessageProps, AssistantTurn {
     type: AssistantTurn['type'];
   }
 
@@ -745,7 +736,8 @@ type RequiredContextFields =
  * This ensures type safety and eliminates the need for fallback values in UI components
  */
 export interface ContextInitParams
-  extends Omit<
+  extends
+    Omit<
       ContextParams,
       'model' | 'use_mmap' | 'flash_attn' | RequiredContextFields
     >,
@@ -795,23 +787,9 @@ export interface LegacyContextInitParams {
   n_threads: number;
   flash_attn: boolean;
   cache_type_k:
-    | 'f16'
-    | 'f32'
-    | 'q8_0'
-    | 'q4_0'
-    | 'q4_1'
-    | 'iq4_nl'
-    | 'q5_0'
-    | 'q5_1';
+    'f16' | 'f32' | 'q8_0' | 'q4_0' | 'q4_1' | 'iq4_nl' | 'q5_0' | 'q5_1';
   cache_type_v:
-    | 'f16'
-    | 'f32'
-    | 'q8_0'
-    | 'q4_0'
-    | 'q4_1'
-    | 'iq4_nl'
-    | 'q5_0'
-    | 'q5_1';
+    'f16' | 'f32' | 'q8_0' | 'q4_0' | 'q4_1' | 'iq4_nl' | 'q5_0' | 'q5_1';
   n_gpu_layers: number;
   use_mlock?: boolean;
   use_mmap?: boolean;

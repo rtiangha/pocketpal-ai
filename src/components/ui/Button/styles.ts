@@ -3,10 +3,7 @@ import {StyleSheet, type TextStyle, type ViewStyle} from 'react-native';
 import type {Theme} from '../../../utils/types';
 
 export type ButtonVariant =
-  | 'primary'
-  | 'secondary'
-  | 'tertiary'
-  | 'destructive';
+  'primary' | 'secondary' | 'tertiary' | 'destructive';
 export type ButtonSize = 's' | 'm' | 'l';
 
 export type ButtonStyleArgs = {

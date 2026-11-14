@@ -8,12 +8,7 @@ import {createStyles} from './styles';
 import {PAL_FILTER_LABELS} from '../../../../utils/palshub-display';
 
 export type FilterType =
-  | 'all'
-  | 'my-pals'
-  | 'local'
-  | 'video'
-  | 'free'
-  | 'premium'; // Changed from 'paid' to 'premium'
+  'all' | 'my-pals' | 'local' | 'video' | 'free' | 'premium'; // Changed from 'paid' to 'premium'
 
 interface FilterChipsProps {
   activeFilter: FilterType;

@@ -1132,9 +1132,10 @@ describe('useChatSession — AssistantTurn integration', () => {
   });
 
   it('a Stop before the tool phase of a six-call reply cancels every call and ends the lease', async () => {
-    const execute = jest.fn(
-      async (): Promise<TalentResult> => ({type: 'text', summary: '4'}),
-    );
+    const execute = jest.fn(async (): Promise<TalentResult> => ({
+      type: 'text',
+      summary: '4',
+    }));
     talentRegistry.register({
       name: 'calculate',
       execute,

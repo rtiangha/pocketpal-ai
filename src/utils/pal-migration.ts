@@ -49,9 +49,7 @@ export interface VideoPalFormData extends BaseFormData {
 
 // Type for legacy pal data
 export type LegacyPalData =
-  | AssistantFormData
-  | RoleplayFormData
-  | VideoPalFormData;
+  AssistantFormData | RoleplayFormData | VideoPalFormData;
 
 /**
  * Migrates a legacy pal to the new format

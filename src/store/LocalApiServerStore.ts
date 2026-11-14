@@ -26,16 +26,10 @@ export const MIN_LOCAL_API_PORT = 1024;
 export const MAX_LOCAL_API_PORT = 65535;
 
 export type LocalApiServerStatus =
-  | 'stopped'
-  | 'starting'
-  | 'running'
-  | 'failed';
+  'stopped' | 'starting' | 'running' | 'failed';
 
 export type LocalApiServerError =
-  | 'port_in_use'
-  | 'listen_failed'
-  | 'stopped_listening'
-  | 'key_unavailable';
+  'port_in_use' | 'listen_failed' | 'stopped_listening' | 'key_unavailable';
 
 type Listener = ReturnType<typeof TcpSocket.createServer>;
 

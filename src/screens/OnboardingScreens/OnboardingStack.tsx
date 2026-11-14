@@ -34,8 +34,7 @@ export const OnboardingStack: React.FC = () => {
         screenListeners={{
           state: e => {
             const state = e.data?.state as
-              | {index?: number; routes?: {name?: string}[]}
-              | undefined;
+              {index?: number; routes?: {name?: string}[]} | undefined;
             const active =
               state?.routes && typeof state.index === 'number'
                 ? state.routes[state.index]?.name

@@ -32,10 +32,9 @@ export interface SheetProps extends Partial<BottomSheetModalProps> {
   showCloseButton?: boolean;
 }
 
-interface SheetComponent
-  extends React.ForwardRefExoticComponent<
-    SheetProps & React.RefAttributes<BottomSheetModalMethods>
-  > {
+interface SheetComponent extends React.ForwardRefExoticComponent<
+  SheetProps & React.RefAttributes<BottomSheetModalMethods>
+> {
   ScrollView: typeof SheetScrollView;
   View: typeof BottomSheetView;
   Actions: typeof Actions;

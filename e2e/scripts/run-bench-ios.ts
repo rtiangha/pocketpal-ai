@@ -190,11 +190,7 @@ export function newestNewReport(
 }
 
 export type FailureReason =
-  | 'autostart'
-  | 'count-mismatch'
-  | 'runner-error'
-  | 'app-exited'
-  | 'timeout';
+  'autostart' | 'count-mismatch' | 'runner-error' | 'app-exited' | 'timeout';
 
 export type PollVerdict =
   | {state: 'starting'}
@@ -367,8 +363,7 @@ function readDeviceDetails(
 
 type ParsedReport = {file: string; report: BenchReportFile};
 type PulledReport =
-  | ParsedReport
-  | {file: string; report: 'unparsable'; error: string};
+  ParsedReport | {file: string; report: 'unparsable'; error: string};
 
 function pullReport(
   opts: DriverOptions,

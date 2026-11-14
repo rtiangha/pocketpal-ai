@@ -221,8 +221,8 @@ export const PalSheet: React.FC<PalSheetProps> = observer(
         }
         return Boolean(
           formState.generatingPrompt &&
-            formState.promptGenerationModel &&
-            result,
+          formState.promptGenerationModel &&
+          result,
         );
       }
       return result;

@@ -184,9 +184,7 @@ export interface Pal {
 }
 
 type ClearablePalField =
-  | 'greeting'
-  | 'defaultModel'
-  | 'rawPalshubGenerationSettings';
+  'greeting' | 'defaultModel' | 'rawPalshubGenerationSettings';
 
 export type PalUpdate = Omit<Partial<Pal>, ClearablePalField> & {
   [K in ClearablePalField]?: Pal[K] | null;

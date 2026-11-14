@@ -246,12 +246,7 @@ export interface PalsQuery {
   price_min?: number; // Minimum price in cents
   price_max?: number; // Maximum price in cents
   sort_by?:
-    | 'newest'
-    | 'oldest'
-    | 'rating'
-    | 'popular'
-    | 'price_low'
-    | 'price_high';
+    'newest' | 'oldest' | 'rating' | 'popular' | 'price_low' | 'price_high';
   page?: number; // Page number (default: 1)
   limit?: number; // Items per page (default: 20, max: 50)
 }
@@ -338,12 +333,7 @@ export interface SearchFilters {
   priceRange?: [number, number];
   protectionLevel?: 'public' | 'reveal_on_purchase' | 'private';
   sortBy?:
-    | 'newest'
-    | 'oldest'
-    | 'rating'
-    | 'popular'
-    | 'price_low'
-    | 'price_high';
+    'newest' | 'oldest' | 'rating' | 'popular' | 'price_low' | 'price_high';
   limit?: number; // Items per page (default: 20, max: 50)
 }
 

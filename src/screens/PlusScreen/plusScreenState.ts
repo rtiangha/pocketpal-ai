@@ -1,12 +1,7 @@
 import type {Availability, PlusFlow} from '../../store/PurchaseStore';
 
 export type PlusScreenPhase =
-  | 'purchased'
-  | 'paying'
-  | 'pending'
-  | 'unavailable'
-  | 'loading'
-  | 'idle';
+  'purchased' | 'paying' | 'pending' | 'unavailable' | 'loading' | 'idle';
 
 export interface PlusScreenInputs {
   plusUnlocked: boolean;

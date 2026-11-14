@@ -29,8 +29,7 @@ export interface ValidatedChat {
 }
 
 export type ValidatedChatRequest =
-  | {ok: true; request: ValidatedChat}
-  | {ok: false; error: WireError};
+  {ok: true; request: ValidatedChat} | {ok: false; error: WireError};
 
 type Json = Record<string, unknown>;
 

@@ -104,12 +104,10 @@ const seedRows = (row: Row): SeedRow[] => {
 
 const runRow = async (row: Row) => {
   let pageText: string | undefined;
-  const read = jest.fn(
-    async (url: string): Promise<PageContent> => ({
-      url,
-      text: pageText ?? 'ok',
-    }),
-  );
+  const read = jest.fn(async (url: string): Promise<PageContent> => ({
+    url,
+    text: pageText ?? 'ok',
+  }));
   const provider: SearchProvider = {id: 'exa', search: jest.fn(), read};
   const access: SearchAccess = {
     getActiveProvider: () => provider,

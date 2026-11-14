@@ -51,10 +51,7 @@ export const DownloadErrorDialog: React.FC<DownloadErrorDialogProps> = ({
   const notEnoughSpace = error?.code === 'storage';
 
   const getErrorType = ():
-    | 'unauthorized'
-    | 'forbidden'
-    | 'noToken'
-    | 'other' => {
+    'unauthorized' | 'forbidden' | 'noToken' | 'other' => {
     if (!error) {
       return 'other';
     }

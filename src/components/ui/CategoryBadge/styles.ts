@@ -7,10 +7,7 @@ import type {Theme} from '../../../utils/types';
  * badge color slots.
  */
 export type CategoryBadgeVariant =
-  | 'neutral'
-  | 'primary'
-  | 'secondary'
-  | 'tertiary';
+  'neutral' | 'primary' | 'secondary' | 'tertiary';
 export type CategoryBadgeSize = 's' | 'm';
 
 export type CategoryBadgeStyleArgs = {

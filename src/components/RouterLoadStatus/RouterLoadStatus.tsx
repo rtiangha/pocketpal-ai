@@ -13,8 +13,7 @@ import {createStyles} from './styles';
 
 /** This app's own load of the model the chat is bound to, while it runs. */
 export const boundRouterLoad = ():
-  | {fraction: number | undefined}
-  | undefined => {
+  {fraction: number | undefined} | undefined => {
   const binding = modelStore.activeRemoteBinding;
   const record = binding
     ? routerStore.recordFor(binding.serverId, binding.remoteModelId)

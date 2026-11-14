@@ -6,11 +6,7 @@
  */
 
 export type RouterStatus =
-  | 'unloaded'
-  | 'loading'
-  | 'loaded'
-  | 'sleeping'
-  | 'downloading';
+  'unloaded' | 'loading' | 'loaded' | 'sleeping' | 'downloading';
 
 /**
  * `absent`: no row for the model. `failed`: the row says so. `unknown`: the

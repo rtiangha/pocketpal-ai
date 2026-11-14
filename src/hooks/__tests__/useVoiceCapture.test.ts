@@ -580,8 +580,7 @@ describe('useVoiceCapture', () => {
 
   it('stops whisper and drops the transcript on cancel while transcribing', async () => {
     let resolveTranscribe:
-      | ((transcript: ReturnType<typeof said>) => void)
-      | null = null;
+      ((transcript: ReturnType<typeof said>) => void) | null = null;
     mockTranscribe.mockImplementation(
       () =>
         new Promise(resolve => {
@@ -807,8 +806,7 @@ describe('useVoiceCapture', () => {
 
   it('unmount during the memory check starts nothing', async () => {
     let resolveFit:
-      | ((fit: {status: 'tight'; neededBytes: number}) => void)
-      | null = null;
+      ((fit: {status: 'tight'; neededBytes: number}) => void) | null = null;
     mockMemoryFit.mockImplementation(
       () =>
         new Promise(resolve => {

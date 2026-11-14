@@ -85,8 +85,7 @@ export const useMessageActions = ({
       const previousMessage = messages
         .slice(messageIndex + 1)
         .find(msg => msg.author.id === user.id && msg.type === 'text') as
-        | MessageType.Text
-        | undefined;
+        MessageType.Text | undefined;
 
       if (previousMessage && previousMessage.text) {
         const messageText = previousMessage.text;

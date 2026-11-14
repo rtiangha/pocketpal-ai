@@ -25,9 +25,7 @@ function makeRow(
     model_id: over.model_id ?? 'qwen3-1.7b',
     quant: over.quant ?? 'q4_0',
     requested_backend: (over.requested_backend ?? 'cpu') as
-      | 'cpu'
-      | 'gpu'
-      | 'hexagon',
+      'cpu' | 'gpu' | 'hexagon',
     effective_backend: 'unknown',
     pp_avg: over.pp_avg ?? 100,
     tg_avg: 10,

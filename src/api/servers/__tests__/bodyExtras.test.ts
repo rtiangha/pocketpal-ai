@@ -59,16 +59,14 @@ const llamaCppRows: Row[] = [
     },
   ],
   ['on, no effort', {enabled: true}, {reasoning_format: 'auto'}],
-  ...EFFORT_LEVELS.map(
-    (effort): Row => [
-      `on at ${effort}`,
-      {enabled: true, effort},
-      {
-        reasoning_format: 'auto',
-        chat_template_kwargs: {reasoning_effort: effort},
-      },
-    ],
-  ),
+  ...EFFORT_LEVELS.map((effort): Row => [
+    `on at ${effort}`,
+    {enabled: true, effort},
+    {
+      reasoning_format: 'auto',
+      chat_template_kwargs: {reasoning_effort: effort},
+    },
+  ]),
   [
     'on at an effort that is not a level',
     {enabled: true, effort: NOT_A_LEVEL},
@@ -89,9 +87,11 @@ const lmStudioRows: Row[] = [
     {chat_template_kwargs: {enable_thinking: false}},
   ],
   ['on, no effort', {enabled: true}, {}],
-  ...EFFORT_LEVELS.map(
-    (effort): Row => [`on at ${effort}`, {enabled: true, effort}, {}],
-  ),
+  ...EFFORT_LEVELS.map((effort): Row => [
+    `on at ${effort}`,
+    {enabled: true, effort},
+    {},
+  ]),
   [
     'on at an effort that is not a level',
     {enabled: true, effort: NOT_A_LEVEL},
@@ -113,9 +113,11 @@ const ollamaRows: Row[] = [
     {reasoning_effort: 'none'},
   ],
   ['on, no effort', {enabled: true}, {}],
-  ...EFFORT_LEVELS.map(
-    (effort): Row => [`on at ${effort}`, {enabled: true, effort}, {}],
-  ),
+  ...EFFORT_LEVELS.map((effort): Row => [
+    `on at ${effort}`,
+    {enabled: true, effort},
+    {},
+  ]),
   [
     'on at an effort that is not a level',
     {enabled: true, effort: NOT_A_LEVEL},
@@ -137,13 +139,11 @@ const openaiRows: Row[] = [
     {reasoning_effort: 'high'},
   ],
   ['on, no effort', {enabled: true}, {}],
-  ...EFFORT_LEVELS.map(
-    (effort): Row => [
-      `on at ${effort}`,
-      {enabled: true, effort},
-      {reasoning_effort: effort},
-    ],
-  ),
+  ...EFFORT_LEVELS.map((effort): Row => [
+    `on at ${effort}`,
+    {enabled: true, effort},
+    {reasoning_effort: effort},
+  ]),
   [
     'on at an effort that is not a level',
     {enabled: true, effort: NOT_A_LEVEL},
@@ -161,13 +161,11 @@ const vllmRows: Row[] = [
     {chat_template_kwargs: {enable_thinking: false}},
   ],
   ['on, no effort', {enabled: true}, {}],
-  ...EFFORT_LEVELS.map(
-    (effort): Row => [
-      `on at ${effort}`,
-      {enabled: true, effort},
-      {chat_template_kwargs: {reasoning_effort: effort}},
-    ],
-  ),
+  ...EFFORT_LEVELS.map((effort): Row => [
+    `on at ${effort}`,
+    {enabled: true, effort},
+    {chat_template_kwargs: {reasoning_effort: effort}},
+  ]),
   [
     'on at an effort that is not a level',
     {enabled: true, effort: NOT_A_LEVEL},
@@ -181,9 +179,11 @@ const silentRows: Row[] = [
   ['off', {enabled: false}, {}],
   ['off, an effort still stored', {enabled: false, effort: 'high'}, {}],
   ['on, no effort', {enabled: true}, {}],
-  ...EFFORT_LEVELS.map(
-    (effort): Row => [`on at ${effort}`, {enabled: true, effort}, {}],
-  ),
+  ...EFFORT_LEVELS.map((effort): Row => [
+    `on at ${effort}`,
+    {enabled: true, effort},
+    {},
+  ]),
   [
     'on at an effort that is not a level',
     {enabled: true, effort: NOT_A_LEVEL},

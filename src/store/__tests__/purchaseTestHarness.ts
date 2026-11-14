@@ -163,9 +163,10 @@ export class StubStore implements StorePort {
     ): Promise<PurchaseOutcome> => ({kind: 'purchased', tx: tx()}),
   );
   unfinished = jest.fn(async (): Promise<StoreTransaction[]> => []);
-  currentEntitlements = jest.fn(
-    async (): Promise<StoreQuery> => ({ok: true, transactions: []}),
-  );
+  currentEntitlements = jest.fn(async (): Promise<StoreQuery> => ({
+    ok: true,
+    transactions: [],
+  }));
   sync = jest.fn(async () => {
     this.log.push('sync');
   });

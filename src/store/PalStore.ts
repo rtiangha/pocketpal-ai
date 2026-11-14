@@ -536,8 +536,7 @@ class PalStore {
             talents: validTalents.map(t => ({
               name: t.name,
               necessity: (t.required === true ? 'required' : 'optional') as
-                | 'required'
-                | 'optional',
+                'required' | 'optional',
             })),
           }
         : undefined;

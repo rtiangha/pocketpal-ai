@@ -45,8 +45,7 @@ export const ModelErrorReportSheet: React.FC<ModelErrorReportSheetProps> = ({
   const modelUrl = error?.metadata?.modelUrl as string | undefined;
   const modelSize = error?.metadata?.modelSize as number | undefined;
   const contextParams = error?.metadata?.contextParams as
-    | Omit<ContextParams, 'model'>
-    | undefined;
+    Omit<ContextParams, 'model'> | undefined;
   const errorMessage = error?.message ?? '';
   const hasModelInfo = !!(modelName || modelId || modelUrl || modelSize);
   const hasContextParams = !!contextParams;

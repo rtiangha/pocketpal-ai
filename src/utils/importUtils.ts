@@ -564,10 +564,7 @@ const transformImportPal = async (
     rating: pal.rating,
     review_count: pal.review_count,
     protection_level: pal.protection_level as
-      | 'public'
-      | 'reveal_on_purchase'
-      | 'private'
-      | undefined,
+      'public' | 'reveal_on_purchase' | 'private' | undefined,
     price_cents: pal.price_cents,
     is_owned: pal.is_owned,
     completionSettings: pal.generation_settings,
