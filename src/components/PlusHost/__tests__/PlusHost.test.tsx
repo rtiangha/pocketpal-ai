@@ -9,7 +9,13 @@ import {
 } from 'react-native';
 import {runInAction} from 'mobx';
 
-import {act, cleanup, fireEvent, render} from '../../../../jest/test-utils';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '../../../../jest/test-utils';
 import {themeFixtures} from '../../../../jest/fixtures/theme';
 import {mockPurchaseStore as purchaseStore} from '../../../../__mocks__/stores/purchaseStore';
 import {deviceRam, ensureRamRead} from '../../../services/plus/deviceRam';
@@ -42,7 +48,22 @@ const pressBack = (): boolean => {
   return false;
 };
 
-const renderHost = () => render(<PlusHost />, {withSafeArea: true});
+const renderHost = async () => await render(<PlusHost />, {withSafeArea: true});
+
+// Invoke a Pressable/Button onPress directly (no fireEvent act). Used when
+// a press is already in flight and a second fireEvent.press would overlap
+// its act() and poison later tests' renders (v14). The onPress lives on
+// the composite fiber's memoizedProps, not on the host node.
+const invokeOnPress = (node: unknown) => {
+  let fiber: any = (node as any).unstable_fiber;
+  while (fiber) {
+    if (typeof fiber.memoizedProps?.onPress === 'function') {
+      return fiber.memoizedProps.onPress();
+    }
+    fiber = fiber.return;
+  }
+  throw new Error('onPress not found in fiber chain');
+};
 
 describe('PlusHost', () => {
   beforeEach(() => {
@@ -77,63 +98,63 @@ describe('PlusHost', () => {
     setShipOverride([]);
   });
 
-  it('renders nothing and owns no back handler while hidden', () => {
-    const {queryByTestId} = renderHost();
+  it('renders nothing and owns no back handler while hidden', async () => {
+    const {queryByTestId} = await renderHost();
 
     expect(queryByTestId('plus-host')).toBeNull();
     expect(BackHandler.addEventListener).not.toHaveBeenCalled();
   });
 
-  it('shows the Plus screen when opened and loads what it needs', () => {
-    const {getByTestId} = renderHost();
+  it('shows the Plus screen when opened and loads what it needs', async () => {
+    const {getByTestId} = await renderHost();
 
-    act(() => openPlus());
+    await act(() => openPlus());
 
     expect(getByTestId('plus-screen')).toBeTruthy();
     expect(purchaseStore.syncProducts).not.toHaveBeenCalled();
     expect(ensureRamRead).toHaveBeenCalledTimes(1);
   });
 
-  it('closes without running the callback while locked', () => {
+  it('closes without running the callback while locked', async () => {
     const onUnlocked = jest.fn();
-    const {getByTestId, queryByTestId} = renderHost();
-    act(() => openPlus({onUnlocked}));
+    const {getByTestId, queryByTestId} = await renderHost();
+    await act(() => openPlus({onUnlocked}));
 
-    fireEvent.press(getByTestId('plus-close'));
+    await fireEvent.press(getByTestId('plus-close'));
 
     expect(queryByTestId('plus-host')).toBeNull();
     expect(plusGate.request).toBeNull();
     expect(onUnlocked).not.toHaveBeenCalled();
   });
 
-  it('runs the callback once after Done, with the host already gone', () => {
+  it('runs the callback once after Done, with the host already gone', async () => {
     let requestWhenCalled: unknown = 'unset';
     const onUnlocked = jest.fn(() => {
       requestWhenCalled = plusGate.request;
     });
-    const {getByTestId, queryByTestId} = renderHost();
-    act(() => openPlus({onUnlocked}));
-    act(() =>
+    const {getByTestId, queryByTestId} = await renderHost();
+    await act(() => openPlus({onUnlocked}));
+    await act(() =>
       runInAction(() => {
         purchaseStore.plusUnlocked = true;
       }),
     );
 
-    fireEvent.press(getByTestId('plus-done'));
+    await fireEvent.press(getByTestId('plus-done'));
 
     expect(onUnlocked).toHaveBeenCalledTimes(1);
     expect(requestWhenCalled).toBeNull();
     expect(queryByTestId('plus-host')).toBeNull();
   });
 
-  it('takes Android back ahead of a handler registered earlier', () => {
+  it('takes Android back ahead of a handler registered earlier', async () => {
     const navigationBack = jest.fn(() => true);
     BackHandler.addEventListener('hardwareBackPress', navigationBack);
-    const {queryByTestId} = renderHost();
-    act(() => openPlus());
+    const {queryByTestId} = await renderHost();
+    await act(() => openPlus());
 
     let handled = false;
-    act(() => {
+    await act(() => {
       handled = pressBack();
     });
 
@@ -143,9 +164,9 @@ describe('PlusHost', () => {
     expect(backHandlers).toEqual([navigationBack]);
   });
 
-  it('stacks above every global host', () => {
-    const {getByTestId} = renderHost();
-    act(() => openPlus());
+  it('stacks above every global host', async () => {
+    const {getByTestId} = await renderHost();
+    await act(() => openPlus());
     const root = StyleSheet.flatten(getByTestId('plus-host').props.style);
     const theme = themeFixtures.lightTheme;
 
@@ -154,9 +175,9 @@ describe('PlusHost', () => {
     expect(root).toMatchObject({position: 'absolute', top: 0, bottom: 0});
   });
 
-  it('keeps screen readers inside the host on iOS', () => {
-    const {getByTestId} = renderHost();
-    act(() => openPlus());
+  it('keeps screen readers inside the host on iOS', async () => {
+    const {getByTestId} = await renderHost();
+    await act(() => openPlus());
 
     expect(getByTestId('plus-host').props.accessibilityViewIsModal).toBe(true);
   });
@@ -168,15 +189,23 @@ describe('PlusHost', () => {
         settle = resolve;
       }),
     );
-    const {getByTestId, queryByTestId} = renderHost();
-    act(() => openPlus());
+    const {getByTestId, queryByTestId} = await renderHost();
+    await act(() => openPlus());
 
-    fireEvent.press(getByTestId('plus-tile-plus.1'));
-    fireEvent.press(getByTestId('plus-cta'));
-    fireEvent.press(getByTestId('plus-close'));
-    await act(async () => settle('purchased'));
+    await fireEvent.press(getByTestId('plus-tile-plus.1'));
+    // v14: the CTA press awaits buyPlus, which only resolves when settle()
+    // runs below — awaiting the press deadlocks (60s timeout), and the
+    // floating act poisons the next tests' renders. Start it, wait for the
+    // purchase to start, close the host via a direct onPress call (no
+    // second overlapping act), then settle and await the press.
+    const ctaPress = fireEvent.press(getByTestId('plus-cta'));
+    await waitFor(() => {
+      expect(purchaseStore.buyPlus).toHaveBeenCalledWith('plus.1');
+    });
+    invokeOnPress(getByTestId('plus-close'));
+    settle('purchased');
+    await ctaPress;
 
-    expect(purchaseStore.buyPlus).toHaveBeenCalledWith('plus.1');
     expect(queryByTestId('plus-host')).toBeNull();
   });
 });
@@ -192,11 +221,11 @@ describe.each([
     scope: string;
   }
   let calls: FocusCall[];
-  let screen: ReturnType<typeof render>;
+  let screen: Awaited<ReturnType<typeof render>>;
   const slotView = React.createRef<HostInstance>();
 
-  const renderApp = () => {
-    screen = render(
+  const renderApp = async () => {
+    screen = await render(
       <>
         <PlusA11yScope>
           <View ref={slotView} />
@@ -210,8 +239,8 @@ describe.each([
 
   const originalOS = Platform.OS;
 
-  const nextFrame = () =>
-    act(() => {
+  const nextFrame = async () =>
+    await act(() => {
       jest.runOnlyPendingTimers();
     });
 
@@ -270,19 +299,19 @@ describe.each([
     jest.useRealTimers();
   });
 
-  const openWithSlot = () => {
-    renderApp();
+  const openWithSlot = async () => {
+    await renderApp();
     claimPlusReturnFocus(slotView.current);
-    act(() => openPlus());
-    nextFrame();
+    await act(() => openPlus());
+    await nextFrame();
   };
 
-  it('moves focus to the headline on the frame after Plus opens', () => {
-    renderApp();
-    act(() => openPlus());
+  it('moves focus to the headline on the frame after Plus opens', async () => {
+    await renderApp();
+    await act(() => openPlus());
     expect(calls).toEqual([]);
 
-    nextFrame();
+    await nextFrame();
 
     expect(calls.map(({target, event: sent}) => [target, sent])).toEqual([
       ['header:Push local AI further.', event],
@@ -290,25 +319,31 @@ describe.each([
   });
 
   it.each([
-    ['Close', () => fireEvent.press(screen.getByTestId('plus-close'))],
+    [
+      'Close',
+      async () => await fireEvent.press(screen.getByTestId('plus-close')),
+    ],
     [
       'back',
-      () =>
-        act(() => {
+      async () =>
+        await act(() => {
           pressBack();
         }),
     ],
+
     [
       'the escape gesture',
       () => fireEvent(screen.getByTestId('plus-host'), 'accessibilityEscape'),
     ],
   ])(
     'returns focus to the hamburger after %s, once the host is gone',
-    (_label, close) => {
-      openWithSlot();
+    async (_label, close) => {
+      await openWithSlot();
 
-      close();
-      nextFrame();
+      // v14: fireEvent.press is async — the close must be awaited before
+      // advancing the frame, or its act() overlaps nextFrame's act().
+      await close();
+      await nextFrame();
 
       expect(plusGate.request).toBeNull();
       expect(calls).toHaveLength(2);
@@ -321,31 +356,31 @@ describe.each([
     },
   );
 
-  it('drops the headline focus when Plus closes before the next frame', () => {
-    renderApp();
+  it('drops the headline focus when Plus closes before the next frame', async () => {
+    await renderApp();
     claimPlusReturnFocus(slotView.current);
-    act(() => openPlus());
+    await act(() => openPlus());
 
-    fireEvent.press(screen.getByTestId('plus-close'));
-    nextFrame();
+    await fireEvent.press(screen.getByTestId('plus-close'));
+    await nextFrame();
 
     expect(calls.map(call => call.target)).toEqual(['slot']);
   });
 
-  it('leaves focus to the feature after onUnlocked runs', () => {
-    renderApp();
+  it('leaves focus to the feature after onUnlocked runs', async () => {
+    await renderApp();
     claimPlusReturnFocus(slotView.current);
     const onUnlocked = jest.fn();
-    act(() => openPlus({onUnlocked}));
-    nextFrame();
-    act(() =>
+    await act(() => openPlus({onUnlocked}));
+    await nextFrame();
+    await act(() =>
       runInAction(() => {
         purchaseStore.plusUnlocked = true;
       }),
     );
 
-    fireEvent.press(screen.getByTestId('plus-done'));
-    nextFrame();
+    await fireEvent.press(screen.getByTestId('plus-done'));
+    await nextFrame();
 
     expect(onUnlocked).toHaveBeenCalledTimes(1);
     expect(calls.map(call => call.target)).toEqual([
@@ -353,112 +388,113 @@ describe.each([
     ]);
   });
 
-  const setUnlocked = (plusUnlocked: boolean) =>
-    act(() =>
+  const setUnlocked = async (plusUnlocked: boolean) =>
+    await act(() =>
       runInAction(() => {
         purchaseStore.plusUnlocked = plusUnlocked;
       }),
     );
   const targets = () => calls.map(call => call.target);
 
-  it('moves focus to the thank-you headline on the frame after Plus unlocks', () => {
-    renderApp();
-    act(() => openPlus());
-    nextFrame();
+  it('moves focus to the thank-you headline on the frame after Plus unlocks', async () => {
+    await renderApp();
+    await act(() => openPlus());
+    await nextFrame();
 
-    setUnlocked(true);
+    await setUnlocked(true);
     expect(calls).toHaveLength(1);
 
-    nextFrame();
+    await nextFrame();
     expect(calls.map(({target, event: sent}) => [target, sent])).toEqual([
       ['header:Push local AI further.', event],
       ['header:Thank you for keeping PocketPal going.', event],
     ]);
   });
 
-  it('drops the unlock focus when Plus closes before the next frame', () => {
-    openWithSlot();
+  it('drops the unlock focus when Plus closes before the next frame', async () => {
+    await openWithSlot();
 
-    setUnlocked(true);
-    fireEvent.press(screen.getByTestId('plus-done'));
-    nextFrame();
+    await setUnlocked(true);
+    await fireEvent.press(screen.getByTestId('plus-done'));
+    await nextFrame();
 
     expect(targets()).toEqual(['header:Push local AI further.', 'slot']);
   });
 
-  it('focuses the thank-you headline once when opened already unlocked', () => {
-    renderApp();
-    setUnlocked(true);
+  it('focuses the thank-you headline once when opened already unlocked', async () => {
+    await renderApp();
+    await setUnlocked(true);
 
-    act(() => openPlus());
-    nextFrame();
+    await act(() => openPlus());
+    await nextFrame();
 
     expect(targets()).toEqual([
       'header:Thank you for keeping PocketPal going.',
     ]);
   });
 
-  it('makes no call when Plus is relocked while shown', () => {
-    renderApp();
-    setUnlocked(true);
-    act(() => openPlus());
-    nextFrame();
+  it('makes no call when Plus is relocked while shown', async () => {
+    await renderApp();
+    await setUnlocked(true);
+    await act(() => openPlus());
+    await nextFrame();
 
-    setUnlocked(false);
-    nextFrame();
+    await setUnlocked(false);
+    await nextFrame();
 
     expect(calls).toHaveLength(1);
   });
 
-  it('makes one call when Plus opens and unlocks in the same commit', () => {
-    renderApp();
+  it('makes one call when Plus opens and unlocks in the same commit', async () => {
+    await renderApp();
 
-    act(() =>
+    await act(() =>
       runInAction(() => {
         openPlus();
         purchaseStore.plusUnlocked = true;
       }),
     );
-    nextFrame();
+    await nextFrame();
 
     expect(targets()).toEqual([
       'header:Thank you for keeping PocketPal going.',
     ]);
   });
 
-  it('makes no close call when no hamburger holds the slot', () => {
-    renderApp();
-    act(() => openPlus());
-    nextFrame();
+  it('makes no close call when no hamburger holds the slot', async () => {
+    await renderApp();
+    await act(() => openPlus());
+    await nextFrame();
 
-    fireEvent.press(screen.getByTestId('plus-close'));
-    nextFrame();
+    await fireEvent.press(screen.getByTestId('plus-close'));
+    await nextFrame();
 
     expect(calls.map(call => call.target)).toEqual([
       'header:Push local AI further.',
     ]);
   });
 
-  it('makes no call on a first mount while hidden', () => {
+  it('makes no call on a first mount while hidden', async () => {
     const slot = (
       <PlusA11yScope>
         <View ref={slotView} />
       </PlusA11yScope>
     );
-    screen = render(slot, {withSafeArea: true});
+
+    screen = await render(slot, {withSafeArea: true});
     claimPlusReturnFocus(slotView.current);
-    act(() => {
+    await act(() => {
       openPlus();
       dismissPlus();
     });
 
-    screen.rerender(
+    await screen.rerender(
       <>
         {slot}
         <PlusHost />
       </>,
     );
-    nextFrame();
+    await nextFrame();
 
     expect(plusReturnFocusTarget() === slotView.current).toBe(true);
     expect(calls).toEqual([]);
@@ -472,8 +508,8 @@ describe('PlusA11yScope', () => {
     });
   });
 
-  it('hides the app beneath from Android screen readers while Plus is shown', () => {
-    const {getByTestId} = render(
+  it('hides the app beneath from Android screen readers while Plus is shown', async () => {
+    const {getByTestId} = await render(
       <PlusA11yScope>
         <></>
       </PlusA11yScope>,
@@ -484,14 +520,14 @@ describe('PlusA11yScope', () => {
     expect(scope().props.importantForAccessibility).toBe('auto');
     expect(scope().props.collapsable).toBe(false);
 
-    act(() =>
+    await act(() =>
       runInAction(() => {
         plusGate.request = {};
       }),
     );
     expect(scope().props.importantForAccessibility).toBe('no-hide-descendants');
 
-    act(() =>
+    await act(() =>
       runInAction(() => {
         plusGate.request = null;
       }),

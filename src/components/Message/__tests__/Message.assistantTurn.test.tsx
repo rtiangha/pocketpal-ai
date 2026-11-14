@@ -1,9 +1,8 @@
 import * as React from 'react';
-import {Text} from 'react-native';
 
 import {observable, runInAction} from 'mobx';
 
-import {act, fireEvent, render} from '../../../../jest/test-utils';
+import {act, fireEvent, render, screen} from '../../../../jest/test-utils';
 import {defaultDerivedMessageProps} from '../../../../jest/fixtures';
 
 import {Message} from '../Message';
@@ -111,7 +110,7 @@ beforeEach(() => {
 describe('Message — AssistantTurn renderer', () => {
   // ---------- Story Test Requirements (Renderer) #1, #2, #10, #11, #12, #13 ----------
 
-  it('#0 streaming reactivity: in-place mutation of step.content re-renders Message (regression: would fail if `observer` were dropped)', () => {
+  it('#0 streaming reactivity: in-place mutation of step.content re-renders Message (regression: would fail if `observer` were dropped)', async () => {
     // Mirrors the production streaming path: `applyStreamingUpdate` in
     // ChatSessionStore replaces `turn.steps[lastIdx]` with a new spread
     // object inside `runInAction`. The AssistantTurn message reference
@@ -126,7 +125,7 @@ describe('Message — AssistantTurn renderer', () => {
       {},
       {deep: true},
     );
-    render(
+    await render(
       <Message
         message={observableTurn}
         messageWidth={440}
@@ -144,7 +143,7 @@ describe('Message — AssistantTurn renderer', () => {
     // `turn.steps[lastIdx] = {...last, ...partial}`. Wrapped in `act`
     // so React flushes the observer-triggered re-render before we
     // inspect mock calls.
-    act(() => {
+    await act(() => {
       runInAction(() => {
         observableTurn.steps[0] = {
           ...observableTurn.steps[0],
@@ -162,9 +161,9 @@ describe('Message — AssistantTurn renderer', () => {
     expect(mockTextMessageCalls.length).toBeGreaterThan(1);
   });
 
-  it('#1 single-step no-tool turn renders one TextMessage block + no talent block', () => {
+  it('#1 single-step no-tool turn renders one TextMessage block + no talent block', async () => {
     const message = makeDerivedTurn([{content: 'Hello!'}]);
-    render(
+    await render(
       <Message
         message={message}
         messageWidth={440}
@@ -180,7 +179,7 @@ describe('Message — AssistantTurn renderer', () => {
     expect(mockTalentSurfaceCalls).toHaveLength(0);
   });
 
-  it('#2 / #10 multi-step turn renders steps in order: 3 distinct blocks for [{content,toolCalls,toolOutcomes},{content}]', () => {
+  it('#2 / #10 multi-step turn renders steps in order: 3 distinct blocks for [{content,toolCalls,toolOutcomes},{content}]', async () => {
     const message = makeDerivedTurn([
       {
         content: 'Let me calculate',
@@ -196,7 +195,7 @@ describe('Message — AssistantTurn renderer', () => {
       },
       {content: 'The answer is 4'},
     ]);
-    render(
+    await render(
       <Message
         message={message}
         messageWidth={440}
@@ -217,7 +216,7 @@ describe('Message — AssistantTurn renderer', () => {
     );
   });
 
-  it('#11 AssistantTurn has no touch handler above its content (selection would fight it)', () => {
+  it('#11 AssistantTurn has no touch handler above its content (selection would fight it)', async () => {
     const message = makeDerivedTurn([
       {content: 'A'},
       {
@@ -227,7 +226,7 @@ describe('Message — AssistantTurn renderer', () => {
       },
       {content: 'C'},
     ]);
-    const {UNSAFE_root, getAllByTestId} = render(
+    const {getAllByTestId} = await render(
       <Message
         message={message}
         messageWidth={440}
@@ -247,13 +246,13 @@ describe('Message — AssistantTurn renderer', () => {
       }
     }
     expect(
-      UNSAFE_root.findAll(
+      screen.container.queryAll(
         (n: any) => n.props && typeof n.props.onLongPress === 'function',
       ),
     ).toHaveLength(0);
   });
 
-  it('#12 the footer "…" yields the turn regardless of step count', () => {
+  it('#12 the footer "…" yields the turn regardless of step count', async () => {
     const onMessageMenuPress = jest.fn();
     const message = makeDerivedTurn([
       {content: 'A'},
@@ -264,7 +263,7 @@ describe('Message — AssistantTurn renderer', () => {
       },
       {content: 'C'},
     ]);
-    const {getAllByTestId} = render(
+    const {getAllByTestId} = await render(
       <Message
         message={message}
         messageWidth={440}
@@ -278,14 +277,14 @@ describe('Message — AssistantTurn renderer', () => {
     const buttons = getAllByTestId('message-menu-button');
     expect(buttons).toHaveLength(1);
     const event = {nativeEvent: {pageX: 7, pageY: 8}};
-    fireEvent.press(buttons[0], event);
+    await fireEvent.press(buttons[0], event);
     expect(onMessageMenuPress).toHaveBeenCalledTimes(1);
     expect(onMessageMenuPress.mock.calls[0][0].id).toBe('turn-1');
     expect(onMessageMenuPress.mock.calls[0][1]).toEqual(event);
   });
 
-  it('#12b the active row shows no "…"', () => {
-    const {queryByTestId} = render(
+  it('#12b the active row shows no "…"', async () => {
+    const {queryByTestId} = await render(
       <Message
         message={makeDerivedTurn([{content: 'A', partial: true}])}
         messageWidth={440}
@@ -299,12 +298,12 @@ describe('Message — AssistantTurn renderer', () => {
     expect(queryByTestId('message-menu-button')).toBeNull();
   });
 
-  it('#13 avatar renders once per AssistantTurn (showAvatar=true, showUserAvatars=true)', () => {
+  it('#13 avatar renders once per AssistantTurn (showAvatar=true, showUserAvatars=true)', async () => {
     const message = makeDerivedTurn(
       [{content: 'A'}, {content: 'B'}, {content: 'C'}],
       {author: {id: 'assistant-id', firstName: 'Pal'}},
     );
-    const {queryAllByTestId, UNSAFE_root} = render(
+    const {queryAllByTestId} = await render(
       <Message
         message={message}
         messageWidth={440}
@@ -321,16 +320,19 @@ describe('Message — AssistantTurn renderer', () => {
     expect(containers).toHaveLength(1);
     // No avatar duplication across the N step-blocks: only one initials
     // label even when there are 3 visual blocks in the row.
-    const initials = UNSAFE_root.findAll(
-      (n: any) =>
-        n.type === Text &&
-        typeof n.props.children === 'string' &&
-        n.props.children === 'P',
-    );
+    // v14: only host nodes are in the tree (type is the string 'Text'),
+    // and a host Text's children may be a single-element array.
+    const initials = screen.container.queryAll((n: any) => {
+      if (n.type !== 'Text') {
+        return false;
+      }
+      const c = n.props.children;
+      return c === 'P' || (Array.isArray(c) && c.length === 1 && c[0] === 'P');
+    });
     expect(initials).toHaveLength(1);
   });
 
-  it('#3 (TalentSurface fixtures) receives step.toolCalls / step.toolOutcomes (not metadata fields) for AssistantTurn', () => {
+  it('#3 (TalentSurface fixtures) receives step.toolCalls / step.toolOutcomes (not metadata fields) for AssistantTurn', async () => {
     const stepWithTalent: AgentStep = {
       content: '',
       toolCalls: [{id: 'c0', function: {name: 'render_html', arguments: '{}'}}],
@@ -344,7 +346,7 @@ describe('Message — AssistantTurn renderer', () => {
       ],
     };
     const message = makeDerivedTurn([stepWithTalent]);
-    render(
+    await render(
       <Message
         message={message}
         messageWidth={440}
@@ -362,12 +364,12 @@ describe('Message — AssistantTurn renderer', () => {
     // already implicit; we just confirm the renderer threads `step` only.)
   });
 
-  it('#4 active run with empty step (no toolCalls) → no TalentSurface (PendingIndicator covers UX, owned by ChatView)', () => {
+  it('#4 active run with empty step (no toolCalls) → no TalentSurface (PendingIndicator covers UX, owned by ChatView)', async () => {
     // Pending UX is not rendered inline by TalentSurface. The
     // ChatView-owned PendingIndicator covers dead zones; TalentSurface
     // renders only when step.toolCalls is populated.
     const message = makeDerivedTurn([{content: '', partial: true}]);
-    render(
+    await render(
       <Message
         message={message}
         messageWidth={440}
@@ -385,9 +387,9 @@ describe('Message — AssistantTurn renderer', () => {
     expect(mockTalentSurfaceCalls).toHaveLength(0);
   });
 
-  it('#5 active run with pendingTalentNames=["calculate"] → no TalentSurface until toolCalls land (PendingIndicator covers UX)', () => {
+  it('#5 active run with pendingTalentNames=["calculate"] → no TalentSurface until toolCalls land (PendingIndicator covers UX)', async () => {
     const message = makeDerivedTurn([{content: '', partial: true}]);
-    render(
+    await render(
       <Message
         message={message}
         messageWidth={440}
@@ -407,11 +409,11 @@ describe('Message — AssistantTurn renderer', () => {
     expect(mockTalentSurfaceCalls).toHaveLength(0);
   });
 
-  it('#7 reasoning-only step renders a ReasoningBlock (no TextMessage, since content is empty)', () => {
+  it('#7 reasoning-only step renders a ReasoningBlock (no TextMessage, since content is empty)', async () => {
     const message = makeDerivedTurn([
       {content: '', reasoningContent: 'thinking…'},
     ]);
-    render(
+    await render(
       <Message
         message={message}
         messageWidth={440}
@@ -427,9 +429,9 @@ describe('Message — AssistantTurn renderer', () => {
     expect(mockTextMessageCalls).toHaveLength(0);
   });
 
-  it('renders empty content when AssistantTurn has zero steps', () => {
+  it('renders empty content when AssistantTurn has zero steps', async () => {
     const message = makeDerivedTurn([]);
-    render(
+    await render(
       <Message
         message={message}
         messageWidth={440}
@@ -447,14 +449,14 @@ describe('Message — AssistantTurn renderer', () => {
   // ---------- Canonical scenarios ----------
 
   describe('canonical scenarios', () => {
-    it('A — text only: single TextMessage block, no TalentSurface, ONE footer', () => {
+    it('A — text only: single TextMessage block, no TalentSurface, ONE footer', async () => {
       const message = makeDerivedTurn([{content: 'Hi! How can I help?'}], {
         metadata: {
           timings: {predicted_per_token_ms: 32, predicted_per_second: 30},
           copyable: true,
         },
       });
-      const {getAllByTestId, queryByTestId} = render(
+      const {getAllByTestId, queryByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -470,7 +472,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('B — datetime tool (no UI registered): TextMessage + TalentSurface (chip path) + TextMessage + ONE footer', () => {
+    it('B — datetime tool (no UI registered): TextMessage + TalentSurface (chip path) + TextMessage + ONE footer', async () => {
       const message = makeDerivedTurn(
         [
           {
@@ -478,6 +480,7 @@ describe('Message — AssistantTurn renderer', () => {
             toolCalls: [
               {id: 'c0', function: {name: 'datetime', arguments: '{}'}},
             ],
+
             toolOutcomes: [
               {
                 callId: 'c0',
@@ -489,6 +492,7 @@ describe('Message — AssistantTurn renderer', () => {
           },
           {content: "It's 8:28 AM."},
         ],
+
         {
           metadata: {
             timings: {predicted_per_second: 30},
@@ -496,7 +500,7 @@ describe('Message — AssistantTurn renderer', () => {
           },
         },
       );
-      const {getAllByTestId, queryAllByTestId} = render(
+      const {getAllByTestId, queryAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -518,7 +522,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('C — render_html with preamble and follow-up: 2 text blocks + 1 talent block + ONE footer', () => {
+    it('C — render_html with preamble and follow-up: 2 text blocks + 1 talent block + ONE footer', async () => {
       const message = makeDerivedTurn(
         [
           {
@@ -526,6 +530,7 @@ describe('Message — AssistantTurn renderer', () => {
             toolCalls: [
               {id: 'c0', function: {name: 'render_html', arguments: '{}'}},
             ],
+
             toolOutcomes: [
               {
                 callId: 'c0',
@@ -541,9 +546,10 @@ describe('Message — AssistantTurn renderer', () => {
           },
           {content: 'Hope this looks right.'},
         ],
+
         {metadata: {timings: {predicted_per_second: 30}, copyable: true}},
       );
-      const {getAllByTestId, queryAllByTestId} = render(
+      const {getAllByTestId, queryAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -559,7 +565,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('D — render_html with no preamble: HtmlPreview block + TextMessage + ONE footer (no empty leading bubble)', () => {
+    it('D — render_html with no preamble: HtmlPreview block + TextMessage + ONE footer (no empty leading bubble)', async () => {
       const message = makeDerivedTurn(
         [
           {
@@ -567,6 +573,7 @@ describe('Message — AssistantTurn renderer', () => {
             toolCalls: [
               {id: 'c0', function: {name: 'render_html', arguments: '{}'}},
             ],
+
             toolOutcomes: [
               {
                 callId: 'c0',
@@ -582,9 +589,10 @@ describe('Message — AssistantTurn renderer', () => {
           },
           {content: 'There you go.'},
         ],
+
         {metadata: {timings: {predicted_per_second: 30}, copyable: true}},
       );
-      const {getAllByTestId} = render(
+      const {getAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -604,7 +612,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('E — tool failed: TextMessage(preamble) + TalentSurface (error path) + TextMessage(apology) + ONE footer', () => {
+    it('E — tool failed: TextMessage(preamble) + TalentSurface (error path) + TextMessage(apology) + ONE footer', async () => {
       const message = makeDerivedTurn(
         [
           {
@@ -612,6 +620,7 @@ describe('Message — AssistantTurn renderer', () => {
             toolCalls: [
               {id: 'c0', function: {name: 'render_html', arguments: '{}'}},
             ],
+
             toolOutcomes: [
               {
                 callId: 'c0',
@@ -627,9 +636,10 @@ describe('Message — AssistantTurn renderer', () => {
           },
           {content: "Sorry, couldn't do that."},
         ],
+
         {metadata: {timings: {predicted_per_second: 30}, copyable: true}},
       );
-      const {getAllByTestId} = render(
+      const {getAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -648,7 +658,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('F — reasoning + content: separate reasoning block + content block + ONE footer', () => {
+    it('F — reasoning + content: separate reasoning block + content block + ONE footer', async () => {
       const message = makeDerivedTurn(
         [
           {
@@ -656,9 +666,10 @@ describe('Message — AssistantTurn renderer', () => {
             content: 'The answer is 42.',
           },
         ],
+
         {metadata: {timings: {predicted_per_second: 30}, copyable: true}},
       );
-      const {getAllByTestId} = render(
+      const {getAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -679,7 +690,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('G — multi-tool in one step: 1 preamble TextMessage + 1 TalentSurface (with both calls) + ONE footer', () => {
+    it('G — multi-tool in one step: 1 preamble TextMessage + 1 TalentSurface (with both calls) + ONE footer', async () => {
       const message = makeDerivedTurn(
         [
           {
@@ -694,6 +705,7 @@ describe('Message — AssistantTurn renderer', () => {
                 function: {name: 'render_html', arguments: '{}'},
               },
             ],
+
             toolOutcomes: [
               {
                 callId: 'c1',
@@ -718,9 +730,10 @@ describe('Message — AssistantTurn renderer', () => {
             ],
           },
         ],
+
         {metadata: {timings: {predicted_per_second: 30}, copyable: true}},
       );
-      const {getAllByTestId, queryAllByTestId} = render(
+      const {getAllByTestId, queryAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -742,7 +755,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('multi-tool partial completion: step₀ has two calls, first ok + second error → both rendered in array order via TalentSurface, ONE footer', () => {
+    it('multi-tool partial completion: step₀ has two calls, first ok + second error → both rendered in array order via TalentSurface, ONE footer', async () => {
       // One talent block (A) followed by one error block (B), in array
       // order. Both surface simultaneously after step_finished —
       // asserted here at the Message-renderer level by checking
@@ -763,6 +776,7 @@ describe('Message — AssistantTurn renderer', () => {
                 function: {name: 'render_html', arguments: '{}'},
               },
             ],
+
             toolOutcomes: [
               {
                 callId: 'c1',
@@ -784,9 +798,10 @@ describe('Message — AssistantTurn renderer', () => {
           },
           {content: 'One worked, one did not.'},
         ],
+
         {metadata: {timings: {predicted_per_second: 30}, copyable: true}},
       );
-      const {getAllByTestId, queryAllByTestId} = render(
+      const {getAllByTestId, queryAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -814,7 +829,7 @@ describe('Message — AssistantTurn renderer', () => {
       expect(getAllByTestId('assistant-turn-footer')).toHaveLength(1);
     });
 
-    it('multi-step turn renders exactly ONE AssistantTurnFooter', () => {
+    it('multi-step turn renders exactly ONE AssistantTurnFooter', async () => {
       const message = makeDerivedTurn(
         [
           {content: 'A'},
@@ -822,6 +837,7 @@ describe('Message — AssistantTurn renderer', () => {
             toolCalls: [
               {id: 'c0', function: {name: 'render_html', arguments: '{}'}},
             ],
+
             toolOutcomes: [
               {
                 callId: 'c0',
@@ -834,9 +850,10 @@ describe('Message — AssistantTurn renderer', () => {
           {content: 'B'},
           {content: 'C'},
         ],
+
         {metadata: {timings: {predicted_per_second: 30}, copyable: true}},
       );
-      const {getAllByTestId} = render(
+      const {getAllByTestId} = await render(
         <Message
           message={message}
           messageWidth={440}
@@ -851,11 +868,12 @@ describe('Message — AssistantTurn renderer', () => {
     });
   });
 
-  it('hides a step whose content only echoes its executed tool call', () => {
+  it('hides a step whose content only echoes its executed tool call', async () => {
     const steps = (toolCallEchoSteps as unknown as Record<string, AgentStep[]>)[
       '0PKzyV5rTwEfMoWW'
     ];
-    const {queryByText, queryAllByTestId} = render(
+
+    const {queryByText, queryAllByTestId} = await render(
       <Message
         message={makeDerivedTurn(steps)}
         messageWidth={440}
@@ -873,7 +891,7 @@ describe('Message — AssistantTurn renderer', () => {
     expect(queryByText(/"name": "web_search"/)).toBeNull();
   });
 
-  it('shows a streaming echo until its tool calls land, then hides it', () => {
+  it('shows a streaming echo until its tool calls land, then hides it', async () => {
     const [stored] = (
       toolCallEchoSteps as unknown as Record<string, AgentStep[]>
     )['0PKzyV5rTwEfMoWW'];
@@ -883,7 +901,7 @@ describe('Message — AssistantTurn renderer', () => {
       {},
       {deep: true},
     );
-    render(
+    await render(
       <Message
         message={observableTurn}
         messageWidth={440}
@@ -898,7 +916,7 @@ describe('Message — AssistantTurn renderer', () => {
     expect(mockTextMessageCalls[0].step?.content).toBe(stored.content);
 
     mockTextMessageCalls = [];
-    act(() => {
+    await act(() => {
       runInAction(() => {
         observableTurn.steps[0] = {...observableTurn.steps[0], toolCalls};
       });
@@ -929,8 +947,8 @@ describe('Message — step content markdown', () => {
     (TextMessage as jest.Mock).mockImplementation(recordingTextMessage);
   });
 
-  it('marks step content selectable', () => {
-    render(
+  it('marks step content selectable', async () => {
+    await render(
       <Message
         message={makeDerivedTurn([{content: 'Hi', partial: false}])}
         messageWidth={440}
@@ -944,9 +962,9 @@ describe('Message — step content markdown', () => {
     expect(markdownSpy.mock.calls[0][0].selectable).toBe(true);
   });
 
-  it('passes a nested table to the library and copies the reply as written', () => {
+  it('passes a nested table to the library and copies the reply as written', async () => {
     const reply = '1. Compare:\n\n   | a | b |\n   | --- | --- |\n   | 1 | 2 |';
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <Message
         message={makeDerivedTurn([{content: reply, partial: false}], {
           metadata: {copyable: true},
@@ -960,7 +978,7 @@ describe('Message — step content markdown', () => {
     );
 
     expect(markdownSpy.mock.calls[0][0].markdown).toBe(reply);
-    fireEvent.press(getByTestId('footer-copy'));
+    await fireEvent.press(getByTestId('footer-copy'));
     expect(
       require('@react-native-clipboard/clipboard').setString,
     ).toHaveBeenCalledWith(reply);
@@ -987,8 +1005,8 @@ describe('Message — reasoning card', () => {
     (ReasoningBlock as jest.Mock).mockImplementation(recordingReasoningBlock);
   });
 
-  it('collapses once content starts on the same partial step', () => {
-    const {getByTestId} = render(
+  it('collapses once content starts on the same partial step', async () => {
+    const {getByTestId} = await render(
       <Message
         message={makeDerivedTurn([
           {
@@ -1029,8 +1047,8 @@ describe('Message — reasoning collapse trigger', () => {
 
   it.each(cases)(
     'collapses once content starts or the step ends (active %s, partial %s, content %j)',
-    (isActiveRun, partial, content) => {
-      render(
+    async (isActiveRun, partial, content) => {
+      await render(
         <Message
           message={makeDerivedTurn([
             {content, reasoningContent: 'Plan\n```py\nx=1', partial},

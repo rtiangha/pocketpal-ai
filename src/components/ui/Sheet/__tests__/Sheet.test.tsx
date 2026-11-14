@@ -5,8 +5,8 @@ import {render} from '../../../../../jest/test-utils';
 import {Sheet} from '../Sheet';
 
 describe('Sheet', () => {
-  it('renders a single ui-header in the tree', () => {
-    const {getAllByTestId} = render(
+  it('renders a single ui-header in the tree', async () => {
+    const {getAllByTestId} = await render(
       <Sheet isVisible title="Pick a model" subtitle="Loaded models only">
         <Text>body</Text>
         <Sheet.Actions

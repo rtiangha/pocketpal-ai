@@ -11,8 +11,8 @@ describe('Stepper', () => {
     I18nManager.isRTL = false;
   });
 
-  it('renders `total` dots and exposes default progressbar a11y', () => {
-    const {getByTestId} = render(<Stepper total={4} current={2} />);
+  it('renders `total` dots and exposes default progressbar a11y', async () => {
+    const {getByTestId} = await render(<Stepper total={4} current={2} />);
     const root = getByTestId('ui-stepper');
     expect(root.props.accessibilityRole).toBe('progressbar');
     expect(root.props.accessibilityValue).toEqual({min: 1, max: 4, now: 2});
@@ -23,9 +23,9 @@ describe('Stepper', () => {
     expect(getByTestId('ui-stepper-dot-4')).toBeTruthy();
   });
 
-  it('clamps current to [1, total] with a dev-only warning', () => {
+  it('clamps current to [1, total] with a dev-only warning', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation();
-    const {getByTestId} = render(<Stepper total={4} current={9} />);
+    const {getByTestId} = await render(<Stepper total={4} current={9} />);
     expect(getByTestId('ui-stepper').props.accessibilityValue).toEqual({
       min: 1,
       max: 4,
@@ -35,9 +35,9 @@ describe('Stepper', () => {
     warn.mockRestore();
   });
 
-  it('reverses row direction in RTL', () => {
+  it('reverses row direction in RTL', async () => {
     I18nManager.isRTL = true;
-    const {getByTestId} = render(<Stepper total={3} current={1} />);
+    const {getByTestId} = await render(<Stepper total={3} current={1} />);
     const root = getByTestId('ui-stepper');
     const flatStyle = Array.isArray(root.props.style)
       ? Object.assign({}, ...root.props.style.filter(Boolean))

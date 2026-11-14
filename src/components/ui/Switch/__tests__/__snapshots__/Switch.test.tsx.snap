@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`Switch — snapshot matrix baseline (variant x size x {default,disabled} x modes) default-default-default-dark-off 1`] = `
 <View

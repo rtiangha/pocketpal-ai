@@ -5,13 +5,13 @@ import {Chip} from '../Chip';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('Chip', () => {
-  it('display variant defaults to role=text', () => {
-    const {getByTestId} = render(<Chip variant="display" label="Tag" />);
+  it('display variant defaults to role=text', async () => {
+    const {getByTestId} = await render(<Chip variant="display" label="Tag" />);
     expect(getByTestId('ui-chip').props.accessibilityRole).toBe('text');
   });
 
-  it('selectable variant defaults to role=button with selected state', () => {
-    const {getByTestId} = render(
+  it('selectable variant defaults to role=button with selected state', async () => {
+    const {getByTestId} = await render(
       <Chip variant="selectable" label="Tag" selected />,
     );
     const el = getByTestId('ui-chip');
@@ -19,8 +19,8 @@ describe('Chip', () => {
     expect(el.props.accessibilityState?.selected).toBe(true);
   });
 
-  it('input variant defaults to role=button', () => {
-    const {getByTestId} = render(<Chip variant="input" label="Tag" />);
+  it('input variant defaults to role=button', async () => {
+    const {getByTestId} = await render(<Chip variant="input" label="Tag" />);
     expect(getByTestId('ui-chip').props.accessibilityRole).toBe('button');
   });
 });

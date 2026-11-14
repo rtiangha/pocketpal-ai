@@ -32,7 +32,7 @@ describe('ChatView render performance', () => {
           let typed = '';
           for (let i = 0; i < KEYSTROKES; i++) {
             typed = TYPED.slice(0, i + 1);
-            fireEvent.changeText(screen.getByTestId('chat-input'), typed);
+            await fireEvent.changeText(screen.getByTestId('chat-input'), typed);
             await flushTimers();
           }
 

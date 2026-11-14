@@ -73,7 +73,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
   });
 
   it('parks a valid link in pendingHubRun via the iOS emitter path', async () => {
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
 
     expect(registeredHandler).toBeDefined();
@@ -93,7 +93,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
   });
 
   it('alerts and writes nothing on a malformed link', async () => {
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
 
     await registeredHandler!({
@@ -107,7 +107,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
   });
 
   it('parks a valid link with no filename without alerting', async () => {
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
 
     await registeredHandler!({
@@ -126,7 +126,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
   it('parks a valid link arriving cold via the prod Linking path', async () => {
     getInitialURLSpy.mockResolvedValue(VALID_URL);
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 
@@ -147,7 +147,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
       return {remove: jest.fn()} as any;
     });
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
 
     expect(handlers.length).toBeGreaterThan(0);
@@ -161,7 +161,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
   it('ignores a non-hub link on the prod Linking path without alerting', async () => {
     getInitialURLSpy.mockResolvedValue('pocketpal://chat?palId=foo');
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 
@@ -178,7 +178,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
       return {remove: jest.fn()} as any;
     });
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
 
     handlers.forEach(h => h({url: 'pocketpal://chat?palId=foo'}));
@@ -190,7 +190,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
   it('ignores an unknown hub path on the prod Linking path without alerting', async () => {
     getInitialURLSpy.mockResolvedValue('pocketpal://hub/foo');
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 
@@ -201,7 +201,7 @@ describe('useDeepLinking — hub/run dispatch', () => {
   it('alerts on a malformed hub/run link via the prod Linking path', async () => {
     getInitialURLSpy.mockResolvedValue('pocketpal://hub/run'); // no repo_id
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 

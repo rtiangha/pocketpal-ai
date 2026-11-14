@@ -110,7 +110,7 @@ describe('submitFeedback', () => {
   it('should throw NetworkError when there is no internet connection', async () => {
     mockedUtils.checkConnectivity.mockResolvedValue(false);
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.NetworkError,
     );
 
@@ -120,7 +120,7 @@ describe('submitFeedback', () => {
   it('should throw AppCheckError when AppCheck token is not available', async () => {
     mockedUtils.getAppCheckToken.mockResolvedValue('');
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.AppCheckError,
     );
 
@@ -134,7 +134,7 @@ describe('submitFeedback', () => {
     };
     mockedAxios.post.mockRejectedValue(error);
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.NetworkError,
     );
   });
@@ -149,7 +149,7 @@ describe('submitFeedback', () => {
     };
     mockedAxios.post.mockRejectedValue(unauthorizedError);
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.AppCheckError,
     );
 
@@ -163,7 +163,7 @@ describe('submitFeedback', () => {
     };
     mockedAxios.post.mockRejectedValue(forbiddenError);
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.AppCheckError,
     );
   });
@@ -180,7 +180,7 @@ describe('submitFeedback', () => {
     };
     mockedAxios.post.mockRejectedValue(serverError);
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.ServerError,
     );
   });
@@ -197,7 +197,7 @@ describe('submitFeedback', () => {
     };
     mockedAxios.post.mockRejectedValue(serverError);
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.ServerError,
     );
   });
@@ -207,7 +207,7 @@ describe('submitFeedback', () => {
       throw new Error('AppCheck init error');
     });
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.AppCheckError,
     );
   });
@@ -226,7 +226,7 @@ describe('submitFeedback', () => {
     Platform.OS = 'android';
     mockedUtils.getAppCheckToken.mockResolvedValue('');
 
-    await expect(submitFeedback(mockFeedbackData)).rejects.toThrowError(
+    await expect(submitFeedback(mockFeedbackData)).rejects.toThrow(
       utils.AppCheckError,
     );
   });
@@ -300,7 +300,7 @@ describe('submitContentReport', () => {
   it('should throw NetworkError when there is no internet connection', async () => {
     mockedUtils.checkConnectivity.mockResolvedValue(false);
 
-    await expect(submitContentReport(mockReportData)).rejects.toThrowError(
+    await expect(submitContentReport(mockReportData)).rejects.toThrow(
       utils.NetworkError,
     );
 
@@ -310,7 +310,7 @@ describe('submitContentReport', () => {
   it('should throw AppCheckError when AppCheck token is not available', async () => {
     mockedUtils.getAppCheckToken.mockResolvedValue('');
 
-    await expect(submitContentReport(mockReportData)).rejects.toThrowError(
+    await expect(submitContentReport(mockReportData)).rejects.toThrow(
       utils.AppCheckError,
     );
 

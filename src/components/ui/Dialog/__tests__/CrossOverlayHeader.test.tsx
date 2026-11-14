@@ -8,18 +8,18 @@ import {Modal} from '../../Modal/Modal';
 import {Sheet} from '../../Sheet/Sheet';
 
 describe('Cross-overlay header reuse', () => {
-  it('all three overlays render the same ui-header subtree', () => {
-    const dialog = render(
+  it('all three overlays render the same ui-header subtree', async () => {
+    const dialog = await render(
       <Dialog isVisible title="Hello" subtitle="World">
         <Text>body</Text>
       </Dialog>,
     );
-    const modal = render(
+    const modal = await render(
       <Modal isVisible title="Hello" subtitle="World">
         <Text>body</Text>
       </Modal>,
     );
-    const sheet = render(
+    const sheet = await render(
       <Sheet isVisible title="Hello" subtitle="World">
         <Text>body</Text>
       </Sheet>,

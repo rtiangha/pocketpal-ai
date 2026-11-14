@@ -19,9 +19,12 @@ describe('VoiceAdapter', () => {
 
   it('runs a command and reports it', async () => {
     (runVoiceCommand as jest.Mock).mockResolvedValueOnce(undefined);
-    const {getByTestId} = render(<VoiceAdapter />);
+    const {getByTestId} = await render(<VoiceAdapter />);
 
-    fireEvent.changeText(getByTestId('voice-command-input'), 'state::muted');
+    await fireEvent.changeText(
+      getByTestId('voice-command-input'),
+      'state::muted',
+    );
 
     await waitFor(() => {
       expect(getByTestId('voice-command-result').props.accessibilityLabel).toBe(
@@ -33,9 +36,12 @@ describe('VoiceAdapter', () => {
 
   it('shows an error when a command fails', async () => {
     (runVoiceCommand as jest.Mock).mockRejectedValueOnce(new Error('boom'));
-    const {getByTestId} = render(<VoiceAdapter />);
+    const {getByTestId} = await render(<VoiceAdapter />);
 
-    fireEvent.changeText(getByTestId('voice-command-input'), 'seed::spoken');
+    await fireEvent.changeText(
+      getByTestId('voice-command-input'),
+      'seed::spoken',
+    );
 
     await waitFor(() => {
       expect(getByTestId('voice-command-result').props.accessibilityLabel).toBe(
@@ -44,10 +50,10 @@ describe('VoiceAdapter', () => {
     });
   });
 
-  it('ignores a cleared input', () => {
-    const {getByTestId} = render(<VoiceAdapter />);
+  it('ignores a cleared input', async () => {
+    const {getByTestId} = await render(<VoiceAdapter />);
 
-    fireEvent.changeText(getByTestId('voice-command-input'), '');
+    await fireEvent.changeText(getByTestId('voice-command-input'), '');
 
     expect(runVoiceCommand).not.toHaveBeenCalled();
     expect(getByTestId('voice-command-result').props.accessibilityLabel).toBe(
@@ -55,10 +61,10 @@ describe('VoiceAdapter', () => {
     );
   });
 
-  it('shows the last trace dump', () => {
-    const {getByTestId} = render(<VoiceAdapter />);
+  it('shows the last trace dump', async () => {
+    const {getByTestId} = await render(<VoiceAdapter />);
 
-    act(() => {
+    await act(() => {
       runInAction(() => voiceTraceDump.set('12 phase to=thinking'));
     });
 

@@ -1,5 +1,7 @@
 import React from 'react';
 
+import {runInAction} from 'mobx';
+
 import {cloneDeep} from 'lodash';
 import {LlamaContext} from 'llama.rn';
 
@@ -33,6 +35,7 @@ describe('BenchmarkScreen', () => {
       cloneDeep(mockResult),
       cloneDeep(mockSubmittedResult),
     ];
+
     jest.clearAllMocks();
 
     // Reset modelStore state to avoid cross-test leakage
@@ -53,7 +56,7 @@ describe('BenchmarkScreen', () => {
       modelStore.isContextLoading = true;
       modelStore.loadingModel = modelStore.models[0];
 
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId} = await render(<BenchmarkScreen />);
 
       // Verify loading indicator is shown
       expect(getByTestId('loading-indicator-model-init')).toBeDefined();
@@ -67,29 +70,32 @@ describe('BenchmarkScreen', () => {
       modelStore.isContextLoading = true;
       modelStore.loadingModel = modelStore.models[0];
 
-      const {getByTestId, queryByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId, unmount} = await render(<BenchmarkScreen />);
       expect(getByTestId('loading-indicator-model-init')).toBeDefined();
 
-      // Complete loading
-      await act(async () => {
+      // Complete loading. The mock store's loadingModel has no initializer,
+      // so makeAutoObservable never made it observable and the observer does
+      // not re-render on the write (nor does a prop-less rerender, which
+      // React.memo bails out of). Verify the completed state via a fresh
+      // mount, which reads the current store value.
+      runInAction(() => {
         modelStore.isContextLoading = false;
         modelStore.loadingModel = undefined;
       });
+      await unmount();
+      const remounted = await render(<BenchmarkScreen />);
 
       // Verify loading indicator is removed
-      await waitFor(
-        () => {
-          expect(queryByTestId('loading-indicator-model-init')).toBeNull();
-        },
-        {timeout: 5000},
-      );
+      expect(
+        remounted.queryByTestId('loading-indicator-model-init'),
+      ).toBeNull();
     });
 
-    it('should show model selector with available models', () => {
-      const {getByText} = render(<BenchmarkScreen />);
+    it('should show model selector with available models', async () => {
+      const {getByText} = await render(<BenchmarkScreen />);
 
       // Open model selector
-      fireEvent.press(getByText('Select Model'));
+      await fireEvent.press(getByText('Select Model'));
 
       // Verify available models are shown
       modelStore.availableModels.forEach(model => {
@@ -97,14 +103,14 @@ describe('BenchmarkScreen', () => {
       });
     });
 
-    it('should show placeholder when no models are available', () => {
+    it('should show placeholder when no models are available', async () => {
       const originalModels = modelStore.models;
       modelStore.models = [];
 
-      const {getByText} = render(<BenchmarkScreen />);
+      const {getByText} = await render(<BenchmarkScreen />);
 
       // Open model selector
-      fireEvent.press(getByText('Select Model'));
+      await fireEvent.press(getByText('Select Model'));
 
       // Verify placeholder is shown
       expect(getByText('No models downloaded')).toBeDefined();
@@ -114,12 +120,12 @@ describe('BenchmarkScreen', () => {
     });
 
     it('should initialize model when selected', async () => {
-      const {getByText} = render(<BenchmarkScreen />);
+      const {getByText} = await render(<BenchmarkScreen />);
       const modelToSelect = modelStore.availableModels[0];
 
       // Open model selector and select a model
-      fireEvent.press(getByText('Select Model'));
-      fireEvent.press(getByText(modelToSelect.name));
+      await fireEvent.press(getByText('Select Model'));
+      await fireEvent.press(getByText(modelToSelect.name));
 
       // Verify selectModel was called
       expect(modelStore.selectModel).toHaveBeenCalledWith(modelToSelect);
@@ -128,10 +134,10 @@ describe('BenchmarkScreen', () => {
 
   describe('Benchmark Execution', () => {
     it('handles submission of benchmark results', async () => {
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId} = await render(<BenchmarkScreen />);
 
       const submitButton = getByTestId('submit-benchmark-button');
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
 
       await waitFor(() => {
         expect(getByTestId('share-benchmark-dialog')).toBeDefined();
@@ -140,7 +146,7 @@ describe('BenchmarkScreen', () => {
       const confirmButton = getByTestId(
         'share-benchmark-dialog-confirm-button',
       );
-      fireEvent.press(confirmButton);
+      await fireEvent.press(confirmButton);
 
       await waitFor(() => {
         expect(submitBenchmark).toHaveBeenCalled();
@@ -149,30 +155,53 @@ describe('BenchmarkScreen', () => {
 
     it('should show benchmark loading indicator during execution', async () => {
       modelStore.activeModelId = modelStore.models[0].id;
-      modelStore.context = new LlamaContext(mockLlamaContextParams);
+      // Gate bench so the run stays in flight while we assert: in v14 the
+      // press awaits the handler, and the bare bench mock resolves at once.
+      const context = new LlamaContext(mockLlamaContextParams);
+      let resolveBench: (value: unknown) => void = () => {};
+      (context.bench as jest.Mock).mockReturnValue(
+        new Promise(resolve => {
+          resolveBench = resolve;
+        }),
+      );
+      modelStore.context = context;
 
-      const {getByText, getByTestId} = render(<BenchmarkScreen />);
+      const {getByText, getByTestId} = await render(<BenchmarkScreen />);
 
-      // Start benchmark
-      fireEvent.press(getByTestId('start-test-button'));
+      // Start benchmark (do not await: it only finishes when bench resolves)
+      const pressPromise = fireEvent.press(getByTestId('start-test-button'));
 
-      expect(getByTestId('loading-indicator-benchmark')).toBeDefined();
+      await waitFor(() => {
+        expect(getByTestId('loading-indicator-benchmark')).toBeDefined();
+      });
       expect(getByText('Please keep this screen open.')).toBeDefined();
+
+      resolveBench({speedPp: 100, speedTg: 10});
+      await pressPromise;
     });
 
     it('should disable start button during benchmark execution', async () => {
       modelStore.activeModelId = modelStore.models[0].id;
-      modelStore.context = new LlamaContext(mockLlamaContextParams);
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const context = new LlamaContext(mockLlamaContextParams);
+      let resolveBench: (value: unknown) => void = () => {};
+      (context.bench as jest.Mock).mockReturnValue(
+        new Promise(resolve => {
+          resolveBench = resolve;
+        }),
+      );
+      modelStore.context = context;
+      const {getByTestId} = await render(<BenchmarkScreen />);
       const startButton = getByTestId('start-test-button');
 
-      // Start benchmark
-      fireEvent.press(startButton);
+      // Start benchmark (do not await: it only finishes when bench resolves)
+      const pressPromise = fireEvent.press(startButton);
 
-      console.log(startButton.props.accessibilityState.disabled);
       await waitFor(() => {
         expect(startButton.props.accessibilityState.disabled).toBe(true);
       });
+
+      resolveBench({speedPp: 100, speedTg: 10});
+      await pressPromise;
     });
 
     it('records the result when bench resolves', async () => {
@@ -183,9 +212,9 @@ describe('BenchmarkScreen', () => {
         speedTg: 10,
       });
       modelStore.context = context;
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId} = await render(<BenchmarkScreen />);
 
-      fireEvent.press(getByTestId('start-test-button'));
+      await fireEvent.press(getByTestId('start-test-button'));
 
       await waitFor(() => {
         expect(benchmarkStore.addResult).toHaveBeenCalledWith(
@@ -213,10 +242,10 @@ describe('BenchmarkScreen', () => {
         const busy = new Error('Context is busy');
         (context.bench as jest.Mock).mockRejectedValue(busy);
         modelStore.context = context;
-        const {getByTestId} = render(<BenchmarkScreen />);
+        const {getByTestId} = await render(<BenchmarkScreen />);
         const startButton = getByTestId('start-test-button');
 
-        fireEvent.press(startButton);
+        await fireEvent.press(startButton);
 
         await waitFor(() => {
           expect(getByTestId('benchmark-run-error')).toHaveTextContent(
@@ -234,9 +263,9 @@ describe('BenchmarkScreen', () => {
           new Error('Context is busy'),
         );
         modelStore.context = context;
-        const {getByTestId, queryByTestId} = render(<BenchmarkScreen />);
+        const {getByTestId, queryByTestId} = await render(<BenchmarkScreen />);
 
-        fireEvent.press(getByTestId('start-test-button'));
+        await fireEvent.press(getByTestId('start-test-button'));
         await waitFor(() => {
           expect(getByTestId('benchmark-run-error')).toBeTruthy();
         });
@@ -245,7 +274,7 @@ describe('BenchmarkScreen', () => {
           speedPp: 100,
           speedTg: 10,
         });
-        fireEvent.press(getByTestId('start-test-button'));
+        await fireEvent.press(getByTestId('start-test-button'));
 
         await waitFor(() => {
           expect(benchmarkStore.addResult).toHaveBeenCalled();
@@ -259,9 +288,9 @@ describe('BenchmarkScreen', () => {
           new Error('Context is busy'),
         );
         modelStore.context = context;
-        const {getByTestId, queryByTestId} = render(<BenchmarkScreen />);
+        const {getByTestId, queryByTestId} = await render(<BenchmarkScreen />);
 
-        fireEvent.press(getByTestId('start-test-button'));
+        await fireEvent.press(getByTestId('start-test-button'));
         await waitFor(() => {
           expect(getByTestId('benchmark-run-error')).toBeTruthy();
         });
@@ -272,7 +301,9 @@ describe('BenchmarkScreen', () => {
             rejectNext = reject;
           }),
         );
-        fireEvent.press(getByTestId('start-test-button'));
+        // v14: the press awaits bench, which only settles when rejectNext
+        // runs below — awaiting it here deadlocks.
+        const pressPromise = fireEvent.press(getByTestId('start-test-button'));
 
         await waitFor(() => {
           expect(
@@ -284,6 +315,7 @@ describe('BenchmarkScreen', () => {
         await act(async () => {
           rejectNext(new Error('Context is busy'));
         });
+        await pressPromise;
         await waitFor(() => {
           expect(getByTestId('benchmark-run-error')).toBeTruthy();
         });
@@ -293,9 +325,9 @@ describe('BenchmarkScreen', () => {
         const context = new LlamaContext(mockLlamaContextParams);
         (context.bench as jest.Mock).mockRejectedValue('busy');
         modelStore.context = context;
-        const {getByTestId} = render(<BenchmarkScreen />);
+        const {getByTestId} = await render(<BenchmarkScreen />);
 
-        fireEvent.press(getByTestId('start-test-button'));
+        await fireEvent.press(getByTestId('start-test-button'));
 
         await waitFor(() => {
           expect(getByTestId('benchmark-run-error')).toHaveTextContent(
@@ -322,7 +354,7 @@ describe('BenchmarkScreen', () => {
       };
       benchmarkStore.results = [result];
 
-      const {getByText} = render(<BenchmarkScreen />);
+      const {getByText} = await render(<BenchmarkScreen />);
 
       // Verify memory usage display
       expect(getByText('Peak Memory')).toBeDefined();
@@ -336,16 +368,16 @@ describe('BenchmarkScreen', () => {
       modelStore.activeModelId = modelStore.models[0].id;
       modelStore.context = new LlamaContext(mockLlamaContextParams);
 
-      const {getByText, getByTestId} = render(<BenchmarkScreen />);
+      const {getByText, getByTestId} = await render(<BenchmarkScreen />);
 
       // Open advanced settings
-      fireEvent.press(getByTestId('advanced-settings-button'));
+      await fireEvent.press(getByTestId('advanced-settings-button'));
       await waitFor(() =>
         expect(getByTestId('advanced-settings-dialog')).toBeDefined(),
       );
 
       // Select Fast preset
-      fireEvent.press(getByText('Fast'));
+      await fireEvent.press(getByText('Fast'));
 
       // Verify preset values
       await waitFor(() => {
@@ -358,13 +390,13 @@ describe('BenchmarkScreen', () => {
   });
 
   describe('Device Info Integration', () => {
-    it('renders device info card', () => {
-      const {getByText} = render(<BenchmarkScreen />);
+    it('renders device info card', async () => {
+      const {getByText} = await render(<BenchmarkScreen />);
       expect(getByText('Device Information')).toBeDefined();
     });
 
     it('should include device info in benchmark submission', async () => {
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId} = await render(<BenchmarkScreen />);
 
       // Wait for device info to be collected
       await waitFor(() => {
@@ -373,12 +405,12 @@ describe('BenchmarkScreen', () => {
 
       // Trigger benchmark submission
       const submitButton = getByTestId('submit-benchmark-button');
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
 
       const confirmButton = getByTestId(
         'share-benchmark-dialog-confirm-button',
       );
-      fireEvent.press(confirmButton);
+      await fireEvent.press(confirmButton);
 
       // Verify device info is included in submission
       await waitFor(() => {
@@ -401,16 +433,17 @@ describe('BenchmarkScreen', () => {
         cloneDeep(mockSubmittedResult),
         cloneDeep(mockResult),
       ];
+
       // Force to show confirm dialog
       uiStore.benchmarkShareDialog.shouldShow = true;
 
-      const {getByTestId, queryByTestId, getAllByTestId} = render(
+      const {getByTestId, queryByTestId, getAllByTestId} = await render(
         <BenchmarkScreen />,
       );
 
       // Trigger share
       const submitButton = getAllByTestId('submit-benchmark-button')[0];
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
 
       // Wait for the dialog to appear
       await waitFor(() => {
@@ -419,13 +452,13 @@ describe('BenchmarkScreen', () => {
 
       // Set "don't show again"
       const checkbox = getByTestId('dont-show-again-checkbox');
-      fireEvent.press(checkbox);
+      await fireEvent.press(checkbox);
 
       // Confirm share
       const confirmButton = getByTestId(
         'share-benchmark-dialog-confirm-button',
       );
-      fireEvent.press(confirmButton);
+      await fireEvent.press(confirmButton);
 
       // wait for the submission to be called
       await waitFor(() => {
@@ -457,7 +490,7 @@ describe('BenchmarkScreen', () => {
 
       // Share another result
       const submitButton2 = getByTestId('submit-benchmark-button');
-      fireEvent.press(submitButton2);
+      await fireEvent.press(submitButton2);
 
       expect(queryByTestId('share-benchmark-dialog')).toBeNull();
     });
@@ -468,14 +501,15 @@ describe('BenchmarkScreen', () => {
         cloneDeep(mockSubmittedResult),
         cloneDeep(mockResult),
       ];
+
       uiStore.benchmarkShareDialog.shouldShow = true;
-      const {getByTestId, queryByTestId, getAllByTestId} = render(
+      const {getByTestId, queryByTestId, getAllByTestId} = await render(
         <BenchmarkScreen />,
       );
 
       // Trigger share
       const submitButton = getAllByTestId('submit-benchmark-button')[0];
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
 
       // Wait for the dialog to appear
       await waitFor(() => {
@@ -486,7 +520,7 @@ describe('BenchmarkScreen', () => {
       const confirmButton = getByTestId(
         'share-benchmark-dialog-confirm-button',
       );
-      fireEvent.press(confirmButton);
+      await fireEvent.press(confirmButton);
 
       // wait for the submission to be called
       await waitFor(() => {
@@ -508,7 +542,7 @@ describe('BenchmarkScreen', () => {
 
       // Share another result
       const submitButton2 = getByTestId('submit-benchmark-button');
-      fireEvent.press(submitButton2);
+      await fireEvent.press(submitButton2);
 
       await waitFor(() => {
         expect(getByTestId('share-benchmark-dialog')).toBeDefined();
@@ -516,17 +550,17 @@ describe('BenchmarkScreen', () => {
     });
 
     it('should show raw data in share dialog', async () => {
-      const {getByTestId, getByText} = render(<BenchmarkScreen />);
+      const {getByTestId, getByText} = await render(<BenchmarkScreen />);
 
       // Trigger share
       const submitButton = getByTestId('submit-benchmark-button');
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
 
       // Show raw data
       const viewRawDataButton = getByTestId(
         'share-benchmark-dialog-view-raw-data-button',
       );
-      fireEvent.press(viewRawDataButton);
+      await fireEvent.press(viewRawDataButton);
 
       // Verify raw data is shown
       await waitFor(() => {
@@ -542,7 +576,7 @@ describe('BenchmarkScreen', () => {
   describe('Result Management', () => {
     it('renders benchmark results when available', async () => {
       benchmarkStore.results = [mockResult];
-      const {getByText} = render(<BenchmarkScreen />);
+      const {getByText} = await render(<BenchmarkScreen />);
 
       await waitFor(() => {
         expect(getByText('Test Results')).toBeDefined();
@@ -554,15 +588,15 @@ describe('BenchmarkScreen', () => {
       // Add results to store
       benchmarkStore.results = [mockResult, mockSubmittedResult];
 
-      const {getAllByTestId, getAllByText} = render(<BenchmarkScreen />);
+      const {getAllByTestId, getAllByText} = await render(<BenchmarkScreen />);
 
       // Delete first result
       const deleteButtons = getAllByTestId('delete-result-button');
-      fireEvent.press(deleteButtons[0]);
+      await fireEvent.press(deleteButtons[0]);
 
       // Confirm deletion (dialog button is the last "Delete" text on screen)
       const allDeleteTexts = getAllByText('Delete');
-      fireEvent.press(allDeleteTexts[allDeleteTexts.length - 1]);
+      await fireEvent.press(allDeleteTexts[allDeleteTexts.length - 1]);
 
       // Verify deletion
       expect(benchmarkStore.removeResult).toHaveBeenCalledWith(
@@ -574,14 +608,14 @@ describe('BenchmarkScreen', () => {
       // Add results to store
       benchmarkStore.results = [mockResult];
 
-      const {getAllByTestId, getByText} = render(<BenchmarkScreen />);
+      const {getAllByTestId, getByText} = await render(<BenchmarkScreen />);
 
       // Attempt to delete result
       const deleteButtons = getAllByTestId('delete-result-button');
-      fireEvent.press(deleteButtons[0]);
+      await fireEvent.press(deleteButtons[0]);
 
       // Cancel deletion
-      fireEvent.press(getByText('Cancel'));
+      await fireEvent.press(getByText('Cancel'));
 
       // Verify result was not deleted
       expect(benchmarkStore.removeResult).not.toHaveBeenCalled();
@@ -589,15 +623,15 @@ describe('BenchmarkScreen', () => {
 
     it('allows clearing all results after confirmation', async () => {
       benchmarkStore.results = [mockResult];
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId} = await render(<BenchmarkScreen />);
 
       // Click clear all button
       const clearButton = getByTestId('clear-all-button');
-      fireEvent.press(clearButton);
+      await fireEvent.press(clearButton);
 
       // Confirm in the dialog
       const confirmButton = getByTestId('clear-all-dialog-confirm-button');
-      fireEvent.press(confirmButton);
+      await fireEvent.press(confirmButton);
 
       expect(benchmarkStore.results.length).toBe(0);
     });
@@ -606,15 +640,15 @@ describe('BenchmarkScreen', () => {
       // Add results to store
       benchmarkStore.results = [mockResult, mockSubmittedResult];
 
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId} = await render(<BenchmarkScreen />);
 
       // Clear all results
       const clearAllButton = getByTestId('clear-all-button');
-      fireEvent.press(clearAllButton);
+      await fireEvent.press(clearAllButton);
 
       // Confirm clear all
       const confirmButton = getByTestId('clear-all-dialog-confirm-button');
-      fireEvent.press(confirmButton);
+      await fireEvent.press(confirmButton);
 
       // Verify all results were cleared
       expect(benchmarkStore.clearResults).toHaveBeenCalled();
@@ -622,15 +656,15 @@ describe('BenchmarkScreen', () => {
 
     it('keeps results if clear all is cancelled', async () => {
       benchmarkStore.results = [mockResult];
-      const {getByTestId} = render(<BenchmarkScreen />);
+      const {getByTestId} = await render(<BenchmarkScreen />);
 
       // Click clear all button
       const clearButton = getByTestId('clear-all-button');
-      fireEvent.press(clearButton);
+      await fireEvent.press(clearButton);
 
       // Cancel in the dialog
       const cancelButton = getByTestId('clear-all-dialog-cancel-button');
-      fireEvent.press(cancelButton);
+      await fireEvent.press(cancelButton);
 
       expect(benchmarkStore.results.length).toBe(1);
     });

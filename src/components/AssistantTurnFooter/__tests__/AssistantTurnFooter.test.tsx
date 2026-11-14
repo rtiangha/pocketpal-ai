@@ -1,14 +1,19 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
 import {runInAction} from 'mobx';
-import {Text} from 'react-native-paper';
 
-import {act, render, fireEvent, within} from '../../../../jest/test-utils';
+import {
+  act,
+  render,
+  fireEvent,
+  within,
+  screen,
+} from '../../../../jest/test-utils';
 
 import {l10n} from '../../../locales';
 import {chatSessionStore, ttsStore} from '../../../store';
 import {assistant} from '../../../utils/chat';
-import {PlayButton, shouldShowPlayButton} from '../../TextMessage/PlayButton';
+import {shouldShowPlayButton} from '../../TextMessage/PlayButton';
 
 import {AssistantTurnFooter} from '../AssistantTurnFooter';
 import {streamFinishChunk} from '../../../../jest/fixtures/llamaServerWire';
@@ -37,17 +42,17 @@ describe('AssistantTurnFooter', () => {
     jest.clearAllMocks();
   });
 
-  it('renders nothing on the active row when neither timings nor copyable are set', () => {
+  it('renders nothing on the active row when neither timings nor copyable are set', async () => {
     const message = baseTurn({metadata: {}});
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <AssistantTurnFooter message={message} isActiveRun />,
     );
     expect(queryByTestId('assistant-turn-footer')).toBeNull();
   });
 
   describe('message menu button', () => {
-    it('renders a footer holding only the button on a finished row with no other part', () => {
-      const {getByTestId, queryByTestId} = render(
+    it('renders a footer holding only the button on a finished row with no other part', async () => {
+      const {getByTestId, queryByTestId} = await render(
         <AssistantTurnFooter message={baseTurn({metadata: {}})} />,
       );
       expect(getByTestId('assistant-turn-footer')).toBeTruthy();
@@ -55,18 +60,20 @@ describe('AssistantTurnFooter', () => {
       expect(queryByTestId('footer-copy')).toBeNull();
     });
 
-    it('renders on a system row without copyable', () => {
+    it('renders on a system row without copyable', async () => {
       const system = baseTurn({
         type: 'text',
         text: 'Context is full',
         metadata: {system: true},
       });
-      const {getByTestId} = render(<AssistantTurnFooter message={system} />);
+      const {getByTestId} = await render(
+        <AssistantTurnFooter message={system} />,
+      );
       expect(getByTestId('message-menu-button')).toBeTruthy();
     });
 
-    it('places the button after Copy', () => {
-      const {getByTestId} = render(
+    it('places the button after Copy', async () => {
+      const {getByTestId} = await render(
         <AssistantTurnFooter
           message={baseTurn({metadata: {copyable: true}})}
         />,
@@ -78,7 +85,7 @@ describe('AssistantTurnFooter', () => {
       expect(ids[ids.length - 1]).toBe('MessageMenuButton');
     });
 
-    it('keeps the button after a text group that shrinks and wraps', () => {
+    it('keeps the button after a text group that shrinks and wraps', async () => {
       const message = baseTurn({
         metadata: {
           copyable: true,
@@ -92,7 +99,7 @@ describe('AssistantTurnFooter', () => {
           completionResult: {used: 0, contextFull: false, isRemote: true},
         },
       });
-      const {getByTestId, UNSAFE_getAllByType} = render(
+      const {getByTestId} = await render(
         <AssistantTurnFooter message={message} />,
       );
 
@@ -112,7 +119,9 @@ describe('AssistantTurnFooter', () => {
       });
       expect(groupStyle.flexGrow).toBeUndefined();
       expect(groupStyle.flex).toBeUndefined();
-      for (const text of UNSAFE_getAllByType(Text)) {
+      for (const text of screen.container.queryAll(
+        i => i.type === 'Text' || i.type === 'RCTText',
+      )) {
         expect(text.props.numberOfLines).toBeUndefined();
       }
 
@@ -128,8 +137,8 @@ describe('AssistantTurnFooter', () => {
       expect(buttonStyle.flexShrink).toBe(0);
     });
 
-    it('renders no text group when the footer has no text', () => {
-      const {queryByTestId} = render(
+    it('renders no text group when the footer has no text', async () => {
+      const {queryByTestId} = await render(
         <AssistantTurnFooter
           message={baseTurn({metadata: {copyable: true}})}
         />,
@@ -137,8 +146,8 @@ describe('AssistantTurnFooter', () => {
       expect(queryByTestId('footer-text-group')).toBeNull();
     });
 
-    it('gives Copy a labelled 44 dp box that keeps the line height', () => {
-      const {getByTestId} = render(
+    it('gives Copy a labelled 44 dp box that keeps the line height', async () => {
+      const {getByTestId} = await render(
         <AssistantTurnFooter
           message={baseTurn({metadata: {copyable: true}})}
         />,
@@ -170,8 +179,8 @@ describe('AssistantTurnFooter', () => {
       }
     });
 
-    it('starts the button box at the right edge of the Copy box', () => {
-      const {getByTestId} = render(
+    it('starts the button box at the right edge of the Copy box', async () => {
+      const {getByTestId} = await render(
         <AssistantTurnFooter
           message={baseTurn({metadata: {copyable: true}})}
         />,
@@ -189,8 +198,8 @@ describe('AssistantTurnFooter', () => {
       expect(Number(footerGap) + Number(buttonMarginLeft)).toBe(0);
     });
 
-    it('is hidden on the active row while other parts still show', () => {
-      const {getByTestId, queryByTestId} = render(
+    it('is hidden on the active row while other parts still show', async () => {
+      const {getByTestId, queryByTestId} = await render(
         <AssistantTurnFooter
           message={baseTurn({metadata: {copyable: true}})}
           isActiveRun
@@ -200,16 +209,16 @@ describe('AssistantTurnFooter', () => {
       expect(queryByTestId('message-menu-button')).toBeNull();
     });
 
-    it('forwards the press event', () => {
+    it('forwards the press event', async () => {
       const onMenuPress = jest.fn();
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <AssistantTurnFooter
           message={baseTurn({metadata: {}})}
           onMenuPress={onMenuPress}
         />,
       );
       const event = {nativeEvent: {pageX: 3, pageY: 4}};
-      fireEvent.press(getByTestId('message-menu-button'), event);
+      await fireEvent.press(getByTestId('message-menu-button'), event);
       expect(onMenuPress).toHaveBeenCalledWith(event);
     });
   });
@@ -221,7 +230,13 @@ describe('AssistantTurnFooter', () => {
       metadata: {copyable: true},
     });
 
-    const playButtonType = (PlayButton as unknown as {type: React.FC}).type;
+    // PlayButton renders a Pressable with testID `playbutton-<message id>`.
+    const playButtons = () =>
+      screen.container.queryAll(
+        (n: any) =>
+          typeof n.props.testID === 'string' &&
+          n.props.testID.startsWith('playbutton-'),
+      );
 
     const copyMarginStart = (getByTestId: (id: string) => any) =>
       StyleSheet.flatten(getByTestId('footer-copy').props.style).marginStart ??
@@ -234,45 +249,45 @@ describe('AssistantTurnFooter', () => {
       });
     });
 
-    it('hides Play and pulls Copy to the leading edge when the predicate is false', () => {
-      const {getByTestId, UNSAFE_queryByType} = render(
+    it('hides Play and pulls Copy to the leading edge when the predicate is false', async () => {
+      const {getByTestId} = await render(
         <AssistantTurnFooter message={speakableTurn} />,
       );
       expect(shouldShowPlayButton(speakableTurn)).toBe(false);
-      expect(UNSAFE_queryByType(playButtonType)).toBeNull();
+      expect(playButtons()).toHaveLength(0);
       expect(copyMarginStart(getByTestId)).toBe(-14);
     });
 
-    it('renders Play and leaves Copy unshifted when the predicate is true', () => {
+    it('renders Play and leaves Copy unshifted when the predicate is true', async () => {
       runInAction(() => {
         ttsStore.deviceMeetsMemory = true;
       });
-      const {getByTestId, UNSAFE_queryByType} = render(
+      const {getByTestId} = await render(
         <AssistantTurnFooter message={speakableTurn} />,
       );
       expect(shouldShowPlayButton(speakableTurn)).toBe(true);
-      expect(UNSAFE_queryByType(playButtonType)).not.toBeNull();
+      expect(playButtons()).toHaveLength(1);
       expect(copyMarginStart(getByTestId)).toBe(0);
     });
 
-    it('adds Play and clears the Copy offset in the same render when TTS turns on', () => {
-      const {getByTestId, UNSAFE_queryByType} = render(
+    it('adds Play and clears the Copy offset in the same render when TTS turns on', async () => {
+      const {getByTestId} = await render(
         <AssistantTurnFooter message={speakableTurn} />,
       );
-      expect(UNSAFE_queryByType(playButtonType)).toBeNull();
+      expect(playButtons()).toHaveLength(0);
       expect(copyMarginStart(getByTestId)).toBe(-14);
 
-      act(() => {
+      await act(() => {
         runInAction(() => {
           ttsStore.userTTSOverride = true;
         });
       });
 
-      expect(UNSAFE_queryByType(playButtonType)).not.toBeNull();
+      expect(playButtons()).toHaveLength(1);
       expect(copyMarginStart(getByTestId)).toBe(0);
     });
 
-    it('renders Play under a one-paragraph Chinese reply', () => {
+    it('renders Play under a one-paragraph Chinese reply', async () => {
       runInAction(() => {
         ttsStore.deviceMeetsMemory = true;
       });
@@ -285,15 +300,16 @@ describe('AssistantTurnFooter', () => {
               '长城是中国古代的军事防御工程，长达万余公里，见证了中国悠久的历史和丰富的文化。',
           },
         ],
+
         metadata: {copyable: true},
       });
-      const {queryByTestId} = render(
+      const {queryByTestId} = await render(
         <AssistantTurnFooter message={chineseTurn} />,
       );
       expect(queryByTestId('playbutton-turn-zh')).not.toBeNull();
     });
 
-    it('renders Play under a one-word reply', () => {
+    it('renders Play under a one-word reply', async () => {
       runInAction(() => {
         ttsStore.deviceMeetsMemory = true;
       });
@@ -303,20 +319,20 @@ describe('AssistantTurnFooter', () => {
         steps: [{content: 'Hello'}],
         metadata: {copyable: true},
       });
-      const {queryByTestId} = render(
+      const {queryByTestId} = await render(
         <AssistantTurnFooter message={oneWordTurn} />,
       );
       expect(queryByTestId('playbutton-turn-one-word')).not.toBeNull();
     });
   });
 
-  it('renders timing line when timings present (no copy button if not copyable)', () => {
+  it('renders timing line when timings present (no copy button if not copyable)', async () => {
     const message = baseTurn({
       metadata: {
         timings: {predicted_per_token_ms: 10, predicted_per_second: 100},
       },
     });
-    const {getByText, queryByTestId} = render(
+    const {getByText, queryByTestId} = await render(
       <AssistantTurnFooter message={message} />,
     );
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
@@ -324,20 +340,22 @@ describe('AssistantTurnFooter', () => {
     expect(queryByTestId('footer-copy')).toBeNull();
   });
 
-  it('renders prompt speed and cached tokens from a server finish chunk', () => {
+  it('renders prompt speed and cached tokens from a server finish chunk', async () => {
     const message = baseTurn({
       metadata: {
         timings: {...streamFinishChunk.timings, time_to_first_token_ms: 150},
         completionResult: {used: 0, contextFull: false, isRemote: true},
       },
     });
-    const {getByTestId} = render(<AssistantTurnFooter message={message} />);
+    const {getByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
     expect(getByTestId('footer-timing').props.children).toBe(
       '6ms/token, 170.35 tokens/sec, 126.90 prompt tokens/sec, 15 cached, 150ms TTFT',
     );
   });
 
-  it('leaves out the parts a build does not report', () => {
+  it('leaves out the parts a build does not report', async () => {
     const message = baseTurn({
       metadata: {
         timings: {
@@ -350,13 +368,15 @@ describe('AssistantTurnFooter', () => {
         completionResult: {used: 0, contextFull: false, isRemote: true},
       },
     });
-    const {getByTestId} = render(<AssistantTurnFooter message={message} />);
+    const {getByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
     expect(getByTestId('footer-timing').props.children).toBe(
       '10ms/token, 100.00 tokens/sec, 150ms TTFT',
     );
   });
 
-  it('separates a cold prompt cache from a build that never reports one', () => {
+  it('separates a cold prompt cache from a build that never reports one', async () => {
     const cold = baseTurn({
       metadata: {
         timings: {predicted_per_token_ms: 10, cache_n: 0},
@@ -364,9 +384,9 @@ describe('AssistantTurnFooter', () => {
       },
     });
     expect(
-      render(<AssistantTurnFooter message={cold} />).getByTestId(
-        'footer-timing',
-      ).props.children,
+      await (
+        await render(<AssistantTurnFooter message={cold} />)
+      ).getByTestId('footer-timing').props.children,
     ).toBe('10ms/token, 0 cached');
 
     const silent = baseTurn({
@@ -376,16 +396,16 @@ describe('AssistantTurnFooter', () => {
       },
     });
     expect(
-      render(<AssistantTurnFooter message={silent} />).getByTestId(
-        'footer-timing',
-      ).props.children,
+      await (
+        await render(<AssistantTurnFooter message={silent} />)
+      ).getByTestId('footer-timing').props.children,
     ).toBe('10ms/token');
   });
 
   // A row stored before timings were normalised on write holds whatever the
   // server sent, and the two bad shapes failed differently: a string threw in
   // render, a NaN printed itself.
-  it('renders no part for a stored value that is a string', () => {
+  it('renders no part for a stored value that is a string', async () => {
     const message = baseTurn({
       metadata: {
         timings: {predicted_per_second: 'NaN', cache_n: 3},
@@ -393,13 +413,13 @@ describe('AssistantTurnFooter', () => {
       },
     });
     expect(
-      render(<AssistantTurnFooter message={message} />).getByTestId(
-        'footer-timing',
-      ).props.children,
+      await (
+        await render(<AssistantTurnFooter message={message} />)
+      ).getByTestId('footer-timing').props.children,
     ).toBe('3 cached');
   });
 
-  it('renders no part for a stored NaN', () => {
+  it('renders no part for a stored NaN', async () => {
     const message = baseTurn({
       metadata: {
         timings: {
@@ -411,13 +431,13 @@ describe('AssistantTurnFooter', () => {
       },
     });
     expect(
-      render(<AssistantTurnFooter message={message} />).getByTestId(
-        'footer-timing',
-      ).props.children,
+      await (
+        await render(<AssistantTurnFooter message={message} />)
+      ).getByTestId('footer-timing').props.children,
     ).toBe('3 cached');
   });
 
-  it('keeps prompt speed and cached tokens off a local turn that reports them', () => {
+  it('keeps prompt speed and cached tokens off a local turn that reports them', async () => {
     const timings = {...streamFinishChunk.timings, time_to_first_token_ms: 150};
     expect(timings.prompt_per_second).toBeDefined();
     expect(timings.cache_n).toBeDefined();
@@ -429,9 +449,9 @@ describe('AssistantTurnFooter', () => {
       },
     });
     expect(
-      render(<AssistantTurnFooter message={local} />).getByTestId(
-        'footer-timing',
-      ).props.children,
+      await (
+        await render(<AssistantTurnFooter message={local} />)
+      ).getByTestId('footer-timing').props.children,
     ).toBe('6ms/token, 170.35 tokens/sec, 150ms TTFT');
 
     const remote = baseTurn({
@@ -441,39 +461,41 @@ describe('AssistantTurnFooter', () => {
       },
     });
     expect(
-      render(<AssistantTurnFooter message={remote} />).getByTestId(
-        'footer-timing',
-      ).props.children,
+      await (
+        await render(<AssistantTurnFooter message={remote} />)
+      ).getByTestId('footer-timing').props.children,
     ).toBe(
       '6ms/token, 170.35 tokens/sec, 126.90 prompt tokens/sec, 15 cached, 150ms TTFT',
     );
   });
 
-  it('renders copy button when copyable, even if timings absent (abort path)', () => {
+  it('renders copy button when copyable, even if timings absent (abort path)', async () => {
     const message = baseTurn({
       metadata: {copyable: true, interrupted: true},
     });
-    const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
+    const {queryByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
     expect(queryByTestId('footer-copy')).toBeTruthy();
     expect(queryByTestId('footer-timing')).toBeNull();
   });
 
-  it('renders both timing and copy when both fields present', () => {
+  it('renders both timing and copy when both fields present', async () => {
     const message = baseTurn({
       metadata: {
         copyable: true,
         timings: {predicted_per_token_ms: 32, predicted_per_second: 30},
       },
     });
-    const {getByText, queryByTestId} = render(
+    const {getByText, queryByTestId} = await render(
       <AssistantTurnFooter message={message} />,
     );
     expect(getByText('32ms/token, 30.00 tokens/sec')).toBeTruthy();
     expect(queryByTestId('footer-copy')).toBeTruthy();
   });
 
-  it('copy button copies derived text via Clipboard.setString', () => {
+  it('copy button copies derived text via Clipboard.setString', async () => {
     const message = baseTurn({
       steps: [{content: 'Sure, here it is.'}, {content: 'Hope this helps.'}],
       metadata: {
@@ -481,14 +503,16 @@ describe('AssistantTurnFooter', () => {
         timings: {predicted_per_second: 50},
       },
     });
-    const {getByTestId} = render(<AssistantTurnFooter message={message} />);
-    fireEvent.press(getByTestId('footer-copy'));
+    const {getByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
+    await fireEvent.press(getByTestId('footer-copy'));
     expect(
       require('@react-native-clipboard/clipboard').setString,
     ).toHaveBeenCalledWith('Sure, here it is.\n\nHope this helps.');
   });
 
-  it('copy button is a no-op for unsupported message types', () => {
+  it('copy button is a no-op for unsupported message types', async () => {
     const message = {
       author: {id: 'assistant'},
       createdAt: 0,
@@ -501,36 +525,40 @@ describe('AssistantTurnFooter', () => {
       name: 'foo.png',
       metadata: {copyable: true},
     } as any;
-    const {getByTestId} = render(<AssistantTurnFooter message={message} />);
-    fireEvent.press(getByTestId('footer-copy'));
+    const {getByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
+    await fireEvent.press(getByTestId('footer-copy'));
     expect(
       require('@react-native-clipboard/clipboard').setString,
     ).not.toHaveBeenCalled();
   });
 
-  it('renders TTFT-only timing string when only ttft is present', () => {
+  it('renders TTFT-only timing string when only ttft is present', async () => {
     const message = baseTurn({
       metadata: {
         timings: {time_to_first_token_ms: 150},
       },
     });
-    const {getByText} = render(<AssistantTurnFooter message={message} />);
+    const {getByText} = await render(<AssistantTurnFooter message={message} />);
     expect(getByText('150ms TTFT')).toBeTruthy();
   });
 
-  it('does not render the timing Text when timings are empty (no parts to show)', () => {
+  it('does not render the timing Text when timings are empty (no parts to show)', async () => {
     const message = baseTurn({
       metadata: {
         copyable: true,
         timings: {},
       },
     });
-    const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
+    const {queryByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
     expect(queryByTestId('footer-timing')).toBeNull();
     expect(queryByTestId('footer-copy')).toBeTruthy();
   });
 
-  it('renders draft acceptance when speculative draft_tokens > 0', () => {
+  it('renders draft acceptance when speculative draft_tokens > 0', async () => {
     const message = baseTurn({
       metadata: {
         timings: {
@@ -540,14 +568,14 @@ describe('AssistantTurnFooter', () => {
         },
       },
     });
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <AssistantTurnFooter message={message} />,
     );
     expect(getByTestId('message-draft-tokens')).toBeTruthy();
     expect(getByText('draft: 9/12 (75%)')).toBeTruthy();
   });
 
-  it('does not render draft acceptance when draft_tokens is 0', () => {
+  it('does not render draft acceptance when draft_tokens is 0', async () => {
     const message = baseTurn({
       metadata: {
         timings: {
@@ -557,45 +585,51 @@ describe('AssistantTurnFooter', () => {
         },
       },
     });
-    const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
+    const {queryByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
     expect(queryByTestId('message-draft-tokens')).toBeNull();
   });
 
-  it('does not render draft acceptance when draft_tokens is absent (non-speculative turn)', () => {
+  it('does not render draft acceptance when draft_tokens is absent (non-speculative turn)', async () => {
     const message = baseTurn({
       metadata: {timings: {predicted_per_second: 80}},
     });
-    const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
+    const {queryByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
     expect(queryByTestId('message-draft-tokens')).toBeNull();
   });
 
-  it('renders "Interrupted" status when metadata.interrupted is set', () => {
+  it('renders "Interrupted" status when metadata.interrupted is set', async () => {
     const message = baseTurn({
       metadata: {copyable: true, interrupted: true},
     });
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <AssistantTurnFooter message={message} />,
     );
     expect(getByTestId('footer-interrupted-status')).toBeTruthy();
     expect(getByText('Interrupted')).toBeTruthy();
   });
 
-  it('upgrades the status to "Cut off — likely context full" when truncationLikely is set', () => {
+  it('upgrades the status to "Cut off — likely context full" when truncationLikely is set', async () => {
     const message = baseTurn({
       metadata: {copyable: true, interrupted: true, truncationLikely: true},
     });
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <AssistantTurnFooter message={message} />,
     );
     expect(getByTestId('footer-interrupted-status')).toBeTruthy();
     expect(getByText('Cut off — likely context full')).toBeTruthy();
   });
 
-  it('renders the footer for interrupted-only turns (no copyable, no timings)', () => {
+  it('renders the footer for interrupted-only turns (no copyable, no timings)', async () => {
     // Defensive: the footer should still surface the failure even if
     // the rollback path forgot to set `copyable`.
     const message = baseTurn({metadata: {interrupted: true}});
-    const {queryByTestId} = render(<AssistantTurnFooter message={message} />);
+    const {queryByTestId} = await render(
+      <AssistantTurnFooter message={message} />,
+    );
     expect(queryByTestId('assistant-turn-footer')).toBeTruthy();
     expect(queryByTestId('footer-interrupted-status')).toBeTruthy();
     expect(queryByTestId('footer-copy')).toBeNull();
@@ -609,7 +643,7 @@ describe('AssistantTurnFooter', () => {
       });
     });
 
-    it('suppresses the "cut off" footer text when the context-full banner owns this turn', () => {
+    it('suppresses the "cut off" footer text when the context-full banner owns this turn', async () => {
       // The turn's snapshot is the store's live one AND it is contextFull,
       // so the sticky banner is the single surface — footer drops "cut off"
       // and shows plain "Interrupted" instead.
@@ -625,7 +659,7 @@ describe('AssistantTurnFooter', () => {
           completionResult: snapshot,
         },
       });
-      const {getByTestId, getByText, queryByText} = render(
+      const {getByTestId, getByText, queryByText} = await render(
         <AssistantTurnFooter message={message} />,
       );
       expect(getByTestId('footer-interrupted-status')).toBeTruthy();
@@ -633,7 +667,7 @@ describe('AssistantTurnFooter', () => {
       expect(queryByText('Cut off — likely context full')).toBeNull();
     });
 
-    it('still shows "cut off" when the turn snapshot is not the live banner snapshot', () => {
+    it('still shows "cut off" when the turn snapshot is not the live banner snapshot', async () => {
       // An older truncated turn whose snapshot is not the store's live one
       // keeps its own "cut off" footer.
       runInAction(() => {
@@ -651,11 +685,13 @@ describe('AssistantTurnFooter', () => {
           completionResult: {used: 4096, contextFull: true, isRemote: false},
         },
       });
-      const {getByText} = render(<AssistantTurnFooter message={message} />);
+      const {getByText} = await render(
+        <AssistantTurnFooter message={message} />,
+      );
       expect(getByText('Cut off — likely context full')).toBeTruthy();
     });
 
-    it('shows "cut off" when the live snapshot is not contextFull even if it matches', () => {
+    it('shows "cut off" when the live snapshot is not contextFull even if it matches', async () => {
       const snapshot = {used: 1000, contextFull: false, isRemote: false};
       runInAction(() => {
         chatSessionStore.lastCompletionResult = snapshot;
@@ -668,11 +704,13 @@ describe('AssistantTurnFooter', () => {
           completionResult: snapshot,
         },
       });
-      const {getByText} = render(<AssistantTurnFooter message={message} />);
+      const {getByText} = await render(
+        <AssistantTurnFooter message={message} />,
+      );
       expect(getByText('Cut off — likely context full')).toBeTruthy();
     });
 
-    it('shows plain "Interrupted" for an interrupted-but-not-truncated turn regardless of banner state', () => {
+    it('shows plain "Interrupted" for an interrupted-but-not-truncated turn regardless of banner state', async () => {
       runInAction(() => {
         chatSessionStore.lastCompletionResult = {
           used: 4096,
@@ -683,7 +721,7 @@ describe('AssistantTurnFooter', () => {
       const message = baseTurn({
         metadata: {copyable: true, interrupted: true},
       });
-      const {getByText, queryByText} = render(
+      const {getByText, queryByText} = await render(
         <AssistantTurnFooter message={message} />,
       );
       expect(getByText('Interrupted')).toBeTruthy();

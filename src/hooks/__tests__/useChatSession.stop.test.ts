@@ -57,9 +57,10 @@ const lastCallArg = (fn: unknown) => {
   return calls[calls.length - 1]?.[0];
 };
 
-function renderSession() {
-  return renderHook(() => useChatSession({current: null}, user, mockAssistant))
-    .result;
+async function renderSession() {
+  return (
+    await renderHook(() => useChatSession({current: null}, user, mockAssistant))
+  ).result;
 }
 
 beforeEach(() => {
@@ -76,7 +77,7 @@ beforeEach(() => {
 describe('useChatSession Stop and the generation lease', () => {
   it('Stop clears the run UI at once; an immediate send waits for the drain behind "Stopping…"', async () => {
     const {engine, completions} = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
 
     let first!: Promise<unknown>;
     await act(async () => {
@@ -125,7 +126,7 @@ describe('useChatSession Stop and the generation lease', () => {
 
   it('a release-initiated abort clears the run UI at once and still persists the turn at drain', async () => {
     const {engine, completions} = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
 
     let sending!: Promise<unknown>;
     await act(async () => {
@@ -170,7 +171,7 @@ describe('useChatSession Stop and the generation lease', () => {
       lease.abort();
       return lease;
     });
-    const session = renderSession();
+    const session = await renderSession();
 
     await act(async () => {
       await session.current.handleSendPress(textMessage);
@@ -187,7 +188,7 @@ describe('useChatSession Stop and the generation lease', () => {
     const release = jest.fn();
     (acquireKeepAwake as jest.Mock).mockReturnValueOnce(release);
     const {engine, completions} = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
 
     let sending!: Promise<unknown>;
     await act(async () => {
@@ -218,7 +219,7 @@ describe('useChatSession Stop and the generation lease', () => {
           releaseSettings = () => resolve({});
         }),
     );
-    const session = renderSession();
+    const session = await renderSession();
 
     let sending!: Promise<unknown>;
     await act(async () => {
@@ -248,7 +249,7 @@ describe('useChatSession Stop and the generation lease', () => {
           grant = () => resolve(realAcquire());
         }),
     );
-    const session = renderSession();
+    const session = await renderSession();
 
     let sending!: Promise<unknown>;
     await act(async () => {
@@ -276,7 +277,7 @@ describe('useChatSession Stop and the generation lease', () => {
 
   it('two sends during one drain run in order, and isStopping clears when the first acquires', async () => {
     const {engine, completions} = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
 
     let first!: Promise<unknown>;
     await act(async () => {
@@ -322,7 +323,7 @@ describe('useChatSession Stop and the generation lease', () => {
 
   it("after Stop, a session switch does not redirect the run's remaining writes", async () => {
     const {engine, completions} = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
 
     let sending!: Promise<unknown>;
     await act(async () => {
@@ -363,7 +364,7 @@ describe('useChatSession Stop and the generation lease', () => {
     };
     try {
       const {engine, completions} = installEngine();
-      const session = renderSession();
+      const session = await renderSession();
 
       let sendSettled = false;
       await act(async () => {
@@ -401,7 +402,7 @@ describe('useChatSession Stop and the generation lease', () => {
     ).mockImplementationOnce(() => {
       throw new Error('store write failed');
     });
-    const session = renderSession();
+    const session = await renderSession();
 
     let settled = false;
     let sending!: Promise<unknown>;
@@ -430,7 +431,7 @@ describe('useChatSession Stop and the generation lease', () => {
 describe('useChatSession: a send whose chat changed while it waited', () => {
   async function sendWhileHeld(changeChat: () => void, text = 'hi') {
     const installed = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
     const held = (await modelStore.acquireGeneration())!;
 
     let sending!: Promise<unknown>;
@@ -524,7 +525,7 @@ describe('useChatSession: a send whose chat changed while it waited', () => {
 
   it('adds no "model not loaded" message to the other chat when the model went away too', async () => {
     const {engine} = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
     (modelStore.acquireGeneration as jest.Mock).mockImplementationOnce(
       async () => {
         chatSessionStore.activeSessionId = 'session-2';
@@ -598,7 +599,7 @@ describe('useChatSession: the turn a Stop leaves in the chat', () => {
 
   async function stopInPrefill() {
     const {engine, completions} = installEngine();
-    const session = renderSession();
+    const session = await renderSession();
     let sending!: Promise<unknown>;
     await act(async () => {
       sending = session.current.handleSendPress(textMessage);
@@ -623,7 +624,7 @@ describe('useChatSession: the turn a Stop leaves in the chat', () => {
           releaseSettings = () => resolve({});
         }),
     );
-    const session = renderSession();
+    const session = await renderSession();
     let sending!: Promise<unknown>;
     await act(async () => {
       sending = session.current.handleSendPress(textMessage);
@@ -672,7 +673,7 @@ describe('useChatSession Stop while a router model loads', () => {
     ).mockImplementation(async (message: MessageType.Any) => {
       message.id = `row-${++nextId}`;
     });
-    const session = renderSession();
+    const session = await renderSession();
 
     let first!: Promise<unknown>;
     await act(async () => {
@@ -707,6 +708,7 @@ describe('useChatSession Stop while a router model loads', () => {
           ([message]) => message.author === user && message.text === 'again',
         )
       ];
+
     expect(deletedAt).toBeLessThan(secondAddedAt);
     await expect(first).resolves.toEqual({
       message: textMessage,

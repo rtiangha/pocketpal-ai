@@ -54,15 +54,15 @@ const DrawerStatusNavigator = () => (
 );
 
 describe('SidebarContent Component', () => {
-  it('calls loadSessionList on mount', () => {
-    render(<TestNavigator />);
+  it('calls loadSessionList on mount', async () => {
+    await render(<TestNavigator />);
 
     // loadSessionList is called when the component mounts
     expect(chatSessionStore.loadSessionList).toHaveBeenCalledTimes(1);
   });
 
-  it('renders session groups and items correctly', () => {
-    const {getByText} = render(<TestNavigator />);
+  it('renders session groups and items correctly', async () => {
+    const {getByText} = await render(<TestNavigator />);
 
     expect(getByText('Today')).toBeTruthy();
     expect(getByText('Yesterday')).toBeTruthy();
@@ -72,15 +72,15 @@ describe('SidebarContent Component', () => {
   });
 
   it('navigates to Chat screen when a session is pressed', async () => {
-    const {getByText, queryByText} = render(<TestNavigator />);
+    const {getByText, queryByText} = await render(<TestNavigator />);
 
     // Navigate to a differnet page (as the default is chat screen)
-    fireEvent.press(getByText('Models'));
+    await fireEvent.press(getByText('Models'));
     expect(queryByText('Chat Screen')).toBeNull();
     expect(getByText('Models Screen')).toBeTruthy();
 
     // Pressing a session should navigate to the Chat screen
-    fireEvent.press(getByText('Session 1'));
+    await fireEvent.press(getByText('Session 1'));
     await waitFor(() => {
       expect(getByText('Chat Screen')).toBeTruthy();
     });
@@ -88,8 +88,8 @@ describe('SidebarContent Component', () => {
 
   describe('closes the drawer when the target is already focused', () => {
     const renderOpenDrawerOnChat = async () => {
-      const utils = render(<DrawerStatusNavigator />);
-      fireEvent.press(utils.getByText('open-drawer'));
+      const utils = await render(<DrawerStatusNavigator />);
+      await fireEvent.press(utils.getByText('open-drawer'));
       await waitFor(() => expect(utils.getByText('drawer:open')).toBeTruthy());
       return utils;
     };
@@ -97,7 +97,7 @@ describe('SidebarContent Component', () => {
     it('after pressing a session', async () => {
       const {getByText} = await renderOpenDrawerOnChat();
 
-      fireEvent.press(getByText('Session 1'));
+      await fireEvent.press(getByText('Session 1'));
 
       await waitFor(() => expect(getByText('drawer:closed')).toBeTruthy());
     });
@@ -105,22 +105,22 @@ describe('SidebarContent Component', () => {
     it('after pressing the Chat item', async () => {
       const {getByText, getByTestId} = await renderOpenDrawerOnChat();
 
-      fireEvent.press(getByTestId('drawer-item-chat'));
+      await fireEvent.press(getByTestId('drawer-item-chat'));
 
       await waitFor(() => expect(getByText('drawer:closed')).toBeTruthy());
     });
   });
 
-  it('navigates to correct screen from drawer items', () => {
-    const {getByText, queryByText} = render(<TestNavigator />);
+  it('navigates to correct screen from drawer items', async () => {
+    const {getByText, queryByText} = await render(<TestNavigator />);
 
     // Ensure the Models screen is rendered by pressing the 'Models' drawer item
-    fireEvent.press(getByText('Models'));
+    await fireEvent.press(getByText('Models'));
     expect(getByText('Models Screen')).toBeTruthy();
     expect(queryByText('Chat Screen')).toBeNull();
 
     // Ensure the Settings screen is rendered by pressing the 'Settings' drawer item
-    fireEvent.press(getByText('Settings'));
+    await fireEvent.press(getByText('Settings'));
     expect(getByText('Settings Screen')).toBeTruthy();
     expect(queryByText('Models Screen')).toBeNull();
   });
@@ -135,13 +135,13 @@ describe('SidebarContent Component', () => {
       });
     });
 
-    it('selection mode shows header with Cancel, count, and action icons', () => {
+    it('selection mode shows header with Cancel, count, and action icons', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = true;
         chatSessionStore.selectedSessionIds.add('session-1');
       });
 
-      const {getByTestId, getByText} = render(<TestNavigator />);
+      const {getByTestId, getByText} = await render(<TestNavigator />);
 
       // Check for Cancel button
       expect(getByTestId('cancel-selection-button')).toBeTruthy();
@@ -157,28 +157,28 @@ describe('SidebarContent Component', () => {
       expect(getByTestId('select-all-row')).toBeTruthy();
     });
 
-    it('checkboxes appear next to sessions in selection mode', () => {
+    it('checkboxes appear next to sessions in selection mode', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = true;
       });
 
-      const {getByTestId} = render(<TestNavigator />);
+      const {getByTestId} = await render(<TestNavigator />);
 
       // Checkboxes should be present for each session
       expect(getByTestId('checkbox-session-1')).toBeTruthy();
       expect(getByTestId('checkbox-session-2')).toBeTruthy();
     });
 
-    it('tapping session toggles selection in selection mode', () => {
+    it('tapping session toggles selection in selection mode', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = true;
       });
 
-      const {getByText} = render(<TestNavigator />);
+      const {getByText} = await render(<TestNavigator />);
 
       // Tap a session
       const session1 = getByText('Session 1');
-      fireEvent.press(session1);
+      await fireEvent.press(session1);
 
       // Verify toggleSessionSelection was called
       expect(chatSessionStore.toggleSessionSelection).toHaveBeenCalledWith(
@@ -186,16 +186,16 @@ describe('SidebarContent Component', () => {
       );
     });
 
-    it('tapping checkbox toggles selection', () => {
+    it('tapping checkbox toggles selection', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = true;
       });
 
-      const {getByTestId} = render(<TestNavigator />);
+      const {getByTestId} = await render(<TestNavigator />);
 
       // Tap checkbox
       const checkbox = getByTestId('checkbox-session-1');
-      fireEvent.press(checkbox);
+      await fireEvent.press(checkbox);
 
       // Verify toggleSessionSelection was called
       expect(chatSessionStore.toggleSessionSelection).toHaveBeenCalledWith(
@@ -203,59 +203,59 @@ describe('SidebarContent Component', () => {
       );
     });
 
-    it('header shows correct N selected count', () => {
+    it('header shows correct N selected count', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = true;
         chatSessionStore.selectedSessionIds.add('session-1');
         chatSessionStore.selectedSessionIds.add('session-2');
       });
 
-      const {getByText} = render(<TestNavigator />);
+      const {getByText} = await render(<TestNavigator />);
 
       expect(getByText('2 selected')).toBeTruthy();
     });
 
-    it('Cancel button exits selection mode', () => {
+    it('Cancel button exits selection mode', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = true;
         chatSessionStore.selectedSessionIds.add('session-1');
       });
 
-      const {getByTestId} = render(<TestNavigator />);
+      const {getByTestId} = await render(<TestNavigator />);
 
       // Click Cancel button
       const cancelButton = getByTestId('cancel-selection-button');
-      fireEvent.press(cancelButton);
+      await fireEvent.press(cancelButton);
 
       // Verify exitSelectionMode was called
       expect(chatSessionStore.exitSelectionMode).toHaveBeenCalled();
     });
 
-    it('long-press is disabled in selection mode', () => {
+    it('long-press is disabled in selection mode', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = true;
       });
 
-      const {getByText} = render(<TestNavigator />);
+      const {getByText} = await render(<TestNavigator />);
 
       // Try to long-press on a session with proper event object
       const session1 = getByText('Session 1');
-      fireEvent(session1, 'longPress', {
+      await fireEvent(session1, 'longPress', {
         nativeEvent: {pageX: 0, pageY: 0},
       });
 
       // Menu should not appear - no new menu items should be rendered
       // This is verified by checking that the session is still pressable for selection
-      fireEvent.press(session1);
+      await fireEvent.press(session1);
       expect(chatSessionStore.toggleSessionSelection).toHaveBeenCalled();
     });
 
-    it('does not show checkboxes when not in selection mode', () => {
+    it('does not show checkboxes when not in selection mode', async () => {
       runInAction(() => {
         chatSessionStore.isSelectionMode = false;
       });
 
-      const {queryByTestId} = render(<TestNavigator />);
+      const {queryByTestId} = await render(<TestNavigator />);
 
       // Checkboxes should not be present
       expect(queryByTestId('checkbox-session-1')).toBeNull();
@@ -267,11 +267,11 @@ describe('SidebarContent Component', () => {
         chatSessionStore.isSelectionMode = false;
       });
 
-      const {getByText} = render(<TestNavigator />);
+      const {getByText} = await render(<TestNavigator />);
 
       // Tap session
       const session1 = getByText('Session 1');
-      fireEvent.press(session1);
+      await fireEvent.press(session1);
 
       // Should call setActiveSession, not toggleSessionSelection
       await waitFor(() => {

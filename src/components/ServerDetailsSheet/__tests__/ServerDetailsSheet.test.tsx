@@ -16,7 +16,7 @@ jest.mock('../../Sheet', () => {
     }
     return (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         <Button title="Close" onPress={onClose} testID="sheet-close-button" />
         {children}
       </View>
@@ -25,9 +25,11 @@ jest.mock('../../Sheet', () => {
   MockSheet.ScrollView = ({children}: any) => (
     <View testID="sheet-scroll-view">{children}</View>
   );
+
   MockSheet.Actions = ({children}: any) => (
     <View testID="sheet-actions">{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -61,8 +63,8 @@ describe('ServerDetailsSheet', () => {
     mockedTestConnection.mockResolvedValue({ok: true, modelCount: 1});
   });
 
-  it('renders nothing when not visible', () => {
-    const {queryByTestId} = render(
+  it('renders nothing when not visible', async () => {
+    const {queryByTestId} = await render(
       <ServerDetailsSheet
         isVisible={false}
         onDismiss={jest.fn()}
@@ -73,8 +75,8 @@ describe('ServerDetailsSheet', () => {
     expect(queryByTestId('sheet')).toBeNull();
   });
 
-  it('renders nothing when serverId is null', () => {
-    const {queryByTestId} = render(
+  it('renders nothing when serverId is null', async () => {
+    const {queryByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -86,7 +88,7 @@ describe('ServerDetailsSheet', () => {
   });
 
   it('renders server details when visible with valid serverId', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -100,7 +102,7 @@ describe('ServerDetailsSheet', () => {
   });
 
   it('renders the URL input with server URL', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -112,8 +114,8 @@ describe('ServerDetailsSheet', () => {
     expect(urlInput.props.defaultValue).toBe('http://localhost:1234');
   });
 
-  it('renders the save button', () => {
-    const {getByTestId} = render(
+  it('renders the save button', async () => {
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -124,8 +126,8 @@ describe('ServerDetailsSheet', () => {
     expect(getByTestId('save-server-button')).toBeTruthy();
   });
 
-  it('renders the remove server button', () => {
-    const {getByTestId} = render(
+  it('renders the remove server button', async () => {
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -136,8 +138,8 @@ describe('ServerDetailsSheet', () => {
     expect(getByTestId('remove-server-button')).toBeTruthy();
   });
 
-  it('displays models using this server', () => {
-    const {getByText} = render(
+  it('displays models using this server', async () => {
+    const {getByText} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -149,11 +151,11 @@ describe('ServerDetailsSheet', () => {
     expect(getByText('codellama')).toBeTruthy();
   });
 
-  it('shows confirmation dialog when remove server is pressed', () => {
+  it('shows confirmation dialog when remove server is pressed', async () => {
     jest.useFakeTimers();
     jest.spyOn(Alert, 'alert').mockImplementation();
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -161,7 +163,7 @@ describe('ServerDetailsSheet', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('remove-server-button'));
+    await fireEvent.press(getByTestId('remove-server-button'));
     jest.advanceTimersByTime(300);
 
     expect(Alert.alert).toHaveBeenCalledWith(
@@ -175,7 +177,7 @@ describe('ServerDetailsSheet', () => {
     jest.useRealTimers();
   });
 
-  it('calls removeServer and dismisses on delete confirmation', () => {
+  it('calls removeServer and dismisses on delete confirmation', async () => {
     jest.useFakeTimers();
     const mockDismiss = jest.fn();
     (Alert.alert as jest.Mock) = jest
@@ -187,7 +189,7 @@ describe('ServerDetailsSheet', () => {
         destructiveButton?.onPress();
       });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={mockDismiss}
@@ -195,7 +197,7 @@ describe('ServerDetailsSheet', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('remove-server-button'));
+    await fireEvent.press(getByTestId('remove-server-button'));
     // onDismiss is called immediately (before the alert)
     expect(mockDismiss).toHaveBeenCalled();
 
@@ -204,8 +206,8 @@ describe('ServerDetailsSheet', () => {
     jest.useRealTimers();
   });
 
-  it('renders the request timeout input', () => {
-    const {getByTestId} = render(
+  it('renders the request timeout input', async () => {
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -216,10 +218,10 @@ describe('ServerDetailsSheet', () => {
     expect(getByTestId('server-details-timeout-input')).toBeTruthy();
   });
 
-  it('prefills the timeout input from the saved requestTimeoutMs (ms→s)', () => {
+  it('prefills the timeout input from the saved requestTimeoutMs (ms→s)', async () => {
     serverStore.servers = [{...testServer, requestTimeoutMs: 600000}];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -237,7 +239,7 @@ describe('ServerDetailsSheet', () => {
   // (seconds → ms) to testConnection, so a slow cold-start server does not
   // red-X at the 30s default while being edited.
   it('passes the in-edit timeout to the probe', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -246,8 +248,11 @@ describe('ServerDetailsSheet', () => {
     );
 
     // Set the in-edit timeout, then trigger a probe via a URL change.
-    fireEvent.changeText(getByTestId('server-details-timeout-input'), '600');
-    fireEvent.changeText(
+    await fireEvent.changeText(
+      getByTestId('server-details-timeout-input'),
+      '600',
+    );
+    await fireEvent.changeText(
       getByTestId('server-details-url-input'),
       'http://localhost:1234',
     );
@@ -267,7 +272,7 @@ describe('ServerDetailsSheet', () => {
   it('falls back to the saved requestTimeoutMs when the field is empty', async () => {
     serverStore.servers = [{...testServer, requestTimeoutMs: 450000}];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -276,8 +281,8 @@ describe('ServerDetailsSheet', () => {
     );
 
     // Clear the prefilled field, then probe via a URL change.
-    fireEvent.changeText(getByTestId('server-details-timeout-input'), '');
-    fireEvent.changeText(
+    await fireEvent.changeText(getByTestId('server-details-timeout-input'), '');
+    await fireEvent.changeText(
       getByTestId('server-details-url-input'),
       'http://localhost:1234',
     );
@@ -293,7 +298,7 @@ describe('ServerDetailsSheet', () => {
   // An empty/invalid in-edit field on the probe falls through to undefined
   // (no saved value either) → API default, no crash.
   it('probes with undefined timeout when field empty and no saved value', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -301,8 +306,11 @@ describe('ServerDetailsSheet', () => {
       />,
     );
 
-    fireEvent.changeText(getByTestId('server-details-timeout-input'), 'abc');
-    fireEvent.changeText(
+    await fireEvent.changeText(
+      getByTestId('server-details-timeout-input'),
+      'abc',
+    );
+    await fireEvent.changeText(
       getByTestId('server-details-url-input'),
       'http://localhost:1234',
     );
@@ -318,7 +326,7 @@ describe('ServerDetailsSheet', () => {
   // Save converts a positive seconds value to whole ms through the existing
   // updateServer call.
   it('saves a positive timeout as whole milliseconds', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -326,8 +334,11 @@ describe('ServerDetailsSheet', () => {
       />,
     );
 
-    fireEvent.changeText(getByTestId('server-details-timeout-input'), '600');
-    fireEvent.press(getByTestId('save-server-button'));
+    await fireEvent.changeText(
+      getByTestId('server-details-timeout-input'),
+      '600',
+    );
+    await fireEvent.press(getByTestId('save-server-button'));
 
     await waitFor(() => {
       expect(serverStore.updateServer).toHaveBeenCalledWith(
@@ -340,7 +351,7 @@ describe('ServerDetailsSheet', () => {
   // An empty/invalid timeout field persists requestTimeoutMs undefined
   // (clears any prior value) → defaults apply.
   it('saves requestTimeoutMs undefined when the field is empty', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -348,8 +359,8 @@ describe('ServerDetailsSheet', () => {
       />,
     );
 
-    fireEvent.changeText(getByTestId('server-details-timeout-input'), '');
-    fireEvent.press(getByTestId('save-server-button'));
+    await fireEvent.changeText(getByTestId('server-details-timeout-input'), '');
+    await fireEvent.press(getByTestId('save-server-button'));
 
     await waitFor(() => {
       expect(serverStore.updateServer).toHaveBeenCalledWith(
@@ -362,7 +373,7 @@ describe('ServerDetailsSheet', () => {
   it('calls updateServer and setApiKey on save', async () => {
     const mockDismiss = jest.fn();
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={mockDismiss}
@@ -371,19 +382,19 @@ describe('ServerDetailsSheet', () => {
     );
 
     // Change URL
-    fireEvent.changeText(
+    await fireEvent.changeText(
       getByTestId('server-details-url-input'),
       'http://localhost:5678',
     );
 
     // Change API key
-    fireEvent.changeText(
+    await fireEvent.changeText(
       getByTestId('server-details-apikey-input'),
       'sk-new-key',
     );
 
     // Save
-    fireEvent.press(getByTestId('save-server-button'));
+    await fireEvent.press(getByTestId('save-server-button'));
 
     await waitFor(() => {
       expect(serverStore.updateServer).toHaveBeenCalledWith(
@@ -399,7 +410,7 @@ describe('ServerDetailsSheet', () => {
 
   const renderLoaded = async () => {
     const onDismiss = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={onDismiss}
@@ -417,17 +428,20 @@ describe('ServerDetailsSheet', () => {
   describe('after a save that invalidates discovery', () => {
     const renderAndSave = async (edit: (getByTestId: any) => void) => {
       const {getByTestId, onDismiss} = await renderLoaded();
-      edit(getByTestId);
-      fireEvent.press(getByTestId('save-server-button'));
+      await edit(getByTestId);
+      await fireEvent.press(getByTestId('save-server-button'));
       return onDismiss;
     };
-    const editUrl = (getByTestId: any) =>
-      fireEvent.changeText(
+    const editUrl = async (getByTestId: any) =>
+      await fireEvent.changeText(
         getByTestId('server-details-url-input'),
         'http://localhost:5678',
       );
-    const editTimeout = (getByTestId: any) =>
-      fireEvent.changeText(getByTestId('server-details-timeout-input'), '600');
+    const editTimeout = async (getByTestId: any) =>
+      await fireEvent.changeText(
+        getByTestId('server-details-timeout-input'),
+        '600',
+      );
 
     it('closes without waiting on an unreachable url', async () => {
       (serverStore.updateServer as jest.Mock).mockReturnValueOnce(true);
@@ -472,19 +486,23 @@ describe('ServerDetailsSheet', () => {
         }),
       );
 
-      await renderAndSave(getByTestId => {
-        editUrl(getByTestId);
-        fireEvent.changeText(
-          getByTestId('server-details-apikey-input'),
-          'sk-new-key',
-        );
-      });
+      // v14: fireEvent.press awaits the save handler, which awaits
+      // setApiKey — so start the press without awaiting it, unblock the
+      // key store, then await the press.
+      const {getByTestId} = await renderLoaded();
+      await editUrl(getByTestId);
+      await fireEvent.changeText(
+        getByTestId('server-details-apikey-input'),
+        'sk-new-key',
+      );
+      const savePromise = fireEvent.press(getByTestId('save-server-button'));
       await waitFor(() => {
         expect(serverStore.setApiKey).toHaveBeenCalled();
       });
       expect(serverStore.fetchModelsForServer).not.toHaveBeenCalled();
 
       keyStored();
+      await savePromise;
 
       await waitFor(() => {
         expect(serverStore.fetchModelsForServer).toHaveBeenCalledWith('srv-1');
@@ -502,11 +520,14 @@ describe('ServerDetailsSheet', () => {
       );
       const {getByTestId} = await renderLoaded();
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('server-details-apikey-input'),
         'sk-new-key',
       );
-      fireEvent.press(getByTestId('save-server-button'));
+      // v14: fireEvent.press awaits the save handler, which awaits
+      // setApiKey — start the press without awaiting it, unblock the key
+      // store, then await the press.
+      const savePromise = fireEvent.press(getByTestId('save-server-button'));
       await waitFor(() => {
         expect(serverStore.setApiKey).toHaveBeenCalledWith(
           'srv-1',
@@ -516,6 +537,7 @@ describe('ServerDetailsSheet', () => {
       expect(serverStore.fetchModelsForServer).not.toHaveBeenCalled();
 
       keyStored();
+      await savePromise;
 
       await waitFor(() => {
         expect(serverStore.fetchModelsForServer).toHaveBeenCalledWith('srv-1');
@@ -525,7 +547,7 @@ describe('ServerDetailsSheet', () => {
     it('leaves the model list alone when the key is unchanged', async () => {
       const {getByTestId, onDismiss} = await renderLoaded();
 
-      fireEvent.press(getByTestId('save-server-button'));
+      await fireEvent.press(getByTestId('save-server-button'));
 
       await waitFor(() => {
         expect(onDismiss).toHaveBeenCalled();
@@ -540,11 +562,11 @@ describe('ServerDetailsSheet', () => {
     it('treats a key that differs only by surrounding spaces as unchanged', async () => {
       const {getByTestId, onDismiss} = await renderLoaded();
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('server-details-apikey-input'),
         ' sk-test-key ',
       );
-      fireEvent.press(getByTestId('save-server-button'));
+      await fireEvent.press(getByTestId('save-server-button'));
 
       await waitFor(() => {
         expect(onDismiss).toHaveBeenCalled();
@@ -558,7 +580,7 @@ describe('ServerDetailsSheet', () => {
   });
 
   it('persists a user-selected serverType on save', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ServerDetailsSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -567,9 +589,9 @@ describe('ServerDetailsSheet', () => {
     );
 
     // Open the dropdown, then pick an override.
-    fireEvent.press(getByTestId('server-type-dropdown'));
-    fireEvent.press(getByTestId('server-type-option-Ollama'));
-    fireEvent.press(getByTestId('save-server-button'));
+    await fireEvent.press(getByTestId('server-type-dropdown'));
+    await fireEvent.press(getByTestId('server-type-option-Ollama'));
+    await fireEvent.press(getByTestId('save-server-button'));
 
     await waitFor(() => {
       expect(serverStore.updateServer).toHaveBeenCalledWith(

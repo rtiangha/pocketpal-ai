@@ -91,8 +91,8 @@ describe('SystemPromptSection', () => {
     });
   });
 
-  it('renders basic fields correctly for non-templated pal', () => {
-    const {getByText, getByPlaceholderText} = render(
+  it('renders basic fields correctly for non-templated pal', async () => {
+    const {getByText, getByPlaceholderText} = await render(
       <TestWrapper>
         <SystemPromptSection
           isVisible
@@ -110,8 +110,8 @@ describe('SystemPromptSection', () => {
     expect(getByPlaceholderText('You are a helpful assistant')).toBeDefined();
   });
 
-  it('toggles AI prompt generation fields visibility', () => {
-    const {getByText, queryByText} = render(
+  it('toggles AI prompt generation fields visibility', async () => {
+    const {getByText, queryByText} = await render(
       <TestWrapper defaultValues={{useAIPrompt: false}}>
         <SystemPromptSection
           isVisible
@@ -128,7 +128,7 @@ describe('SystemPromptSection', () => {
     expect(queryByText('Select Model for Generation*')).toBeNull();
 
     // Toggle AI prompt generation
-    fireEvent.press(getByText('Use AI to generate system prompt'));
+    await fireEvent.press(getByText('Use AI to generate system prompt'));
 
     // Generation fields should be visible
     expect(getByText('Select Model for Generation*')).toBeDefined();
@@ -138,7 +138,7 @@ describe('SystemPromptSection', () => {
     mockGenerate.mockResolvedValueOnce({prompt: 'Generated assistant prompt'});
 
     // Assistant pal - no parameter schema (simple pal)
-    const {getByText, getByPlaceholderText} = render(
+    const {getByText, getByPlaceholderText} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -157,7 +157,7 @@ describe('SystemPromptSection', () => {
     );
 
     // Click generate button
-    fireEvent.press(getByText('Generate System Prompt'));
+    await fireEvent.press(getByText('Generate System Prompt'));
 
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalled();
@@ -180,7 +180,7 @@ describe('SystemPromptSection', () => {
       {key: 'toneStyle', type: 'text', label: 'Tone & Style', required: true},
     ];
 
-    const {getByText, getByPlaceholderText} = render(
+    const {getByText, getByPlaceholderText} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -204,7 +204,7 @@ describe('SystemPromptSection', () => {
     );
 
     // Click generate button
-    fireEvent.press(getByText('Generate System Prompt'));
+    await fireEvent.press(getByText('Generate System Prompt'));
 
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalled();
@@ -217,7 +217,7 @@ describe('SystemPromptSection', () => {
   it('handles validation before generation', async () => {
     const validateFields = jest.fn().mockResolvedValue(false);
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -235,7 +235,7 @@ describe('SystemPromptSection', () => {
     );
 
     // Click generate button
-    fireEvent.press(getByText('Generate System Prompt'));
+    await fireEvent.press(getByText('Generate System Prompt'));
 
     await waitFor(() => {
       expect(validateFields).toHaveBeenCalled();
@@ -246,7 +246,7 @@ describe('SystemPromptSection', () => {
   it('handles model initialization for generation', async () => {
     mockGenerate.mockResolvedValueOnce({prompt: 'Generated prompt'});
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -265,7 +265,7 @@ describe('SystemPromptSection', () => {
     );
 
     // Click generate button
-    fireEvent.press(getByText('Generate System Prompt'));
+    await fireEvent.press(getByText('Generate System Prompt'));
 
     await waitFor(() => {
       expect(modelStore.selectModel).toHaveBeenCalledWith(modelsList[1]);
@@ -280,7 +280,7 @@ describe('SystemPromptSection', () => {
       {key: 'aiRole', type: 'text' as const, label: 'AI Role', required: true},
     ];
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -301,7 +301,7 @@ describe('SystemPromptSection', () => {
     );
 
     // Click generate button
-    fireEvent.press(getByText('Generate System Prompt'));
+    await fireEvent.press(getByText('Generate System Prompt'));
 
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalledWith(
@@ -326,7 +326,7 @@ describe('SystemPromptSection', () => {
 
     const assistantSchema = [];
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -345,7 +345,7 @@ describe('SystemPromptSection', () => {
     );
 
     // Click generate button
-    fireEvent.press(getByText('Generate System Prompt'));
+    await fireEvent.press(getByText('Generate System Prompt'));
 
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalledWith(
@@ -375,7 +375,7 @@ describe('SystemPromptSection', () => {
       },
     ];
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -395,7 +395,7 @@ describe('SystemPromptSection', () => {
     );
 
     // Click generate button
-    fireEvent.press(getByText('Generate System Prompt'));
+    await fireEvent.press(getByText('Generate System Prompt'));
 
     await waitFor(() => {
       expect(mockGenerate).toHaveBeenCalledWith(
@@ -418,8 +418,8 @@ describe('SystemPromptSection', () => {
     });
   });
 
-  it('shows system prompt changed warning and handles reset', () => {
-    const {getByText, getByPlaceholderText} = render(
+  it('shows system prompt changed warning and handles reset', async () => {
+    const {getByText, getByPlaceholderText} = await render(
       <TestWrapper
         defaultValues={{
           systemPrompt: 'Changed prompt',
@@ -437,7 +437,7 @@ describe('SystemPromptSection', () => {
     expect(getByText('System prompt has been manually changed')).toBeDefined();
 
     // Click reset button
-    fireEvent.press(getByText('Reset'));
+    await fireEvent.press(getByText('Reset'));
 
     // Check if prompt is reset
     expect(
@@ -445,8 +445,8 @@ describe('SystemPromptSection', () => {
     ).toBe('Original prompt');
   });
 
-  it('disables generation when system prompt is manually changed', () => {
-    const {getByTestId} = render(
+  it('disables generation when system prompt is manually changed', async () => {
+    const {getByTestId} = await render(
       <TestWrapper
         defaultValues={{
           useAIPrompt: true,
@@ -475,8 +475,8 @@ describe('SystemPromptSection', () => {
       {key: 'setting', type: 'text', label: 'Setting', required: true},
     ];
 
-    it('detects templated pals and shows template mode toggle', () => {
-      const {getByTestId} = render(
+    it('detects templated pals and shows template mode toggle', async () => {
+      const {getByTestId} = await render(
         <TestWrapper
           defaultValues={{
             systemPrompt: 'You are {{role}} in {{setting}}',
@@ -496,8 +496,8 @@ describe('SystemPromptSection', () => {
       expect(getByTestId('icon-button')).toBeTruthy();
     });
 
-    it('renders final prompt in default mode for templated pals', () => {
-      const {getByText} = render(
+    it('renders final prompt in default mode for templated pals', async () => {
+      const {getByText} = await render(
         <TestWrapper
           defaultValues={{
             systemPrompt: 'You are {{role}} in {{setting}}',
@@ -517,8 +517,8 @@ describe('SystemPromptSection', () => {
       expect(getByText('You are wizard in fantasy world')).toBeTruthy();
     });
 
-    it('shows reset parameters and reset template buttons for templated pals', () => {
-      const {getByText} = render(
+    it('shows reset parameters and reset template buttons for templated pals', async () => {
+      const {getByText} = await render(
         <TestWrapper
           defaultValues={{
             systemPrompt: 'You are {{role}} in {{setting}}',
@@ -541,7 +541,7 @@ describe('SystemPromptSection', () => {
     it('preserves originalSystemPrompt when generating AI prompts', async () => {
       mockGenerate.mockResolvedValueOnce({prompt: 'Generated new prompt'});
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <TestWrapper
           defaultValues={{
             useAIPrompt: true,
@@ -560,7 +560,7 @@ describe('SystemPromptSection', () => {
       );
 
       // Click generate button
-      fireEvent.press(getByText('Generate System Prompt'));
+      await fireEvent.press(getByText('Generate System Prompt'));
 
       await waitFor(() => {
         expect(mockGenerate).toHaveBeenCalled();
@@ -610,6 +610,7 @@ describe('SystemPromptSection', () => {
           closeSheet={() => {}}
           parameterSchema={[]}
         />
+
         <ValuesProbe />
       </TestWrapper>
     );
@@ -639,9 +640,9 @@ describe('SystemPromptSection', () => {
 
     it('writes nothing to the form when generation ends without a result', async () => {
       mockGenerate.mockResolvedValueOnce(undefined);
-      const {getByText} = render(section(true), {withNavigation: true});
+      const {getByText} = await render(section(true), {withNavigation: true});
 
-      fireEvent.press(getByText('Generate System Prompt'));
+      await fireEvent.press(getByText('Generate System Prompt'));
       await waitFor(() => expect(mockGenerate).toHaveBeenCalled());
       await flush();
 
@@ -650,20 +651,20 @@ describe('SystemPromptSection', () => {
       expect(formValues().isSystemPromptChanged).toBe(false);
     });
 
-    it('shows the busy line while another generation holds the model', () => {
+    it('shows the busy line while another generation holds the model', async () => {
       mockHook({isBusy: true});
-      const {getByTestId} = render(section(true), {withNavigation: true});
+      const {getByTestId} = await render(section(true), {withNavigation: true});
 
       expect(getByTestId('generate-busy-text')).toHaveTextContent(
         "A reply is still running. Try again when it's done.",
       );
     });
 
-    it('cancels the generation when the sheet closes', () => {
-      const {rerender} = render(section(true), {withNavigation: true});
+    it('cancels the generation when the sheet closes', async () => {
+      const {rerender} = await render(section(true), {withNavigation: true});
       expect(cancel).not.toHaveBeenCalled();
 
-      rerender(section(false));
+      await rerender(section(false));
 
       expect(cancel).toHaveBeenCalledTimes(1);
     });
@@ -679,17 +680,25 @@ describe('SystemPromptSection', () => {
           loading.promise,
         );
         (modelStore as any).engine = {};
-        const {getByText, rerender} = render(
+        const {getByText, rerender} = await render(
           section(true, {promptGenerationModel: modelsList[1]}),
           {withNavigation: true},
         );
 
-        fireEvent.press(getByText('Generate System Prompt'));
+        // v14: the press awaits selectModel, which only resolves when
+        // loading.resolve() runs below — awaiting the press deadlocks.
+        // Start it, close/reopen the sheet, then settle.
+        const pressPromise = fireEvent.press(
+          getByText('Generate System Prompt'),
+        );
         await waitFor(() => expect(modelStore.selectModel).toHaveBeenCalled());
         for (const isVisible of visibility) {
-          rerender(section(isVisible, {promptGenerationModel: modelsList[1]}));
+          await rerender(
+            section(isVisible, {promptGenerationModel: modelsList[1]}),
+          );
         }
         loading.resolve();
+        await pressPromise;
         await flush();
 
         expect(mockGenerate).not.toHaveBeenCalled();
@@ -700,13 +709,19 @@ describe('SystemPromptSection', () => {
     it('never generates when the sheet closes while fields validate', async () => {
       const validating = deferred<boolean>();
       const validateFields = () => validating.promise;
-      const {getByText, rerender} = render(section(true, {validateFields}), {
-        withNavigation: true,
-      });
+      const {getByText, rerender} = await render(
+        section(true, {validateFields}),
+        {
+          withNavigation: true,
+        },
+      );
 
-      fireEvent.press(getByText('Generate System Prompt'));
-      rerender(section(false, {validateFields}));
+      // v14: the press awaits validateFields, which only resolves below —
+      // awaiting the press deadlocks. Start it, close the sheet, settle.
+      const pressPromise = fireEvent.press(getByText('Generate System Prompt'));
+      await rerender(section(false, {validateFields}));
       validating.resolve(true);
+      await pressPromise;
       await flush();
 
       expect(mockGenerate).not.toHaveBeenCalled();

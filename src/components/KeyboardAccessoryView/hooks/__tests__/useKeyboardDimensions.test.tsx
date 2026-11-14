@@ -48,8 +48,8 @@ describe('useKeyboardDimensions', () => {
     });
   });
 
-  it('should initialize with the screen height and no keyboard', () => {
-    const {result} = renderHook(() => useKeyboardDimensions());
+  it('should initialize with the screen height and no keyboard', async () => {
+    const {result} = await renderHook(() => useKeyboardDimensions());
 
     expect(result.current).toEqual({
       keyboardEndPositionY: 800,
@@ -57,16 +57,16 @@ describe('useKeyboardDimensions', () => {
     });
   });
 
-  it('should update keyboard dimensions on keyboardWillChangeFrame', () => {
+  it('should update keyboard dimensions on keyboardWillChangeFrame', async () => {
     const mockEvent = {
       endCoordinates: {screenY: 600}, // Keyboard's end position
       duration: 250,
       easing: 'easeInEaseOut',
     };
 
-    const {result} = renderHook(() => useKeyboardDimensions());
+    const {result} = await renderHook(() => useKeyboardDimensions());
 
-    act(() => {
+    await act(() => {
       // Trigger the keyboard event to simulate the keyboard appearance
       (Keyboard.addListener as jest.Mock).mock.calls[0][1](mockEvent); // Simulating 'keyboardWillChangeFrame'
     });
@@ -85,11 +85,11 @@ describe('useKeyboardDimensions', () => {
     });
   });
 
-  it('should reset keyboard dimensions on keyboardDidHide (Android)', () => {
+  it('should reset keyboard dimensions on keyboardDidHide (Android)', async () => {
     Platform.OS = 'android';
-    const {result} = renderHook(() => useKeyboardDimensions(true));
+    const {result} = await renderHook(() => useKeyboardDimensions(true));
 
-    act(() => {
+    await act(() => {
       // Simulate keyboardDidHide event
       (Keyboard.addListener as jest.Mock).mock.calls[0][1](); // Resetting dimensions
     });
@@ -100,9 +100,9 @@ describe('useKeyboardDimensions', () => {
     });
   });
 
-  it('should add keyboard listeners for Android when `useListenersOnAndroid` is true', () => {
+  it('should add keyboard listeners for Android when `useListenersOnAndroid` is true', async () => {
     Platform.OS = 'android';
-    renderHook(() => useKeyboardDimensions(true));
+    await renderHook(() => useKeyboardDimensions(true));
 
     expect(Keyboard.addListener).toHaveBeenCalledWith(
       'keyboardDidHide',
@@ -114,9 +114,9 @@ describe('useKeyboardDimensions', () => {
     );
   });
 
-  it('should update keyboardEndPositionY when dimensions change', () => {
-    const {result} = renderHook(() => useKeyboardDimensions());
-    act(() => {
+  it('should update keyboardEndPositionY when dimensions change', async () => {
+    const {result} = await renderHook(() => useKeyboardDimensions());
+    await act(() => {
       const dimensionsChangeHandler = (Dimensions.addEventListener as jest.Mock)
         .mock.calls[0][1];
       dimensionsChangeHandler({window: {height: 1000}});
@@ -124,7 +124,7 @@ describe('useKeyboardDimensions', () => {
     expect(result.current.keyboardEndPositionY).toBe(1000);
   });
 
-  it('should remove all listeners on unmount', () => {
+  it('should remove all listeners on unmount', async () => {
     const dimensionsListener = {remove: jest.fn()};
     const keyboardListener = {remove: jest.fn()};
 
@@ -133,10 +133,10 @@ describe('useKeyboardDimensions', () => {
     );
     (Keyboard.addListener as jest.Mock).mockReturnValue(keyboardListener);
 
-    const {unmount} = renderHook(() => useKeyboardDimensions());
+    const {unmount} = await renderHook(() => useKeyboardDimensions());
 
     // Unmount the hook and ensure listeners are removed
-    unmount();
+    await unmount();
 
     expect(keyboardListener.remove).toHaveBeenCalled();
     expect(dimensionsListener.remove).toHaveBeenCalled();

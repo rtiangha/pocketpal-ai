@@ -27,8 +27,8 @@ const TestWrapper = ({
 };
 
 describe('ColorSection', () => {
-  it('renders all color options', () => {
-    const {getAllByTestId} = render(
+  it('renders all color options', async () => {
+    const {getAllByTestId} = await render(
       <TestWrapper>
         <ColorSection />
       </TestWrapper>,
@@ -38,8 +38,8 @@ describe('ColorSection', () => {
     expect(colorButtons).toHaveLength(9); // Number of color pairs defined in component
   });
 
-  it('shows selected state for default color', () => {
-    const {getAllByTestId} = render(
+  it('shows selected state for default color', async () => {
+    const {getAllByTestId} = await render(
       <TestWrapper>
         <ColorSection />
       </TestWrapper>,
@@ -51,17 +51,19 @@ describe('ColorSection', () => {
     expect(styles[1]).toBeTruthy(); // Selected style should be applied
   });
 
-  it('changes selected color on press', () => {
-    const {getAllByTestId} = render(
+  it('changes selected color on press', async () => {
+    const {getAllByTestId} = await render(
       <TestWrapper>
         <ColorSection />
       </TestWrapper>,
     );
 
     const colorButtons = getAllByTestId('color-button');
-    const button = colorButtons[1].parent?.parent;
+    // v14: the color-button View's parent is the TouchableOpacity host View
+    // (DualColorCircle is a composite and not in the host tree).
+    const button = colorButtons[1].parent;
     if (button) {
-      fireEvent.press(button); // Press second color option
+      await fireEvent.press(button); // Press second color option
     }
 
     // Check styles after re-render
@@ -70,10 +72,10 @@ describe('ColorSection', () => {
     expect(updatedButtons[1].props.style[1]).toBeTruthy(); // Second button should have selected style
   });
 
-  it('updates form context on color selection', () => {
+  it('updates form context on color selection', async () => {
     let formMethods: UseFormReturn<PalFormData> | undefined;
 
-    const {getAllByTestId} = render(
+    const {getAllByTestId} = await render(
       <TestWrapper
         onFormReady={methods => {
           formMethods = methods;
@@ -83,9 +85,9 @@ describe('ColorSection', () => {
     );
 
     const colorButtons = getAllByTestId('color-button');
-    const button = colorButtons[2].parent?.parent;
+    const button = colorButtons[2].parent;
     if (button) {
-      fireEvent.press(button); // Select third color option
+      await fireEvent.press(button); // Select third color option
     }
 
     // Check if form values were updated

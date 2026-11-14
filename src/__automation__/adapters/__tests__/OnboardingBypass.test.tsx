@@ -18,26 +18,26 @@ describe('OnboardingBypass adapter', () => {
     (global as any).__E2E_SKIP_ONBOARDING__ = false;
   });
 
-  it('does nothing when __E2E_SKIP_ONBOARDING__ is false (default in dev / Jest)', () => {
+  it('does nothing when __E2E_SKIP_ONBOARDING__ is false (default in dev / Jest)', async () => {
     (global as any).__E2E__ = true;
     (global as any).__E2E_SKIP_ONBOARDING__ = false;
-    render(<OnboardingBypass />);
+    await render(<OnboardingBypass />);
     expect(uiStore.completeOnboarding).not.toHaveBeenCalled();
   });
 
-  it('does nothing when __E2E__ is false even if SKIP flag is true (prod safety)', () => {
+  it('does nothing when __E2E__ is false even if SKIP flag is true (prod safety)', async () => {
     (global as any).__E2E__ = false;
     (global as any).__E2E_SKIP_ONBOARDING__ = true;
-    render(<OnboardingBypass />);
+    await render(<OnboardingBypass />);
     expect(uiStore.completeOnboarding).not.toHaveBeenCalled();
   });
 
-  it('flips hasCompletedOnboarding when both flags are true and the user has not completed onboarding', () => {
+  it('flips hasCompletedOnboarding when both flags are true and the user has not completed onboarding', async () => {
     (global as any).__E2E__ = true;
     (global as any).__E2E_SKIP_ONBOARDING__ = true;
     uiStore.hasCompletedOnboarding = false;
 
-    render(<OnboardingBypass />);
+    await render(<OnboardingBypass />);
 
     expect(uiStore.completeOnboarding).toHaveBeenCalledTimes(1);
     expect(uiStore.completeOnboarding).toHaveBeenCalledWith({
@@ -46,12 +46,12 @@ describe('OnboardingBypass adapter', () => {
     });
   });
 
-  it('is a no-op when hasCompletedOnboarding is already true (idempotency on re-mount)', () => {
+  it('is a no-op when hasCompletedOnboarding is already true (idempotency on re-mount)', async () => {
     (global as any).__E2E__ = true;
     (global as any).__E2E_SKIP_ONBOARDING__ = true;
     uiStore.hasCompletedOnboarding = true;
 
-    render(<OnboardingBypass />);
+    await render(<OnboardingBypass />);
 
     expect(uiStore.completeOnboarding).not.toHaveBeenCalled();
   });

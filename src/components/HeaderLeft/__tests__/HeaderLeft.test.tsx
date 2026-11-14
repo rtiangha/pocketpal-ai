@@ -29,16 +29,16 @@ describe('HeaderLeft', () => {
     mockFocusEffect = undefined;
   });
 
-  it('opens the drawer', () => {
-    const {getByTestId} = render(<HeaderLeft />);
+  it('opens the drawer', async () => {
+    const {getByTestId} = await render(<HeaderLeft />);
 
-    fireEvent.press(getByTestId('menu-button'));
+    await fireEvent.press(getByTestId('menu-button'));
 
     expect(mockOpenDrawer).toHaveBeenCalledTimes(1);
   });
 
-  it('holds the Plus return-focus slot while its screen is focused', () => {
-    render(<HeaderLeft />);
+  it('holds the Plus return-focus slot while its screen is focused', async () => {
+    await render(<HeaderLeft />);
     expect(plusReturnFocusTarget()).toBeNull();
 
     const blur = focus();
@@ -49,10 +49,10 @@ describe('HeaderLeft', () => {
     expect(plusReturnFocusTarget()).toBeNull();
   });
 
-  it('keeps a newer claim when an older screen blurs', () => {
-    render(<HeaderLeft />);
+  it('keeps a newer claim when an older screen blurs', async () => {
+    await render(<HeaderLeft />);
     const other = React.createRef<HostInstance>();
-    render(<View ref={other} />);
+    await render(<View ref={other} />);
     const blur = focus();
 
     claimPlusReturnFocus(other.current);

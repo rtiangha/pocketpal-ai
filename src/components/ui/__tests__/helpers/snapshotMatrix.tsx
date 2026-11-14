@@ -69,12 +69,14 @@ const DEFAULT_STATES: readonly DSState[] = ['default', 'disabled'] as const;
 const DEFAULT_MODES: readonly DSMode[] = ['light', 'dark'] as const;
 const DEFAULT_LANG: AvailableLanguage = 'en';
 
-const renderCell = <V extends string, S extends string>(
+const renderCell = async <V extends string, S extends string>(
   factory: SnapshotRenderFactory<V, S>,
   cell: SnapshotCellProps<V, S>,
 ) => {
   const theme = themeFixtures.byMode(cell.mode).byLocale(cell.language);
-  return render(<PaperProvider theme={theme}>{factory(cell)}</PaperProvider>);
+  return await render(
+    <PaperProvider theme={theme}>{factory(cell)}</PaperProvider>,
+  );
 };
 
 /**
@@ -121,8 +123,8 @@ export function runSnapshotMatrix<V extends string, S extends string>(
                     language: DEFAULT_LANG,
                     value,
                   };
-                  it(cellLabel(cell), () => {
-                    const {toJSON} = renderCell(factory, cell);
+                  it(cellLabel(cell), async () => {
+                    const {toJSON} = await renderCell(factory, cell);
                     expect(toJSON()).toMatchSnapshot();
                   });
                 }
@@ -134,8 +136,8 @@ export function runSnapshotMatrix<V extends string, S extends string>(
                   mode,
                   language: DEFAULT_LANG,
                 };
-                it(cellLabel(cell), () => {
-                  const {toJSON} = renderCell(factory, cell);
+                it(cellLabel(cell), async () => {
+                  const {toJSON} = await renderCell(factory, cell);
                   expect(toJSON()).toMatchSnapshot();
                 });
               }
@@ -155,8 +157,8 @@ export function runSnapshotMatrix<V extends string, S extends string>(
             mode: 'light',
             language,
           };
-          it(cellLabel(cell), () => {
-            const {toJSON} = renderCell(factory, cell);
+          it(cellLabel(cell), async () => {
+            const {toJSON} = await renderCell(factory, cell);
             expect(toJSON()).toMatchSnapshot();
           });
         }

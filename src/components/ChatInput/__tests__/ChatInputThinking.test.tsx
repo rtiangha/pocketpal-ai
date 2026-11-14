@@ -104,8 +104,8 @@ describe('ChatInput Thinking Toggle', () => {
     jest.clearAllMocks();
   });
 
-  it('should not render thinking toggle when showThinkingToggle is false', () => {
-    const {queryByLabelText} = render(
+  it('should not render thinking toggle when showThinkingToggle is false', async () => {
+    const {queryByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -119,8 +119,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(queryByLabelText(/thinking mode/i)).toBeNull();
   });
 
-  it('should render thinking toggle when showThinkingToggle is true', () => {
-    const {getByLabelText} = render(
+  it('should render thinking toggle when showThinkingToggle is true', async () => {
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -134,8 +134,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(getByLabelText('Enable thinking mode')).toBeTruthy();
   });
 
-  it('should show correct accessibility label when thinking is disabled', () => {
-    const {getByLabelText} = render(
+  it('should show correct accessibility label when thinking is disabled', async () => {
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -149,8 +149,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(getByLabelText('Enable thinking mode')).toBeTruthy();
   });
 
-  it('should show correct accessibility label when thinking is enabled', () => {
-    const {getByLabelText} = render(
+  it('should show correct accessibility label when thinking is enabled', async () => {
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -164,9 +164,9 @@ describe('ChatInput Thinking Toggle', () => {
     expect(getByLabelText('Disable thinking mode')).toBeTruthy();
   });
 
-  it('should call onThinkingToggle with correct value when pressed', () => {
+  it('should call onThinkingToggle with correct value when pressed', async () => {
     const mockOnThinkingToggle = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -178,14 +178,14 @@ describe('ChatInput Thinking Toggle', () => {
     );
 
     const toggleButton = getByLabelText('Enable thinking mode');
-    fireEvent.press(toggleButton);
+    await fireEvent.press(toggleButton);
 
     expect(mockOnThinkingToggle).toHaveBeenCalledWith(true);
   });
 
-  it('should call onThinkingToggle with false when thinking is enabled and pressed', () => {
+  it('should call onThinkingToggle with false when thinking is enabled and pressed', async () => {
     const mockOnThinkingToggle = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -197,13 +197,13 @@ describe('ChatInput Thinking Toggle', () => {
     );
 
     const toggleButton = getByLabelText('Disable thinking mode');
-    fireEvent.press(toggleButton);
+    await fireEvent.press(toggleButton);
 
     expect(mockOnThinkingToggle).toHaveBeenCalledWith(false);
   });
 
-  it('should render thinking toggle even when streaming', () => {
-    const {getByLabelText} = render(
+  it('should render thinking toggle even when streaming', async () => {
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -218,8 +218,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(getByLabelText('Enable thinking mode')).toBeTruthy();
   });
 
-  it('should render thinking toggle even when stop is visible', () => {
-    const {getByLabelText} = render(
+  it('should render thinking toggle even when stop is visible', async () => {
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -234,8 +234,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(getByLabelText('Enable thinking mode')).toBeTruthy();
   });
 
-  it('renders the localized effort tier on the graded pill, not the raw token', () => {
-    const {getByText, queryByText} = render(
+  it('renders the localized effort tier on the graded pill, not the raw token', async () => {
+    const {getByText, queryByText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -254,8 +254,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(queryByText('high')).toBeNull();
   });
 
-  it('looks the tier up in the table rather than hardcoding a single value', () => {
-    const {getByText, queryByText} = render(
+  it('looks the tier up in the table rather than hardcoding a single value', async () => {
+    const {getByText, queryByText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -274,8 +274,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(queryByText('minimal')).toBeNull();
   });
 
-  it('degrades an unlisted tier to the raw string instead of dropping it', () => {
-    const {getByText} = render(
+  it('degrades an unlisted tier to the raw string instead of dropping it', async () => {
+    const {getByText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -293,8 +293,8 @@ describe('ChatInput Thinking Toggle', () => {
     expect(getByText('turbo')).toBeTruthy();
   });
 
-  it('announces the active tier and that the control cycles on a graded pill', () => {
-    const {getByLabelText, queryByLabelText} = render(
+  it('announces the active tier and that the control cycles on a graded pill', async () => {
+    const {getByLabelText, queryByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -314,10 +314,10 @@ describe('ChatInput Thinking Toggle', () => {
     expect(queryByLabelText('Disable thinking mode')).toBeNull();
   });
 
-  it('cycles effort instead of toggling when the graded pill is pressed', () => {
+  it('cycles effort instead of toggling when the graded pill is pressed', async () => {
     const mockOnEffortCycle = jest.fn();
     const mockOnThinkingToggle = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -332,14 +332,14 @@ describe('ChatInput Thinking Toggle', () => {
       </UserContext.Provider>,
     );
 
-    fireEvent.press(getByLabelText(/Reasoning effort: High/i));
+    await fireEvent.press(getByLabelText(/Reasoning effort: High/i));
 
     expect(mockOnEffortCycle).toHaveBeenCalledTimes(1);
     expect(mockOnThinkingToggle).not.toHaveBeenCalled();
   });
 
-  it('should handle missing onThinkingToggle callback gracefully', () => {
-    const {getByLabelText} = render(
+  it('should handle missing onThinkingToggle callback gracefully', async () => {
+    const {getByLabelText} = await render(
       <UserContext.Provider value={mockUser}>
         <ChatInput
           {...defaultProps}
@@ -353,6 +353,6 @@ describe('ChatInput Thinking Toggle', () => {
     const toggleButton = getByLabelText('Enable thinking mode');
 
     // Should not throw when pressed
-    expect(() => fireEvent.press(toggleButton)).not.toThrow();
+    await fireEvent.press(toggleButton);
   });
 });

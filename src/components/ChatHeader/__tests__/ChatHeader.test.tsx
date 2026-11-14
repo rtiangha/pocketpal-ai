@@ -41,8 +41,8 @@ describe('ChatHeader', () => {
     mockChatSessionStore.shouldShowHeaderDivider = false;
   });
 
-  it('renders all child components', () => {
-    const {getByTestId} = render(<ChatHeader />);
+  it('renders all child components', async () => {
+    const {getByTestId} = await render(<ChatHeader />);
 
     expect(getByTestId('header-view')).toBeTruthy();
     expect(getByTestId('header-left')).toBeTruthy();
@@ -50,9 +50,9 @@ describe('ChatHeader', () => {
     expect(getByTestId('chat-header-title')).toBeTruthy();
   });
 
-  it('applies correct styles when header divider should not be shown', () => {
+  it('applies correct styles when header divider should not be shown', async () => {
     mockChatSessionStore.shouldShowHeaderDivider = false;
-    const {getByTestId} = render(<ChatHeader />, {withSafeArea: true});
+    const {getByTestId} = await render(<ChatHeader />, {withSafeArea: true});
 
     const headerView = getByTestId('header-view');
     expect(headerView.props.style[1]).toMatchObject({
@@ -63,9 +63,9 @@ describe('ChatHeader', () => {
     });
   });
 
-  it('applies correct styles when header divider should be shown', () => {
+  it('applies correct styles when header divider should be shown', async () => {
     mockChatSessionStore.shouldShowHeaderDivider = true;
-    const {getByTestId} = render(<ChatHeader />, {withSafeArea: true});
+    const {getByTestId} = await render(<ChatHeader />, {withSafeArea: true});
 
     const headerView = getByTestId('header-view');
     expect(headerView.props.style[1]).toMatchObject({

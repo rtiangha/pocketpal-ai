@@ -45,7 +45,7 @@ describe('DeviceInfoChip', () => {
   });
 
   it('renders the full string when every field resolves', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <DeviceInfoChip ramSuffix="GB RAM" freeSuffix="GB free" />,
     );
     await waitFor(() => {
@@ -61,7 +61,7 @@ describe('DeviceInfoChip', () => {
     (DeviceInfo.getFreeDiskStorage as jest.Mock).mockRejectedValueOnce(
       new Error('nope'),
     );
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <DeviceInfoChip ramSuffix="GB RAM" freeSuffix="GB free" />,
     );
     await waitFor(() => {
@@ -84,7 +84,7 @@ describe('DeviceInfoChip', () => {
     (DeviceInfo.getFreeDiskStorage as jest.Mock).mockRejectedValueOnce(
       new Error('no'),
     );
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <DeviceInfoChip ramSuffix="GB RAM" freeSuffix="GB free" />,
     );
     await waitFor(() => {

@@ -9,8 +9,8 @@ import {ttsStore} from '../../../store';
 
 import {VoiceChip} from '../VoiceChip';
 
-const renderChip = () =>
-  render(
+const renderChip = async () =>
+  await render(
     <L10nContext.Provider value={l10n.en}>
       <VoiceChip />
     </L10nContext.Provider>,
@@ -34,78 +34,78 @@ describe('VoiceChip', () => {
     });
   });
 
-  it('renders nothing when TTS is unavailable', () => {
+  it('renders nothing when TTS is unavailable', async () => {
     runInAction(() => {
       ttsStore.deviceMeetsMemory = false;
       ttsStore.userTTSOverride = null;
     });
-    const {queryByTestId} = renderChip();
+    const {queryByTestId} = await renderChip();
     expect(queryByTestId('voicechip')).toBeNull();
   });
 
-  it('renders both halves (speaker + secondary) regardless of setup state', () => {
-    const {getByTestId} = renderChip();
+  it('renders both halves (speaker + secondary) regardless of setup state', async () => {
+    const {getByTestId} = await renderChip();
     expect(getByTestId('voicechip-speaker')).toBeTruthy();
     expect(getByTestId('voicechip-secondary')).toBeTruthy();
   });
 
-  it('pre-setup: speaker tap opens setup sheet (no voice to toggle)', () => {
-    const {getByTestId} = renderChip();
-    fireEvent.press(getByTestId('voicechip-speaker'));
+  it('pre-setup: speaker tap opens setup sheet (no voice to toggle)', async () => {
+    const {getByTestId} = await renderChip();
+    await fireEvent.press(getByTestId('voicechip-speaker'));
     expect(ttsStore.openSetupSheet).toHaveBeenCalledTimes(1);
     expect(ttsStore.setAutoSpeak).not.toHaveBeenCalled();
   });
 
-  it('pre-setup: secondary tap opens setup sheet', () => {
-    const {getByTestId} = renderChip();
-    fireEvent.press(getByTestId('voicechip-secondary'));
+  it('pre-setup: secondary tap opens setup sheet', async () => {
+    const {getByTestId} = await renderChip();
+    await fireEvent.press(getByTestId('voicechip-secondary'));
     expect(ttsStore.openSetupSheet).toHaveBeenCalledTimes(1);
   });
 
-  it('voice-chosen: speaker tap toggles autoSpeakEnabled', () => {
+  it('voice-chosen: speaker tap toggles autoSpeakEnabled', async () => {
     runInAction(() => {
       ttsStore.currentVoice = systemVoice;
       ttsStore.autoSpeakEnabled = false;
     });
-    const {getByTestId} = renderChip();
-    fireEvent.press(getByTestId('voicechip-speaker'));
+    const {getByTestId} = await renderChip();
+    await fireEvent.press(getByTestId('voicechip-speaker'));
     expect(ttsStore.setAutoSpeak).toHaveBeenCalledWith(true);
     expect(ttsStore.openSetupSheet).not.toHaveBeenCalled();
   });
 
-  it('voice-chosen: speaker tap while ON toggles autoSpeakEnabled off', () => {
+  it('voice-chosen: speaker tap while ON toggles autoSpeakEnabled off', async () => {
     runInAction(() => {
       ttsStore.currentVoice = systemVoice;
       ttsStore.autoSpeakEnabled = true;
     });
-    const {getByTestId} = renderChip();
-    fireEvent.press(getByTestId('voicechip-speaker'));
+    const {getByTestId} = await renderChip();
+    await fireEvent.press(getByTestId('voicechip-speaker'));
     expect(ttsStore.setAutoSpeak).toHaveBeenCalledWith(false);
   });
 
-  it('voice-chosen: secondary tap opens setup sheet, does not toggle', () => {
+  it('voice-chosen: secondary tap opens setup sheet, does not toggle', async () => {
     runInAction(() => {
       ttsStore.currentVoice = systemVoice;
       ttsStore.autoSpeakEnabled = false;
     });
-    const {getByTestId} = renderChip();
-    fireEvent.press(getByTestId('voicechip-secondary'));
+    const {getByTestId} = await renderChip();
+    await fireEvent.press(getByTestId('voicechip-secondary'));
     expect(ttsStore.openSetupSheet).toHaveBeenCalledTimes(1);
     expect(ttsStore.setAutoSpeak).not.toHaveBeenCalled();
   });
 
-  it('speaker accessibilityState reflects autoSpeakEnabled post-setup', () => {
+  it('speaker accessibilityState reflects autoSpeakEnabled post-setup', async () => {
     runInAction(() => {
       ttsStore.currentVoice = systemVoice;
       ttsStore.autoSpeakEnabled = true;
     });
-    const {getByTestId} = renderChip();
+    const {getByTestId} = await renderChip();
     const speaker = getByTestId('voicechip-speaker');
     expect(speaker.props.accessibilityState).toEqual({selected: true});
   });
 
-  it('pre-setup speaker accessibilityState has no selected flag', () => {
-    const {getByTestId} = renderChip();
+  it('pre-setup speaker accessibilityState has no selected flag', async () => {
+    const {getByTestId} = await renderChip();
     const speaker = getByTestId('voicechip-speaker');
     // Pressable synthesizes an accessibilityState object; the selected key
     // should be undefined pre-setup since the component doesn't pass it.

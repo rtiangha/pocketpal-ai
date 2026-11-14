@@ -22,8 +22,8 @@ const makeAssistantMsg = (overrides: Partial<MessageType.DerivedText> = {}) =>
     ...overrides,
   }) as MessageType.DerivedText;
 
-const renderButton = (message: MessageType.DerivedText) =>
-  render(
+const renderButton = async (message: MessageType.DerivedText) =>
+  await render(
     <L10nContext.Provider value={l10n.en}>
       <PlayButton message={message} />
     </L10nContext.Provider>,
@@ -183,6 +183,7 @@ describe('shouldShowPlayButton', () => {
         'a Thai sentence without spaces',
         'ท้องฟ้าเป็นสีฟ้าเพราะแสงอาทิตย์กระเจิงในชั้นบรรยากาศ',
       ],
+
       ['a Lao reply', 'ຂອບໃຈ'],
       ['a Khmer reply', 'អរគុណ'],
       ['a Myanmar reply', 'ကျေးဇူးတင်ပါတယ်'],
@@ -215,14 +216,14 @@ describe('PlayButton', () => {
     resetStores();
   });
 
-  it('opens setup sheet on first tap when no voice chosen', () => {
-    const {getByTestId} = renderButton(makeAssistantMsg());
-    fireEvent.press(getByTestId('playbutton-msg-1'));
+  it('opens setup sheet on first tap when no voice chosen', async () => {
+    const {getByTestId} = await renderButton(makeAssistantMsg());
+    await fireEvent.press(getByTestId('playbutton-msg-1'));
     expect(ttsStore.openSetupSheet).toHaveBeenCalledTimes(1);
     expect(ttsStore.play).not.toHaveBeenCalled();
   });
 
-  it('calls play when tapped with a voice chosen', () => {
+  it('calls play when tapped with a voice chosen', async () => {
     runInAction(() => {
       ttsStore.currentVoice = {
         id: 'v1',
@@ -230,15 +231,15 @@ describe('PlayButton', () => {
         engine: 'system',
       } as any;
     });
-    const {getByTestId} = renderButton(makeAssistantMsg());
-    fireEvent.press(getByTestId('playbutton-msg-1'));
+    const {getByTestId} = await renderButton(makeAssistantMsg());
+    await fireEvent.press(getByTestId('playbutton-msg-1'));
     expect(ttsStore.play).toHaveBeenCalledWith('msg-1', 'Hello there friend', {
       hadReasoning: false,
     });
     expect(ttsStore.stop).not.toHaveBeenCalled();
   });
 
-  it('passes hadReasoning=true when message metadata has reasoning_content', () => {
+  it('passes hadReasoning=true when message metadata has reasoning_content', async () => {
     runInAction(() => {
       ttsStore.currentVoice = {
         id: 'v1',
@@ -246,7 +247,7 @@ describe('PlayButton', () => {
         engine: 'system',
       } as any;
     });
-    const {getByTestId} = renderButton(
+    const {getByTestId} = await renderButton(
       makeAssistantMsg({
         metadata: {
           completionResult: {
@@ -256,13 +257,13 @@ describe('PlayButton', () => {
         },
       }),
     );
-    fireEvent.press(getByTestId('playbutton-msg-1'));
+    await fireEvent.press(getByTestId('playbutton-msg-1'));
     expect(ttsStore.play).toHaveBeenCalledWith('msg-1', 'Hello there friend', {
       hadReasoning: true,
     });
   });
 
-  it('passes hadReasoning=false when reasoning_content is whitespace-only', () => {
+  it('passes hadReasoning=false when reasoning_content is whitespace-only', async () => {
     runInAction(() => {
       ttsStore.currentVoice = {
         id: 'v1',
@@ -270,7 +271,7 @@ describe('PlayButton', () => {
         engine: 'system',
       } as any;
     });
-    const {getByTestId} = renderButton(
+    const {getByTestId} = await renderButton(
       makeAssistantMsg({
         metadata: {
           completionResult: {
@@ -280,13 +281,13 @@ describe('PlayButton', () => {
         },
       }),
     );
-    fireEvent.press(getByTestId('playbutton-msg-1'));
+    await fireEvent.press(getByTestId('playbutton-msg-1'));
     expect(ttsStore.play).toHaveBeenCalledWith('msg-1', 'Hello there friend', {
       hadReasoning: false,
     });
   });
 
-  it('handles assistant_turn messages using derivedText', () => {
+  it('handles assistant_turn messages using derivedText', async () => {
     runInAction(() => {
       ttsStore.deviceMeetsMemory = true;
       ttsStore.currentVoice = {
@@ -304,14 +305,15 @@ describe('PlayButton', () => {
         {content: 'Sure, here it is.', reasoningContent: 'planning…'},
         {content: 'Hope this helps.'},
       ],
+
       metadata: {},
     } as unknown as MessageType.Any;
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <PlayButton message={turnMessage} />
       </L10nContext.Provider>,
     );
-    fireEvent.press(getByTestId('playbutton-turn-9'));
+    await fireEvent.press(getByTestId('playbutton-turn-9'));
     expect(ttsStore.play).toHaveBeenCalledWith(
       'turn-9',
       'Sure, here it is.\n\nHope this helps.',
@@ -319,7 +321,7 @@ describe('PlayButton', () => {
     );
   });
 
-  it('calls stop when tapped while this message is playing', () => {
+  it('calls stop when tapped while this message is playing', async () => {
     runInAction(() => {
       ttsStore.currentVoice = {
         id: 'v1',
@@ -328,8 +330,8 @@ describe('PlayButton', () => {
       } as any;
       ttsStore.playbackState = {mode: 'playing', messageId: 'msg-1'};
     });
-    const {getByTestId} = renderButton(makeAssistantMsg());
-    fireEvent.press(getByTestId('playbutton-msg-1'));
+    const {getByTestId} = await renderButton(makeAssistantMsg());
+    await fireEvent.press(getByTestId('playbutton-msg-1'));
     expect(ttsStore.stop).toHaveBeenCalledTimes(1);
     expect(ttsStore.play).not.toHaveBeenCalled();
   });
@@ -345,26 +347,26 @@ describe('PlayButton', () => {
       });
     });
 
-    it('is disabled and does not replay into the open mic', () => {
+    it('is disabled and does not replay into the open mic', async () => {
       runInAction(() => {
         voiceModeStore.phase = 'listening';
       });
-      const {getByTestId} = renderButton(makeAssistantMsg());
+      const {getByTestId} = await renderButton(makeAssistantMsg());
       const button = getByTestId('playbutton-msg-1');
       expect(button.props.accessibilityState).toEqual(
         expect.objectContaining({disabled: true}),
       );
-      fireEvent.press(button);
+      await fireEvent.press(button);
       expect(ttsStore.play).not.toHaveBeenCalled();
     });
 
-    it('replays again once voice mode is closed', () => {
-      const {getByTestId} = renderButton(makeAssistantMsg());
+    it('replays again once voice mode is closed', async () => {
+      const {getByTestId} = await renderButton(makeAssistantMsg());
       const button = getByTestId('playbutton-msg-1');
       expect(button.props.accessibilityState).toEqual(
         expect.objectContaining({disabled: false}),
       );
-      fireEvent.press(button);
+      await fireEvent.press(button);
       expect(ttsStore.play).toHaveBeenCalledTimes(1);
     });
   });

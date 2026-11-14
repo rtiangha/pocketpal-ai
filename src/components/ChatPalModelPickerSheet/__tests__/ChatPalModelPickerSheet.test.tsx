@@ -1,7 +1,6 @@
 import React from 'react';
 import {render, fireEvent, waitFor} from '@testing-library/react-native';
 import {Alert, Keyboard} from 'react-native';
-import BottomSheet from '@gorhom/bottom-sheet';
 
 import {ChatPalModelPickerSheet} from '../ChatPalModelPickerSheet';
 import {SheetBackground} from '../../Sheet/SheetBackground';
@@ -65,8 +64,14 @@ jest.mock('@gorhom/bottom-sheet', () => {
   const mockReact = require('react');
   return {
     __esModule: true,
-    default: mockReact.forwardRef(({children}: any, ref: any) =>
-      mockReact.createElement('View', {ref, testID: 'bottom-sheet'}, children),
+    // Spread props onto the host View so the sheet's props (e.g.
+    // backgroundComponent) stay observable in the host tree.
+    default: mockReact.forwardRef(({children, ...props}: any, ref: any) =>
+      mockReact.createElement(
+        'View',
+        {ref, testID: 'bottom-sheet', ...props},
+        children,
+      ),
     ),
     BottomSheetFlatList: ({data, renderItem}: any) =>
       mockReact.createElement(
@@ -124,8 +129,8 @@ describe('ChatPalModelPickerSheet', () => {
     jest.clearAllMocks();
   });
 
-  it('renders correctly when visible', () => {
-    const {getByTestId} = render(
+  it('renders correctly when visible', async () => {
+    const {getByTestId} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -139,8 +144,8 @@ describe('ChatPalModelPickerSheet', () => {
     expect(getByTestId('chat-pal-model-picker-tab-pals')).toBeTruthy();
   });
 
-  it('does not render when not visible', () => {
-    const {queryByTestId} = render(
+  it('does not render when not visible', async () => {
+    const {queryByTestId} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} isVisible={false} />
@@ -151,8 +156,8 @@ describe('ChatPalModelPickerSheet', () => {
     expect(queryByTestId('bottom-sheet')).toBeTruthy(); // Component still renders but sheet is closed
   });
 
-  it('dismisses keyboard when sheet becomes visible', () => {
-    const {rerender} = render(
+  it('dismisses keyboard when sheet becomes visible', async () => {
+    const {rerender} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} isVisible={false} />
@@ -164,7 +169,7 @@ describe('ChatPalModelPickerSheet', () => {
     expect(mockKeyboardDismiss).not.toHaveBeenCalled();
 
     // Make the sheet visible
-    rerender(
+    await rerender(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} isVisible={true} />
@@ -176,9 +181,9 @@ describe('ChatPalModelPickerSheet', () => {
     expect(mockKeyboardDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('closes sheet when keyboard opens', () => {
+  it('closes sheet when keyboard opens', async () => {
     const mockOnClose = jest.fn();
-    render(
+    await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet
@@ -199,8 +204,8 @@ describe('ChatPalModelPickerSheet', () => {
     expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
-  it('displays models and pals tabs', () => {
-    const {getByText} = render(
+  it('displays models and pals tabs', async () => {
+    const {getByText} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -216,8 +221,8 @@ describe('ChatPalModelPickerSheet', () => {
     ).toBeTruthy();
   });
 
-  it('switches tabs when tab is pressed', () => {
-    const {getByText} = render(
+  it('switches tabs when tab is pressed', async () => {
+    const {getByText} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -228,14 +233,14 @@ describe('ChatPalModelPickerSheet', () => {
     const palsTab = getByText(
       l10n.en.components.chatPalModelPickerSheet.palsTab,
     );
-    fireEvent.press(palsTab);
+    await fireEvent.press(palsTab);
 
     // Tab should be active after press
     expect(palsTab).toBeTruthy();
   });
 
   it('calls onModelSelect when model is selected', async () => {
-    const {getByText} = render(
+    const {getByText} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -245,7 +250,7 @@ describe('ChatPalModelPickerSheet', () => {
 
     // Find and press a model (this would need to be adjusted based on actual rendering)
     const modelItem = getByText('Test Model 1');
-    fireEvent.press(modelItem);
+    await fireEvent.press(modelItem);
 
     await waitFor(() => {
       expect(defaultProps.onModelSelect).toHaveBeenCalledWith('model1');
@@ -255,7 +260,7 @@ describe('ChatPalModelPickerSheet', () => {
   });
 
   it('calls onPalSelect when pal is selected', async () => {
-    const {getByText} = render(
+    const {getByText} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -267,11 +272,11 @@ describe('ChatPalModelPickerSheet', () => {
     const palsTab = getByText(
       l10n.en.components.chatPalModelPickerSheet.palsTab,
     );
-    fireEvent.press(palsTab);
+    await fireEvent.press(palsTab);
 
     // Find and press a pal
     const palItem = getByText('Test Assistant');
-    fireEvent.press(palItem);
+    await fireEvent.press(palItem);
 
     await waitFor(() => {
       expect(chatSessionStore.setActivePal).toHaveBeenCalledWith('pal1');
@@ -281,7 +286,7 @@ describe('ChatPalModelPickerSheet', () => {
   });
 
   it('shows model switch confirmation when pal has different default model', async () => {
-    const {getByText} = render(
+    const {getByText} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -293,11 +298,11 @@ describe('ChatPalModelPickerSheet', () => {
     const palsTab = getByText(
       l10n.en.components.chatPalModelPickerSheet.palsTab,
     );
-    fireEvent.press(palsTab);
+    await fireEvent.press(palsTab);
 
     // Select pal with different default model
     const palItem = getByText('Test Roleplay');
-    fireEvent.press(palItem);
+    await fireEvent.press(palItem);
 
     await waitFor(() => {
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -315,8 +320,8 @@ describe('ChatPalModelPickerSheet', () => {
     });
   });
 
-  it('calls onClose when sheet is closed', () => {
-    const {getByTestId} = render(
+  it('calls onClose when sheet is closed', async () => {
+    const {getByTestId} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -334,8 +339,8 @@ describe('ChatPalModelPickerSheet', () => {
     // For testing purposes, we can verify the component structure is correct
   });
 
-  it('renders the touch-taking SheetBackground', () => {
-    const {UNSAFE_getByType} = render(
+  it('renders the touch-taking SheetBackground', async () => {
+    const {getByTestId} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />
@@ -343,13 +348,13 @@ describe('ChatPalModelPickerSheet', () => {
       </UserContext.Provider>,
     );
 
-    expect(UNSAFE_getByType(BottomSheet).props.backgroundComponent).toBe(
+    expect(getByTestId('bottom-sheet').props.backgroundComponent).toBe(
       SheetBackground,
     );
   });
 
-  it('enables content panning gesture for scrolling', () => {
-    const {getByTestId} = render(
+  it('enables content panning gesture for scrolling', async () => {
+    const {getByTestId} = await render(
       <UserContext.Provider value={user}>
         <L10nContext.Provider value={l10n.en}>
           <ChatPalModelPickerSheet {...defaultProps} />

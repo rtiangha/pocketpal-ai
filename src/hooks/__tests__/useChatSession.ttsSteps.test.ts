@@ -99,6 +99,7 @@ async function offerSearchTool() {
       pact: {talents: [{name: 'web_search', necessity: 'optional'}]},
     } as any,
   ];
+
   chatSessionStore.sessions = [
     {
       id: 'session-1',
@@ -113,7 +114,7 @@ async function offerSearchTool() {
 }
 
 async function runTurn() {
-  const {result} = renderHook(() =>
+  const {result} = await renderHook(() =>
     useChatSession({current: null}, textMessage.author, mockAssistant),
   );
   await act(async () => {
@@ -189,6 +190,7 @@ beforeEach(() => {
       settingsSource: 'pal',
     } as any,
   ];
+
   chatSessionStore.activeSessionId = 'session-1';
   chatSessionStore.agentUiState = {
     status: 'idle',
@@ -286,6 +288,7 @@ describe('useChatSession — auto-speak across agent steps', () => {
           {reasoning: 'Need a search', content: '{"name"'},
           {reasoning: 'Need a search', content: echoText},
         ],
+
         toolCalls: [searchCall('x')],
       },
       {tokens: ['The', 'The answer is 42.']},
@@ -520,12 +523,12 @@ describe('useChatSession — a spoken turn with several tool calls', () => {
     (ttsStore as any).voiceOutputActive = true;
   });
 
-  const sendSpoken = () => {
-    const {result} = renderHook(() =>
+  const sendSpoken = async () => {
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     let sending!: Promise<unknown>;
-    act(() => {
+    await act(() => {
       sending = result.current.handleSendPress(textMessage, {spoken: true});
     });
     return {result, sending: () => sending};
@@ -558,7 +561,7 @@ describe('useChatSession — a spoken turn with several tool calls', () => {
         {tokens: ['The', 'The answer is 42.']},
       ]);
 
-      const {sending} = sendSpoken();
+      const {sending} = await sendSpoken();
       await act(async () => {
         await sending();
       });
@@ -606,7 +609,7 @@ describe('useChatSession — a spoken turn with several tool calls', () => {
       {tokens: ['Never spoken.']},
     ]);
 
-    const {result, sending} = sendSpoken();
+    const {result, sending} = await sendSpoken();
     await act(async () => {
       await new Promise(resolve => setImmediate(resolve));
     });
@@ -645,7 +648,7 @@ describe('useChatSession — a spoken turn with several tool calls', () => {
       {tokens: ['Never spoken.']},
     ]);
 
-    const {sending} = sendSpoken();
+    const {sending} = await sendSpoken();
     await act(async () => {
       await new Promise(resolve => setImmediate(resolve));
     });

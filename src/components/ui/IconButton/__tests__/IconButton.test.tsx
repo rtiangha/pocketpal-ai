@@ -9,32 +9,32 @@ import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 const Icon = () => <Text>★</Text>;
 
 describe('IconButton', () => {
-  it('defaults to testID=ui-icon-button and role=button', () => {
-    const {getByTestId} = render(
+  it('defaults to testID=ui-icon-button and role=button', async () => {
+    const {getByTestId} = await render(
       <IconButton icon={<Icon />} accessibilityLabel="Star" />,
     );
     const el = getByTestId('ui-icon-button');
     expect(el.props.accessibilityRole).toBe('button');
   });
 
-  it('forwards accessibilityLabel and renders icon', () => {
-    const {getByTestId, getByText} = render(
+  it('forwards accessibilityLabel and renders icon', async () => {
+    const {getByTestId, getByText} = await render(
       <IconButton icon={<Icon />} accessibilityLabel="Star" />,
     );
     expect(getByTestId('ui-icon-button').props.accessibilityLabel).toBe('Star');
     expect(getByText('★')).toBeTruthy();
   });
 
-  it('calls onPress', () => {
+  it('calls onPress', async () => {
     const onPress = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <IconButton
         icon={<Icon />}
         accessibilityLabel="Star"
         onPress={onPress}
       />,
     );
-    fireEvent.press(getByTestId('ui-icon-button'));
+    await fireEvent.press(getByTestId('ui-icon-button'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });

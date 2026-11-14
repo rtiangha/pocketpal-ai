@@ -21,8 +21,8 @@ describe('Bubble', () => {
     };
   });
 
-  const renderBubble = (message, child = 'Child content') => {
-    return render(
+  const renderBubble = async (message, child = 'Child content') => {
+    return await render(
       <Bubble
         child={<Text testID="child">{child}</Text>}
         message={message}
@@ -34,24 +34,24 @@ describe('Bubble', () => {
   // Bubble is a pure shape primitive — chrome lives on
   // AssistantTurnFooter. Tests assert shape behaviour only.
 
-  it('renders the child content', () => {
-    const {getByTestId} = renderBubble(mockMessage);
+  it('renders the child content', async () => {
+    const {getByTestId} = await renderBubble(mockMessage);
     expect(getByTestId('child')).toBeTruthy();
   });
 
-  it('renders an ai-message testID for non-current-user authors', () => {
+  it('renders an ai-message testID for non-current-user authors', async () => {
     const aiMessage = {...mockMessage, author: {id: 'assistant'}};
-    const {getByTestId} = renderBubble(aiMessage);
+    const {getByTestId} = await renderBubble(aiMessage);
     expect(getByTestId('ai-message')).toBeTruthy();
   });
 
-  it('does not crash when message.metadata is undefined', () => {
+  it('does not crash when message.metadata is undefined', async () => {
     const messageWithoutMetadata = {...mockMessage, metadata: undefined};
-    const {getByText} = renderBubble(messageWithoutMetadata);
+    const {getByText} = await renderBubble(messageWithoutMetadata);
     expect(getByText('Child content')).toBeTruthy();
   });
 
-  it('does NOT render timing or copy chrome (chrome lives in AssistantTurnFooter now)', () => {
+  it('does NOT render timing or copy chrome (chrome lives in AssistantTurnFooter now)', async () => {
     const messageWithTimings = {
       ...mockMessage,
       metadata: {
@@ -59,7 +59,7 @@ describe('Bubble', () => {
         timings: {predicted_per_token_ms: 10, predicted_per_second: 100},
       },
     };
-    const {queryByText, queryByTestId} = renderBubble(messageWithTimings);
+    const {queryByText, queryByTestId} = await renderBubble(messageWithTimings);
     expect(queryByTestId('message-timing')).toBeNull();
     expect(queryByText('content-copy')).toBeNull();
     expect(queryByText('10ms/token, 100.00 tokens/sec')).toBeNull();

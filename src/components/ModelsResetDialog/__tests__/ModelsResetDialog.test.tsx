@@ -14,8 +14,8 @@ describe('ModelsResetDialog', () => {
     jest.clearAllMocks();
   });
 
-  it('renders correctly when visible', () => {
-    const {getByTestId, getByText} = render(
+  it('renders correctly when visible', async () => {
+    const {getByTestId, getByText} = await render(
       <ModelsResetDialog
         testID="reset-dialog"
         visible={true}
@@ -37,8 +37,8 @@ describe('ModelsResetDialog', () => {
     expect(getByTestId('proceed-reset-button')).toBeTruthy();
   });
 
-  it('is not visible when visible prop is false', () => {
-    const {queryByTestId} = render(
+  it('is not visible when visible prop is false', async () => {
+    const {queryByTestId} = await render(
       <ModelsResetDialog
         testID="reset-dialog"
         visible={false}
@@ -50,8 +50,8 @@ describe('ModelsResetDialog', () => {
     expect(queryByTestId('reset-dialog')).toBeNull();
   });
 
-  it('calls onDismiss when cancel button is pressed', () => {
-    const {getByTestId} = render(
+  it('calls onDismiss when cancel button is pressed', async () => {
+    const {getByTestId} = await render(
       <ModelsResetDialog
         testID="reset-dialog"
         visible={true}
@@ -61,14 +61,14 @@ describe('ModelsResetDialog', () => {
     );
 
     const cancelButton = getByTestId('cancel-reset-button');
-    fireEvent.press(cancelButton);
+    await fireEvent.press(cancelButton);
 
     expect(mockOnDismiss).toHaveBeenCalledTimes(1);
     expect(mockOnReset).not.toHaveBeenCalled();
   });
 
-  it('calls onReset when proceed button is pressed', () => {
-    const {getByTestId} = render(
+  it('calls onReset when proceed button is pressed', async () => {
+    const {getByTestId} = await render(
       <ModelsResetDialog
         testID="reset-dialog"
         visible={true}
@@ -78,14 +78,14 @@ describe('ModelsResetDialog', () => {
     );
 
     const proceedButton = getByTestId('proceed-reset-button');
-    fireEvent.press(proceedButton);
+    await fireEvent.press(proceedButton);
 
     expect(mockOnReset).toHaveBeenCalledTimes(1);
     expect(mockOnDismiss).not.toHaveBeenCalled();
   });
 
-  it('calls onDismiss when dialog backdrop is pressed', () => {
-    const {getByTestId} = render(
+  it('calls onDismiss when dialog backdrop is pressed', async () => {
+    const {getByTestId} = await render(
       <ModelsResetDialog
         testID="reset-dialog"
         visible={true}
@@ -95,7 +95,7 @@ describe('ModelsResetDialog', () => {
     );
 
     // Simulate pressing the dialog backdrop
-    fireEvent(getByTestId('reset-dialog'), 'onDismiss');
+    await fireEvent(getByTestId('reset-dialog'), 'onDismiss');
 
     expect(mockOnDismiss).toHaveBeenCalledTimes(1);
     expect(mockOnReset).not.toHaveBeenCalled();

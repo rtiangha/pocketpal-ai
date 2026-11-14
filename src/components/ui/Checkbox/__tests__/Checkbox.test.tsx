@@ -5,8 +5,8 @@ import {Checkbox} from '../Checkbox';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('Checkbox', () => {
-  it('defaults to testID=ui-checkbox', () => {
-    const {getByTestId} = render(
+  it('defaults to testID=ui-checkbox', async () => {
+    const {getByTestId} = await render(
       <Checkbox
         value={false}
         onValueChange={() => {}}

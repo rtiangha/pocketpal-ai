@@ -9,8 +9,8 @@ import {AboutScreen} from '../AboutScreen';
 import {submitFeedback} from '../../../api/feedback';
 import {l10n} from '../../../locales';
 
-const render = (ui: React.ReactElement, options: any = {}) =>
-  baseRender(ui, {withBottomSheetProvider: true, ...options});
+const render = async (ui: React.ReactElement, options: any = {}) =>
+  await baseRender(ui, {withBottomSheetProvider: true, ...options});
 
 // Mock DeviceInfo
 jest.mock('react-native-device-info', () => ({
@@ -39,8 +39,8 @@ describe('AboutScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders correctly', () => {
-    const {getByText} = render(<AboutScreen />);
+  it('renders correctly', async () => {
+    const {getByText} = await render(<AboutScreen />);
 
     expect(getByText('PocketPal AI')).toBeTruthy();
     expect(getByText('v1.0.0 (100)')).toBeTruthy();
@@ -48,10 +48,10 @@ describe('AboutScreen', () => {
     expect(getByText(l10n.en.about.githubButton)).toBeTruthy();
   });
 
-  it('copies version to clipboard when version button is pressed', () => {
-    const {getByText} = render(<AboutScreen />);
+  it('copies version to clipboard when version button is pressed', async () => {
+    const {getByText} = await render(<AboutScreen />);
 
-    fireEvent.press(getByText('v1.0.0 (100)'));
+    await fireEvent.press(getByText('v1.0.0 (100)'));
 
     expect(Alert.alert).toHaveBeenCalledWith(
       l10n.en.about.versionCopiedTitle,
@@ -59,10 +59,10 @@ describe('AboutScreen', () => {
     );
   });
 
-  it('opens the bundled open-source notices in a sheet without a network link', () => {
-    const {getByTestId, getByText} = render(<AboutScreen />);
+  it('opens the bundled open-source notices in a sheet without a network link', async () => {
+    const {getByTestId, getByText} = await render(<AboutScreen />);
 
-    fireEvent.press(getByTestId('about-open-source-notices'));
+    await fireEvent.press(getByTestId('about-open-source-notices'));
 
     expect(getByTestId('about-open-source-notices-sheet')).toBeTruthy();
     expect(getByText(l10n.en.about.phononNoticesCredit)).toBeTruthy();
@@ -70,8 +70,8 @@ describe('AboutScreen', () => {
     expect(Linking.openURL).not.toHaveBeenCalled();
   });
 
-  it('gives each legal link a 44pt tap target with its role', () => {
-    const {getByRole} = render(<AboutScreen />);
+  it('gives each legal link a 44pt tap target with its role', async () => {
+    const {getByRole} = await render(<AboutScreen />);
 
     const privacy = getByRole('link', {name: l10n.en.about.privacyPolicy});
     const terms = getByRole('link', {name: l10n.en.about.termsOfService});
@@ -82,8 +82,8 @@ describe('AboutScreen', () => {
       expect(target).toHaveStyle({minHeight: 44});
     }
 
-    fireEvent.press(privacy);
-    fireEvent.press(terms);
+    await fireEvent.press(privacy);
+    await fireEvent.press(terms);
     expect(Linking.openURL).toHaveBeenCalledWith(
       'https://pocketpal.dev/privacy-policy',
     );
@@ -91,17 +91,17 @@ describe('AboutScreen', () => {
     expect(notices.props.testID).toBe('about-open-source-notices');
   });
 
-  it('hides the separator before a legal link that wraps to the next line', () => {
-    const {getByTestId, getAllByText} = render(<AboutScreen />);
-    const layoutAt = (i: number, y: number) =>
-      fireEvent(getByTestId(`about-legal-item-${i}`), 'layout', {
+  it('hides the separator before a legal link that wraps to the next line', async () => {
+    const {getByTestId, getAllByText} = await render(<AboutScreen />);
+    const layoutAt = async (i: number, y: number) =>
+      await fireEvent(getByTestId(`about-legal-item-${i}`), 'layout', {
         nativeEvent: {layout: {x: 0, y, width: 100, height: 16}},
       });
 
-    act(() => {
-      layoutAt(0, 0);
-      layoutAt(1, 0);
-      layoutAt(2, 20);
+    await act(async () => {
+      await layoutAt(0, 0);
+      await layoutAt(1, 0);
+      await layoutAt(2, 20);
     });
 
     const [first, second] = getAllByText('·', {
@@ -111,10 +111,10 @@ describe('AboutScreen', () => {
     expect(second).toHaveStyle({opacity: 0});
   });
 
-  it('opens GitHub URL when GitHub button is pressed', () => {
-    const {getByText} = render(<AboutScreen />);
+  it('opens GitHub URL when GitHub button is pressed', async () => {
+    const {getByText} = await render(<AboutScreen />);
 
-    fireEvent.press(getByText('Star on GitHub'));
+    await fireEvent.press(getByText('Star on GitHub'));
 
     expect(Linking.openURL).toHaveBeenCalledWith(
       'https://github.com/a-ghorbani/pocketpal-ai',
@@ -132,8 +132,8 @@ describe('AboutScreen', () => {
       Platform.OS = originalOS;
     });
 
-    it('shows no sponsorship option in the support section', () => {
-      const {queryByText, getByText} = render(<AboutScreen />);
+    it('shows no sponsorship option in the support section', async () => {
+      const {queryByText, getByText} = await render(<AboutScreen />);
 
       expect(queryByText('Become a Sponsor')).toBeNull();
       expect(queryByText('or')).toBeNull();
@@ -144,9 +144,9 @@ describe('AboutScreen', () => {
   });
 
   it('opens feedback form when share thoughts button is pressed', async () => {
-    const {getByText, findByText} = render(<AboutScreen />);
+    const {getByText, findByText} = await render(<AboutScreen />);
 
-    fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
+    await fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
 
     expect(await findByText(l10n.en.feedback.useCase.label)).toBeTruthy();
     expect(
@@ -161,37 +161,37 @@ describe('AboutScreen', () => {
   });
 
   it('submits feedback successfully', async () => {
-    const {findByText, getByText, findByPlaceholderText} = render(
+    const {findByText, getByText, findByPlaceholderText} = await render(
       <AboutScreen />,
     );
 
     // Open feedback form
-    fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
+    await fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
 
     const useCaseInput = await findByPlaceholderText(
       l10n.en.feedback.useCase.placeholder,
     );
-    fireEvent.changeText(useCaseInput, 'Test use case');
+    await fireEvent.changeText(useCaseInput, 'Test use case');
 
     const featureRequestsInput = await findByPlaceholderText(
       l10n.en.feedback.featureRequests.placeholder,
     );
-    fireEvent.changeText(featureRequestsInput, 'Test feature request');
+    await fireEvent.changeText(featureRequestsInput, 'Test feature request');
 
     const generalFeedbackInput = await findByPlaceholderText(
       l10n.en.feedback.generalFeedback.placeholder,
     );
-    fireEvent.changeText(generalFeedbackInput, 'Test feedback');
+    await fireEvent.changeText(generalFeedbackInput, 'Test feedback');
 
     const dailyButton = await findByText(
       l10n.en.feedback.usageFrequency.options.daily,
     );
-    fireEvent.press(dailyButton);
+    await fireEvent.press(dailyButton);
 
     // Submit form
     const submitButton = await findByText(l10n.en.feedback.submit);
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     expect(submitFeedback).toHaveBeenCalledWith({
@@ -208,15 +208,15 @@ describe('AboutScreen', () => {
   });
 
   it('shows validation error when submitting empty feedback', async () => {
-    const {getByText, findByText} = render(<AboutScreen />);
+    const {getByText, findByText} = await render(<AboutScreen />);
 
     // Open feedback form
-    fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
+    await fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
 
     // Submit empty form
     const submitButton = await findByText(l10n.en.feedback.submit);
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     expect(Alert.alert).toHaveBeenCalledWith(
@@ -228,15 +228,15 @@ describe('AboutScreen', () => {
   it('handles feedback submission error', async () => {
     (submitFeedback as jest.Mock).mockRejectedValueOnce(new Error('API Error'));
 
-    const {getByText, findByText, findByPlaceholderText} = render(
+    const {getByText, findByText, findByPlaceholderText} = await render(
       <AboutScreen />,
     );
 
     // Open feedback form
-    fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
+    await fireEvent.press(getByText(l10n.en.feedback.shareThoughtsButton));
 
     // Fill out form
-    fireEvent.changeText(
+    await fireEvent.changeText(
       await findByPlaceholderText(l10n.en.feedback.useCase.placeholder),
       'Test use case',
     );
@@ -244,7 +244,7 @@ describe('AboutScreen', () => {
     // Submit form
     const submitButton = await findByText(l10n.en.feedback.submit);
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     expect(Alert.alert).toHaveBeenCalledWith('Error', 'API Error');

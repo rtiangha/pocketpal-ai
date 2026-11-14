@@ -27,7 +27,7 @@ describe('RenderHtmlTalentUI', () => {
   });
 
   describe('renderResult', () => {
-    it('returns HtmlPreviewBubble with html and title from TalentResult', () => {
+    it('returns HtmlPreviewBubble with html and title from TalentResult', async () => {
       const result = {
         type: 'html' as const,
         html: '<h1>Hello</h1>',
@@ -35,7 +35,7 @@ describe('RenderHtmlTalentUI', () => {
         summary: 'Rendered HTML preview: "Test Title"',
       };
       const node = ui.renderResult(result);
-      const {getByTestId, getByText} = render(<>{node}</>);
+      const {getByTestId, getByText} = await render(<>{node}</>);
       expect(getByTestId('html-preview-bubble')).toBeTruthy();
       expect(getByText('Test Title')).toBeTruthy();
       expect(getByText('<h1>Hello</h1>')).toBeTruthy();
@@ -60,23 +60,23 @@ describe('RenderHtmlTalentUI', () => {
       expect(node).toBeNull();
     });
 
-    it('renders without title when title is absent', () => {
+    it('renders without title when title is absent', async () => {
       const result = {
         type: 'html' as const,
         html: '<p>content</p>',
         summary: 'Rendered HTML preview: "Untitled"',
       };
       const node = ui.renderResult(result);
-      const {getByTestId, getByText} = render(<>{node}</>);
+      const {getByTestId, getByText} = await render(<>{node}</>);
       expect(getByTestId('html-preview-bubble')).toBeTruthy();
       expect(getByText('Untitled')).toBeTruthy();
     });
   });
 
   describe('renderPending', () => {
-    it('renders pending skeleton with correct testID and text', () => {
+    it('renders pending skeleton with correct testID and text', async () => {
       const node = ui.renderPending();
-      const {getByTestId, getByText} = render(<>{node}</>);
+      const {getByTestId, getByText} = await render(<>{node}</>);
       expect(getByTestId('talent-call-pending')).toBeTruthy();
       expect(getByText('Generating preview…')).toBeTruthy();
     });

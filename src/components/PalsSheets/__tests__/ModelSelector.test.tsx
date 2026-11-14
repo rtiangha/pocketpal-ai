@@ -24,21 +24,23 @@ describe('ModelSelector', () => {
     jest.clearAllMocks();
   });
 
-  it('renders with required props', () => {
-    const {getByText} = render(<ModelSelector {...defaultProps} />);
+  it('renders with required props', async () => {
+    const {getByText} = await render(<ModelSelector {...defaultProps} />);
 
     expect(getByText('Select Model')).toBeDefined();
     expect(getByText('Select model')).toBeDefined(); // This is now the button text, not placeholder
   });
 
-  it('shows required asterisk when required prop is true', () => {
-    const {getByText} = render(<ModelSelector {...defaultProps} required />);
+  it('shows required asterisk when required prop is true', async () => {
+    const {getByText} = await render(
+      <ModelSelector {...defaultProps} required />,
+    );
 
     expect(getByText('Select Model*')).toBeDefined();
   });
 
-  it('displays selected model name when value is provided', () => {
-    const {getByText} = render(
+  it('displays selected model name when value is provided', async () => {
+    const {getByText} = await render(
       <ModelSelector {...defaultProps} value={modelsList[0]} />,
     );
 
@@ -46,25 +48,25 @@ describe('ModelSelector', () => {
     expect(getByText(modelsList[0].name)).toBeDefined();
   });
 
-  it('displays helper text when provided', () => {
-    const {getByText} = render(
+  it('displays helper text when provided', async () => {
+    const {getByText} = await render(
       <ModelSelector {...defaultProps} helperText="Helper message" />,
     );
 
     expect(getByText('Helper message')).toBeDefined();
   });
 
-  it('uses custom placeholder when provided', () => {
-    const {getByText} = render(
+  it('uses custom placeholder when provided', async () => {
+    const {getByText} = await render(
       <ModelSelector {...defaultProps} placeholder="Custom placeholder" />,
     );
 
     expect(getByText('Custom placeholder')).toBeDefined();
   });
 
-  it('applies filter when provided', () => {
+  it('applies filter when provided', async () => {
     const filter = (model: any) => model.name.includes('basic');
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ModelSelector
         {...defaultProps}
         filter={filter}
@@ -76,16 +78,16 @@ describe('ModelSelector', () => {
     expect(getByTestId('model-selector')).toBeDefined();
   });
 
-  it('passes through disabled prop', () => {
-    const {getByTestId} = render(
+  it('passes through disabled prop', async () => {
+    const {getByTestId} = await render(
       <ModelSelector {...defaultProps} disabled testID="model-selector" />,
     );
 
     expect(getByTestId('model-selector')).toBeDefined();
   });
 
-  it('passes through error prop', () => {
-    const {getByTestId} = render(
+  it('passes through error prop', async () => {
+    const {getByTestId} = await render(
       <ModelSelector {...defaultProps} error testID="model-selector" />,
     );
 

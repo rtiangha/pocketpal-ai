@@ -1,5 +1,5 @@
 import Clipboard from '@react-native-clipboard/clipboard';
-import {renderHook, act} from '@testing-library/react-hooks';
+import {renderHook, act} from '@testing-library/react-native';
 
 import {textMessage, user} from '../../../jest/fixtures';
 import {createModel} from '../../../jest/fixtures/models';
@@ -34,8 +34,8 @@ describe('useMessageActions', () => {
     jest.clearAllMocks();
   });
 
-  it('copies message text to clipboard', () => {
-    const {result} = renderHook(() =>
+  it('copies message text to clipboard', async () => {
+    const {result} = await renderHook(() =>
       useMessageActions({
         user,
         messages,
@@ -44,7 +44,7 @@ describe('useMessageActions', () => {
       }),
     );
 
-    act(() => {
+    await act(() => {
       result.current.handleCopy({
         ...textMessage,
         text: 'Copy this text',
@@ -55,8 +55,8 @@ describe('useMessageActions', () => {
     expect(Clipboard.setString).toHaveBeenCalledWith('Copy this text');
   });
 
-  it('enters edit mode for user message', () => {
-    const {result} = renderHook(() =>
+  it('enters edit mode for user message', async () => {
+    const {result} = await renderHook(() =>
       useMessageActions({
         user,
         messages,
@@ -73,7 +73,7 @@ describe('useMessageActions', () => {
       type: 'text' as const,
     };
 
-    act(() => {
+    await act(() => {
       result.current.handleEdit(userMessage);
     });
 
@@ -81,8 +81,8 @@ describe('useMessageActions', () => {
     expect(mockSetInputText).toHaveBeenCalledWith('Edit this message');
   });
 
-  it('does not enter edit mode for assistant message', () => {
-    const {result} = renderHook(() =>
+  it('does not enter edit mode for assistant message', async () => {
+    const {result} = await renderHook(() =>
       useMessageActions({
         user,
         messages,
@@ -97,7 +97,7 @@ describe('useMessageActions', () => {
       type: 'text' as const,
     };
 
-    act(() => {
+    await act(() => {
       result.current.handleEdit(assistantMessage);
     });
 
@@ -107,7 +107,7 @@ describe('useMessageActions', () => {
 
   describe('handleTryAgain', () => {
     it('resubmits user message', async () => {
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages,
@@ -156,7 +156,7 @@ describe('useMessageActions', () => {
         },
       ];
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages: _messages,
@@ -182,7 +182,7 @@ describe('useMessageActions', () => {
 
   describe('handleTryAgainWith', () => {
     it('uses current model if model ID matches', async () => {
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages,
@@ -203,7 +203,7 @@ describe('useMessageActions', () => {
     });
 
     it('initializes new model if model ID differs', async () => {
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages,
@@ -253,8 +253,8 @@ describe('useMessageActions', () => {
       steps: [{content: 'Let me calculate that'}, {content: 'The answer is 4'}],
     };
 
-    it('#1 handleCopy(legacy Text) → clipboard contains message.text (regression guard)', () => {
-      const {result} = renderHook(() =>
+    it('#1 handleCopy(legacy Text) → clipboard contains message.text (regression guard)', async () => {
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages: [userMsg, turnSingle],
@@ -262,7 +262,7 @@ describe('useMessageActions', () => {
           setInputText: mockSetInputText,
         }),
       );
-      act(() => {
+      await act(() => {
         result.current.handleCopy({
           ...textMessage,
           text: 'classic',
@@ -272,8 +272,8 @@ describe('useMessageActions', () => {
       expect(Clipboard.setString).toHaveBeenCalledWith('classic');
     });
 
-    it('#2 handleCopy(single-step AssistantTurn) → clipboard contains step[0].content', () => {
-      const {result} = renderHook(() =>
+    it('#2 handleCopy(single-step AssistantTurn) → clipboard contains step[0].content', async () => {
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages: [userMsg, turnSingle],
@@ -281,14 +281,14 @@ describe('useMessageActions', () => {
           setInputText: mockSetInputText,
         }),
       );
-      act(() => {
+      await act(() => {
         result.current.handleCopy(turnSingle);
       });
       expect(Clipboard.setString).toHaveBeenCalledWith('It is 4');
     });
 
-    it('#3 handleCopy(multi-step AssistantTurn) → clipboard contains preamble + final answer joined', () => {
-      const {result} = renderHook(() =>
+    it('#3 handleCopy(multi-step AssistantTurn) → clipboard contains preamble + final answer joined', async () => {
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages: [userMsg, turnMulti],
@@ -296,7 +296,7 @@ describe('useMessageActions', () => {
           setInputText: mockSetInputText,
         }),
       );
-      act(() => {
+      await act(() => {
         result.current.handleCopy(turnMulti);
       });
       expect(Clipboard.setString).toHaveBeenCalledWith(
@@ -304,8 +304,8 @@ describe('useMessageActions', () => {
       );
     });
 
-    it('#4 handleEdit(AssistantTurn) → no-op (single source of truth: type === text early return)', () => {
-      const {result} = renderHook(() =>
+    it('#4 handleEdit(AssistantTurn) → no-op (single source of truth: type === text early return)', async () => {
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages: [turnSingle],
@@ -313,7 +313,7 @@ describe('useMessageActions', () => {
           setInputText: mockSetInputText,
         }),
       );
-      act(() => {
+      await act(() => {
         result.current.handleEdit(turnSingle);
       });
       expect(chatSessionStore.enterEditMode).not.toHaveBeenCalled();
@@ -325,7 +325,7 @@ describe('useMessageActions', () => {
       // assistant turn id is 't-2'; the user message that triggered it
       // is at a later index.
       const messageList = [turnMulti, userMsg];
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages: messageList,
@@ -349,7 +349,7 @@ describe('useMessageActions', () => {
     it('#6 handleTryAgainWith(AssistantTurn) → parameter accepted, same walk-back behavior', async () => {
       const messageList = [turnMulti, userMsg];
       modelStore.activeModelId = 'model-1';
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useMessageActions({
           user,
           messages: messageList,

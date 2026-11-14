@@ -16,7 +16,7 @@ jest.mock('../../Sheet', () => {
     }
     return (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         <Button title="Close" onPress={onClose} testID="sheet-close-button" />
         {children}
       </View>
@@ -25,9 +25,11 @@ jest.mock('../../Sheet', () => {
   MockSheet.ScrollView = ({children}) => (
     <View testID="sheet-scroll-view">{children}</View>
   );
+
   MockSheet.Actions = ({children}) => (
     <View testID="sheet-actions">{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -36,9 +38,9 @@ describe('HFTokenSheet', () => {
     jest.clearAllMocks();
   });
 
-  it('renders correctly with an existing token', () => {
+  it('renders correctly with an existing token', async () => {
     hfStore.hfToken = 'existing-token';
-    const {queryByTestId, getByTestId} = render(
+    const {queryByTestId, getByTestId} = await render(
       <HFTokenSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -52,7 +54,7 @@ describe('HFTokenSheet', () => {
 
   it('handles saving a token', async () => {
     const mockOnSave = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <HFTokenSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -62,11 +64,11 @@ describe('HFTokenSheet', () => {
 
     // Change token value
     const tokenInput = getByTestId('hf-token-input');
-    fireEvent.changeText(tokenInput, 'new-token');
+    await fireEvent.changeText(tokenInput, 'new-token');
 
     // Submit the form
     const saveButton = getByTestId('hf-token-save-button');
-    fireEvent.press(saveButton);
+    await fireEvent.press(saveButton);
 
     // Verify token is saved
     await waitFor(() => {
@@ -77,7 +79,7 @@ describe('HFTokenSheet', () => {
 
   it('handles resetting a token', async () => {
     const mockOnSave = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <HFTokenSheet
         isVisible={true}
         onDismiss={jest.fn()}
@@ -87,7 +89,7 @@ describe('HFTokenSheet', () => {
 
     // Click reset button
     const resetButton = getByTestId('hf-token-reset-button');
-    fireEvent.press(resetButton);
+    await fireEvent.press(resetButton);
 
     // Verify token is cleared
     await waitFor(() => {
@@ -96,13 +98,13 @@ describe('HFTokenSheet', () => {
     });
   });
 
-  it('opens the Hugging Face token page when link is clicked', () => {
-    const {getByTestId} = render(
+  it('opens the Hugging Face token page when link is clicked', async () => {
+    const {getByTestId} = await render(
       <HFTokenSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
     const getTokenLink = getByTestId('hf-token-get-token-link');
-    fireEvent.press(getTokenLink);
+    await fireEvent.press(getTokenLink);
 
     // Verify the Linking API was called with the correct URL
     expect(mockOpenURL).toHaveBeenCalledWith(
@@ -110,8 +112,8 @@ describe('HFTokenSheet', () => {
     );
   });
 
-  it('toggles password visibility when eye icon is pressed', () => {
-    const {getByTestId} = render(
+  it('toggles password visibility when eye icon is pressed', async () => {
+    const {getByTestId} = await render(
       <HFTokenSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -120,7 +122,7 @@ describe('HFTokenSheet', () => {
 
     // Find the icon button by its props
     const rightIconButton = getByTestId('hf-token-input-icon');
-    fireEvent.press(rightIconButton);
+    await fireEvent.press(rightIconButton);
 
     // Now password should be visible (secure entry off)
     expect(tokenInput.props.secureTextEntry).toBe(false);

@@ -66,10 +66,10 @@ describe('DownloadBanner', () => {
     jest.restoreAllMocks();
   });
 
-  it('shows the failure row with no active downloads', () => {
+  it('shows the failure row with no active downloads', async () => {
     failWith(failedModel.id);
 
-    const {getByTestId, getByText} = render(<DownloadBanner />, {
+    const {getByTestId, getByText} = await render(<DownloadBanner />, {
       withNavigation: true,
     });
 
@@ -79,7 +79,7 @@ describe('DownloadBanner', () => {
     expect(getByTestId('download-banner-retry')).toBeTruthy();
   });
 
-  it('names a failed pal download after the pal, like the progress row', () => {
+  it('names a failed pal download after the pal, like the progress row', async () => {
     runInAction(() => {
       palStore.pals = [
         {
@@ -92,7 +92,7 @@ describe('DownloadBanner', () => {
     });
     failWith(failedModel.id);
 
-    const {getByText, queryByText} = render(<DownloadBanner />, {
+    const {getByText, queryByText} = await render(<DownloadBanner />, {
       withNavigation: true,
     });
 
@@ -100,11 +100,11 @@ describe('DownloadBanner', () => {
     expect(queryByText('Failed Model')).toBeNull();
   });
 
-  it('takes precedence over a progress row and counts active downloads', () => {
+  it('takes precedence over a progress row and counts active downloads', async () => {
     withActiveDownloads(2);
     failWith(failedModel.id);
 
-    const {getByTestId, queryByTestId} = render(<DownloadBanner />, {
+    const {getByTestId, queryByTestId} = await render(<DownloadBanner />, {
       withNavigation: true,
     });
 
@@ -113,11 +113,11 @@ describe('DownloadBanner', () => {
     expect(getByTestId('download-banner-extra-badge')).toHaveTextContent('+2');
   });
 
-  it('keeps the status alone on the first line and announces the count', () => {
+  it('keeps the status alone on the first line and announces the count', async () => {
     withActiveDownloads(2);
     failWith(failedModel.id);
 
-    const {getByTestId, getByLabelText} = render(<DownloadBanner />, {
+    const {getByTestId, getByLabelText} = await render(<DownloadBanner />, {
       withNavigation: true,
     });
 
@@ -132,47 +132,55 @@ describe('DownloadBanner', () => {
     ).toBeTruthy();
   });
 
-  it('retries from the Retry pill', () => {
+  it('retries from the Retry pill', async () => {
     failWith(failedModel.id);
 
-    const {getByTestId} = render(<DownloadBanner />, {withNavigation: true});
-    fireEvent.press(getByTestId('download-banner-retry'));
+    const {getByTestId} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
+    await fireEvent.press(getByTestId('download-banner-retry'));
 
     expect(modelStore.retryDownload).toHaveBeenCalledTimes(1);
   });
 
-  it('clears the error from the dismiss control', () => {
+  it('clears the error from the dismiss control', async () => {
     failWith(failedModel.id);
 
-    const {getByTestId} = render(<DownloadBanner />, {withNavigation: true});
-    fireEvent.press(getByTestId('download-banner-dismiss'));
+    const {getByTestId} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
+    await fireEvent.press(getByTestId('download-banner-dismiss'));
 
     expect(modelStore.clearDownloadError).toHaveBeenCalledTimes(1);
   });
 
-  it('shows no failure row while that model is downloading again', () => {
+  it('shows no failure row while that model is downloading again', async () => {
     (downloadManager.isDownloading as jest.Mock).mockImplementation(
       id => id === failedModel.id,
     );
     failWith(failedModel.id);
 
-    const {queryByTestId} = render(<DownloadBanner />, {withNavigation: true});
+    const {queryByTestId} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
 
     expect(queryByTestId('download-banner-failed')).toBeNull();
   });
 
-  it('shows no failure row for an error without a model', () => {
+  it('shows no failure row for an error without a model', async () => {
     failWith();
 
-    const {queryByTestId} = render(<DownloadBanner />, {withNavigation: true});
+    const {queryByTestId} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
 
     expect(queryByTestId('download-banner-failed')).toBeNull();
   });
 
-  it('keeps the progress row when nothing failed', () => {
+  it('keeps the progress row when nothing failed', async () => {
     withActiveDownloads(1);
 
-    const {getByTestId, queryByTestId} = render(<DownloadBanner />, {
+    const {getByTestId, queryByTestId} = await render(<DownloadBanner />, {
       withNavigation: true,
     });
 
@@ -180,40 +188,50 @@ describe('DownloadBanner', () => {
     expect(queryByTestId('download-banner-failed')).toBeNull();
   });
 
-  it('opens the Models screen from the failure row body', () => {
+  it('opens the Models screen from the failure row body', async () => {
     failWith(failedModel.id);
 
-    const {getByLabelText} = render(<DownloadBanner />, {withNavigation: true});
-    fireEvent.press(getByLabelText("Download didn't finish, Failed Model"));
+    const {getByLabelText} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
+    await fireEvent.press(
+      getByLabelText("Download didn't finish, Failed Model"),
+    );
 
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.MODELS);
   });
 
-  it('cancels the visible download from the progress row Stop pill', () => {
+  it('cancels the visible download from the progress row Stop pill', async () => {
     withActiveDownloads(1);
 
-    const {getByTestId} = render(<DownloadBanner />, {withNavigation: true});
-    fireEvent.press(getByTestId('download-banner-stop'));
+    const {getByTestId} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
+    await fireEvent.press(getByTestId('download-banner-stop'));
 
     expect(modelStore.cancelDownload).toHaveBeenCalledWith(runningModel.id);
     expect(modelStore.clearDownloadError).not.toHaveBeenCalled();
   });
 
-  it('dismisses only the banner from the progress row', () => {
+  it('dismisses only the banner from the progress row', async () => {
     withActiveDownloads(1);
 
-    const {getByTestId} = render(<DownloadBanner />, {withNavigation: true});
-    fireEvent.press(getByTestId('download-banner-dismiss'));
+    const {getByTestId} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
+    await fireEvent.press(getByTestId('download-banner-dismiss'));
 
     expect(uiStore.dismissDownloadBanner).toHaveBeenCalledWith(runningModel.id);
     expect(modelStore.clearDownloadError).not.toHaveBeenCalled();
   });
 
-  it('opens the Models screen from the progress row body', () => {
+  it('opens the Models screen from the progress row body', async () => {
     withActiveDownloads(1);
 
-    const {getByTestId} = render(<DownloadBanner />, {withNavigation: true});
-    fireEvent.press(getByTestId('download-banner'));
+    const {getByTestId} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
+    await fireEvent.press(getByTestId('download-banner'));
 
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.MODELS);
   });
@@ -221,10 +239,12 @@ describe('DownloadBanner', () => {
   it.each([
     [90 * 1024 * 1024, '90 MB'],
     [3 * 1024 * 1024 * 1024, '3.0 GB'],
-  ])('labels a %d-byte download as %s', (bytes, label) => {
+  ])('labels a %d-byte download as %s', async (bytes, label) => {
     withActiveDownloads(1, bytes);
 
-    const {getByText} = render(<DownloadBanner />, {withNavigation: true});
+    const {getByText} = await render(<DownloadBanner />, {
+      withNavigation: true,
+    });
 
     expect(getByText(label)).toBeTruthy();
   });

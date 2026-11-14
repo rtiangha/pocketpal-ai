@@ -130,14 +130,14 @@ describe('PalModelStep', () => {
       modelStore.models = [{...recommended, isDownloaded: true}];
     });
     const onChatStarted = jest.fn();
-    const {findByTestId, queryByTestId} = render(
+    const {findByTestId, queryByTestId} = await render(
       <PalModelStep localPal={pal()} onChatStarted={onChatStarted} />,
       {withNavigation: true},
     );
 
     const start = await findByTestId('model-step-start-chat');
     expect(queryByTestId('model-step-download')).toBeNull();
-    fireEvent.press(start);
+    await fireEvent.press(start);
 
     await waitFor(() => {
       expect(activatePalWithModel).toHaveBeenCalledWith(
@@ -150,7 +150,7 @@ describe('PalModelStep', () => {
   });
 
   it('offers a one-tap download with size and keeps Start chat disabled', async () => {
-    const {findByTestId, getByText} = render(
+    const {findByTestId, getByText} = await render(
       <PalModelStep localPal={pal()} />,
       {
         withNavigation: true,
@@ -164,14 +164,14 @@ describe('PalModelStep', () => {
         ?.disabled,
     ).toBe(true);
 
-    fireEvent.press(download);
+    await fireEvent.press(download);
     expect(downloadModel).toHaveBeenCalledWith(
       expect.objectContaining({id: 'recommended'}),
     );
   });
 
   it('enables Start chat once the download completes', async () => {
-    const {findByTestId} = render(<PalModelStep localPal={pal()} />, {
+    const {findByTestId} = await render(<PalModelStep localPal={pal()} />, {
       withNavigation: true,
     });
     await findByTestId('model-step-download');
@@ -192,7 +192,7 @@ describe('PalModelStep', () => {
 
   it('shows the memory need and no chat when nothing fits', async () => {
     fits([]);
-    const {findByTestId, queryByTestId} = render(
+    const {findByTestId, queryByTestId} = await render(
       <PalModelStep localPal={pal()} />,
       {withNavigation: true},
     );

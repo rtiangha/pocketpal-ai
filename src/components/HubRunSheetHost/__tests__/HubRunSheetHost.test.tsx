@@ -10,20 +10,26 @@
 import React from 'react';
 import {runInAction} from 'mobx';
 
-import {render, fireEvent, waitFor, act} from '../../../../jest/test-utils';
+import {
+  render,
+  fireEvent,
+  waitFor,
+  act,
+  screen,
+} from '../../../../jest/test-utils';
 import {deepLinkStore} from '../../../store';
 import {HubRunSheetHost} from '../HubRunSheetHost';
 
-// Press the actual onPress-bearing node (Paper Buttons spread testID across a
-// composite tree; the host View carries no onPress).
+// Press a Paper Button by testID. In v14 the Button renders as a host View
+// with responder props (no onPress on the host node), so find it by testID
+// alone and let fireEvent.press drive the responder.
 const pressButton = async (root: any, testID: string) => {
-  const targets = root.UNSAFE_root.findAll(
-    (n: any) =>
-      n.props?.testID === testID && typeof n.props?.onPress === 'function',
+  const targets = screen.container.queryAll(
+    (n: any) => n.props?.testID === testID,
   );
   expect(targets.length).toBeGreaterThan(0);
   await act(async () => {
-    fireEvent.press(targets[0]);
+    await fireEvent.press(targets[0]);
     await Promise.resolve();
   });
 };
@@ -91,7 +97,7 @@ describe('HubRunSheetHost', () => {
       deepLinkStore.pendingHubRun = request;
     });
 
-    const {getByTestId} = render(<HubRunSheetHost />, {
+    const {getByTestId} = await render(<HubRunSheetHost />, {
       withBottomSheetProvider: true,
     });
 
@@ -108,7 +114,7 @@ describe('HubRunSheetHost', () => {
       deepLinkStore.pendingHubRun = request;
     });
 
-    const {getByTestId} = render(<HubRunSheetHost />, {
+    const {getByTestId} = await render(<HubRunSheetHost />, {
       withBottomSheetProvider: true,
     });
 
@@ -127,7 +133,7 @@ describe('HubRunSheetHost', () => {
       deepLinkStore.pendingHubRun = request;
     });
 
-    const {getByTestId, queryByTestId} = render(<HubRunSheetHost />, {
+    const {getByTestId, queryByTestId} = await render(<HubRunSheetHost />, {
       withBottomSheetProvider: true,
     });
 
@@ -146,7 +152,7 @@ describe('HubRunSheetHost', () => {
       deepLinkStore.pendingHubRun = request;
     });
 
-    const result = render(<HubRunSheetHost />, {
+    const result = await render(<HubRunSheetHost />, {
       withBottomSheetProvider: true,
     });
 
@@ -168,7 +174,7 @@ describe('HubRunSheetHost', () => {
       deepLinkStore.pendingHubRun = request;
     });
 
-    const result = render(<HubRunSheetHost />, {
+    const result = await render(<HubRunSheetHost />, {
       withBottomSheetProvider: true,
     });
 
@@ -177,7 +183,7 @@ describe('HubRunSheetHost', () => {
     });
 
     await act(async () => {
-      fireEvent.press(result.getByTestId('sheet-close-button'));
+      await fireEvent.press(result.getByTestId('sheet-close-button'));
       await Promise.resolve();
     });
 

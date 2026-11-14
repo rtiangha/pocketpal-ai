@@ -51,8 +51,8 @@ describe('MarkdownView', () => {
     spy.mockClear();
   });
 
-  it('renders the text through the library with the chat configuration', () => {
-    const {getByText} = render(
+  it('renders the text through the library with the chat configuration', async () => {
+    const {getByText} = await render(
       <MarkdownView markdownText="Hello **World**" maxMessageWidth={300} />,
     );
 
@@ -68,16 +68,16 @@ describe('MarkdownView', () => {
     );
   });
 
-  it('leaves dollar amounts to the text renderer', () => {
-    render(
+  it('leaves dollar amounts to the text renderer', async () => {
+    await render(
       <MarkdownView markdownText="It costs $5 or $10" maxMessageWidth={300} />,
     );
 
     expect(lastProps().md4cFlags.latexMath).toBe(false);
   });
 
-  it('passes the en.json selection menu labels', () => {
-    render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+  it('passes the en.json selection menu labels', async () => {
+    await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
     expect(lastProps().selectionMenuConfig).toEqual({
       copy: {label: en.selectionMenu.copy},
@@ -89,8 +89,8 @@ describe('MarkdownView', () => {
     });
   });
 
-  it('passes the en.json accessibility labels in the library placeholder syntax', () => {
-    render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+  it('passes the en.json accessibility labels in the library placeholder syntax', async () => {
+    await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
     expect(lastProps().accessibilityLabels).toEqual({
       list: {
@@ -112,7 +112,7 @@ describe('MarkdownView', () => {
     });
   });
 
-  it('takes every library label from the active language', () => {
+  it('takes every library label from the active language', async () => {
     const translated = JSON.parse(JSON.stringify(l10n.en));
     const markdownView = translated.components.markdownView;
     for (const group of [
@@ -124,7 +124,7 @@ describe('MarkdownView', () => {
       }
     }
 
-    render(
+    await render(
       <L10nContext.Provider value={translated}>
         <MarkdownView markdownText="a" maxMessageWidth={300} />
       </L10nContext.Provider>,
@@ -140,15 +140,16 @@ describe('MarkdownView', () => {
         Object.values(group as Record<string, string>),
       ),
     ];
+
     expect(labels).toHaveLength(14);
     labels.forEach(label => expect(label).toMatch(/^x-/));
   });
 
-  it('opens a pressed link', () => {
+  it('opens a pressed link', async () => {
     const openURL = jest
       .spyOn(Linking, 'openURL')
       .mockResolvedValue(undefined as never);
-    render(
+    await render(
       <MarkdownView markdownText="[a](https://x.y)" maxMessageWidth={1} />,
     );
 
@@ -158,32 +159,34 @@ describe('MarkdownView', () => {
     openURL.mockRestore();
   });
 
-  it('passes no link long-press handler by default', () => {
-    render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+  it('passes no link long-press handler by default', async () => {
+    await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
     expect(lastProps().onLinkLongPress).toBeUndefined();
   });
 
-  it('turns break tags into spaces before rendering', () => {
-    render(<MarkdownView markdownText="one<br/>two" maxMessageWidth={300} />);
+  it('turns break tags into spaces before rendering', async () => {
+    await render(
+      <MarkdownView markdownText="one<br/>two" maxMessageWidth={300} />,
+    );
 
     expect(lastProps().markdown).toBe('one two');
   });
 
-  it('spaces out break tags in a cell and a paragraph, never in code', () => {
+  it('spaces out break tags in a cell and a paragraph, never in code', async () => {
     const reply =
       '| h | v |\n| --- | --- |\n| a | x<br>y |\n\none<br/>two\n\n`<br>`\n\n```\n<br>\n```';
-    render(<MarkdownView markdownText={reply} maxMessageWidth={300} />);
+    await render(<MarkdownView markdownText={reply} maxMessageWidth={300} />);
 
     expect(lastProps().markdown).toBe(
       '| h | v |\n| --- | --- |\n| a | x y |\n\none two\n\n`<br>`\n\n```\n<br>\n```',
     );
   });
 
-  it('passes a list holding a table and a code block on without rewriting it', () => {
+  it('passes a list holding a table and a code block on without rewriting it', async () => {
     const reply =
       '1. Install:<br>now\n\n   ```bash\n   npm i foo\n   ```\n\n2. Compare:\n\n   | a | b |\n   | --- | --- |\n   | 1 | 2 |\n3. Done';
-    render(<MarkdownView markdownText={reply} maxMessageWidth={300} />);
+    await render(<MarkdownView markdownText={reply} maxMessageWidth={300} />);
 
     expect(lastProps().markdown).toBe(
       '1. Install: now\n\n   ```bash\n   npm i foo\n   ```\n\n2. Compare:\n\n   | a | b |\n   | --- | --- |\n   | 1 | 2 |\n3. Done',
@@ -192,8 +195,8 @@ describe('MarkdownView', () => {
 
   it.each(['', '   ', '\n\n'])(
     'renders only the container for empty text %j',
-    markdownText => {
-      const {getByTestId} = render(
+    async markdownText => {
+      const {getByTestId} = await render(
         <MarkdownView markdownText={markdownText} maxMessageWidth={300} />,
       );
 
@@ -202,11 +205,13 @@ describe('MarkdownView', () => {
     },
   );
 
-  it('caps the content at the message width', () => {
-    const {getByTestId, rerender} = render(
+  it('caps the content at the message width', async () => {
+    const {getByTestId, rerender} = await render(
       <MarkdownView markdownText="# Test" maxMessageWidth={300} />,
     );
-    rerender(<MarkdownView markdownText="# Test" maxMessageWidth={200} />);
+    await rerender(
+      <MarkdownView markdownText="# Test" maxMessageWidth={200} />,
+    );
 
     const style = StyleSheet.flatten(
       getByTestId('markdown-content').props.style,
@@ -214,8 +219,8 @@ describe('MarkdownView', () => {
     expect(style.maxWidth).toBe(200);
   });
 
-  it('forwards selectable', () => {
-    render(
+  it('forwards selectable', async () => {
+    await render(
       <MarkdownView
         markdownText="a"
         maxMessageWidth={300}
@@ -226,14 +231,14 @@ describe('MarkdownView', () => {
     expect(lastProps().selectable).toBe(false);
   });
 
-  it('turns the block popup on by default', () => {
-    render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+  it('turns the block popup on by default', async () => {
+    await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
     expect(lastProps().enableBlockContextMenu).toBe(true);
   });
 
-  it('forwards blockContextMenu as enableBlockContextMenu', () => {
-    render(
+  it('forwards blockContextMenu as enableBlockContextMenu', async () => {
+    await render(
       <MarkdownView
         markdownText="a"
         maxMessageWidth={300}
@@ -247,8 +252,8 @@ describe('MarkdownView', () => {
   describe('markdownStyle', () => {
     const {colors} = themeFixtures.lightTheme;
 
-    it('colours body text, links, inline code and tables from the theme', () => {
-      render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+    it('colours body text, links, inline code and tables from the theme', async () => {
+      await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
       const style = lastProps().markdownStyle;
       expect(style.paragraph.color).toBe(colors.text);
@@ -268,8 +273,8 @@ describe('MarkdownView', () => {
       ]);
     });
 
-    it('sets chat-density typography and spacing', () => {
-      render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+    it('sets chat-density typography and spacing', async () => {
+      await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
       const style = lastProps().markdownStyle;
       const gap = {marginTop: 0, marginBottom: 8};
@@ -327,8 +332,8 @@ describe('MarkdownView', () => {
       expect(style.codeBlock).toEqual({...gap, padding: 8});
     });
 
-    it('draws quotes, list markers, strikethrough and task items in the body colour', () => {
-      render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+    it('draws quotes, list markers, strikethrough and task items in the body colour', async () => {
+      await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
       const style = lastProps().markdownStyle;
       expect(style.blockquote.color).toBe(colors.text);
@@ -342,27 +347,30 @@ describe('MarkdownView', () => {
     it.each([
       ['light', themeFixtures.lightTheme],
       ['dark', themeFixtures.darkTheme],
-    ])('keeps quote text at 4.5:1 or more in the %s theme', (_mode, theme) => {
-      (useTheme as jest.Mock).mockReturnValue(theme);
-      try {
-        render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+    ])(
+      'keeps quote text at 4.5:1 or more in the %s theme',
+      async (_mode, theme) => {
+        (useTheme as jest.Mock).mockReturnValue(theme);
+        try {
+          await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
-        const {blockquote} = lastProps().markdownStyle;
-        const quoteBackground = over(
-          rgba(blockquote.backgroundColor),
-          rgba(theme.colors.background),
-        );
-        const quoteText = over(rgba(blockquote.color), quoteBackground);
-        expect(contrast(quoteText, quoteBackground)).toBeGreaterThanOrEqual(
-          4.5,
-        );
-      } finally {
-        (useTheme as jest.Mock).mockReturnValue(themeFixtures.lightTheme);
-      }
-    });
+          const {blockquote} = lastProps().markdownStyle;
+          const quoteBackground = over(
+            rgba(blockquote.backgroundColor),
+            rgba(theme.colors.background),
+          );
+          const quoteText = over(rgba(blockquote.color), quoteBackground);
+          expect(contrast(quoteText, quoteBackground)).toBeGreaterThanOrEqual(
+            4.5,
+          );
+        } finally {
+          (useTheme as jest.Mock).mockReturnValue(themeFixtures.lightTheme);
+        }
+      },
+    );
 
-    it('uses the thinking colour and size for reasoning', () => {
-      render(
+    it('uses the thinking colour and size for reasoning', async () => {
+      await render(
         <MarkdownView
           markdownText="a"
           maxMessageWidth={300}
@@ -382,10 +390,10 @@ describe('MarkdownView', () => {
       expect(style.table.color).toBe(colors.thinkingBubbleText);
     });
 
-    it('follows the dark theme', () => {
+    it('follows the dark theme', async () => {
       (useTheme as jest.Mock).mockReturnValue(themeFixtures.darkTheme);
       try {
-        render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+        await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
         const style = lastProps().markdownStyle;
         expect(style.paragraph.color).toBe(themeFixtures.darkTheme.colors.text);
@@ -396,18 +404,18 @@ describe('MarkdownView', () => {
     });
   });
 
-  it('never turns on the streaming fade-in', () => {
-    render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+  it('never turns on the streaming fade-in', async () => {
+    await render(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
     expect(lastProps()).not.toHaveProperty('streamingAnimation');
   });
 
   describe('memo', () => {
-    it('re-renders when only selectable changes', () => {
-      const {rerender} = render(
+    it('re-renders when only selectable changes', async () => {
+      const {rerender} = await render(
         <MarkdownView markdownText="a" maxMessageWidth={300} selectable />,
       );
-      rerender(
+      await rerender(
         <MarkdownView
           markdownText="a"
           maxMessageWidth={300}
@@ -418,11 +426,11 @@ describe('MarkdownView', () => {
       expect(lastProps().selectable).toBe(false);
     });
 
-    it('re-renders when only blockContextMenu changes', () => {
-      const {rerender} = render(
+    it('re-renders when only blockContextMenu changes', async () => {
+      const {rerender} = await render(
         <MarkdownView markdownText="a" maxMessageWidth={300} />,
       );
-      rerender(
+      await rerender(
         <MarkdownView
           markdownText="a"
           maxMessageWidth={300}
@@ -433,11 +441,11 @@ describe('MarkdownView', () => {
       expect(lastProps().enableBlockContextMenu).toBe(false);
     });
 
-    it('re-renders when only the variant changes', () => {
-      const {rerender} = render(
+    it('re-renders when only the variant changes', async () => {
+      const {rerender} = await render(
         <MarkdownView markdownText="a" maxMessageWidth={300} />,
       );
-      rerender(
+      await rerender(
         <MarkdownView
           markdownText="a"
           maxMessageWidth={300}
@@ -448,22 +456,22 @@ describe('MarkdownView', () => {
       expect(lastProps().markdownStyle.paragraph.fontSize).toBe(14);
     });
 
-    it('skips a re-render with unchanged props', () => {
-      const {rerender} = render(
+    it('skips a re-render with unchanged props', async () => {
+      const {rerender} = await render(
         <MarkdownView markdownText="a" maxMessageWidth={300} />,
       );
       const calls = spy.mock.calls.length;
-      rerender(<MarkdownView markdownText="a" maxMessageWidth={300} />);
+      await rerender(<MarkdownView markdownText="a" maxMessageWidth={300} />);
 
       expect(spy.mock.calls.length).toBe(calls);
     });
 
-    it('keeps config props identical while the text streams', () => {
-      const {rerender} = render(
+    it('keeps config props identical while the text streams', async () => {
+      const {rerender} = await render(
         <MarkdownView markdownText="a" maxMessageWidth={300} />,
       );
       const first = lastProps();
-      rerender(<MarkdownView markdownText="ab" maxMessageWidth={300} />);
+      await rerender(<MarkdownView markdownText="ab" maxMessageWidth={300} />);
       const second = lastProps();
 
       expect(second.markdown).toBe('ab');

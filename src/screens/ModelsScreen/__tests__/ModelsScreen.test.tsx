@@ -20,8 +20,8 @@ import {
   hfModel2,
 } from '../../../../jest/fixtures/models';
 
-const render = (ui: React.ReactElement, options: any = {}) =>
-  baseRender(ui, {
+const render = async (ui: React.ReactElement, options: any = {}) =>
+  await baseRender(ui, {
     withBottomSheetProvider: true,
     withNavigation: true,
     ...options,
@@ -36,13 +36,13 @@ describe('ModelsScreen', () => {
   });
 
   it('renders correctly', async () => {
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
     expect(getByTestId('flat-list')).toBeTruthy();
     expect(getByTestId('fab-group')).toBeTruthy();
   });
 
   it('refreshes models on pull-to-refresh', async () => {
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     const flatList = getByTestId('flat-list');
     const refreshControl = flatList.props.refreshControl;
@@ -54,11 +54,11 @@ describe('ModelsScreen', () => {
   });
 
   it('opens HF model search when the HF FAB is pressed', async () => {
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     // Open the FAB group
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
 
     // Wait for the FAB group to open and its children to be accessible
     await waitFor(() => {
@@ -68,7 +68,7 @@ describe('ModelsScreen', () => {
     const hfFab = getByTestId('hf-fab', {includeHiddenElements: true});
 
     await act(async () => {
-      fireEvent.press(hfFab);
+      await fireEvent.press(hfFab);
     });
 
     // Verify HFModelSearch is rendered
@@ -94,11 +94,11 @@ describe('ModelsScreen', () => {
       return true; // Other paths exist by default
     });
 
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     // Open the FAB group
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
 
     // Wait for the FAB group to open and its children to be accessible
     await waitFor(() => {
@@ -111,7 +111,7 @@ describe('ModelsScreen', () => {
 
     await act(async () => {
       if (addLocalModelButton) {
-        fireEvent.press(addLocalModelButton);
+        await fireEvent.press(addLocalModelButton);
       }
     });
 
@@ -133,10 +133,10 @@ describe('ModelsScreen', () => {
     const copyTarget = async (name: string, uri = '/mock/file/path') => {
       (pick as jest.Mock).mockResolvedValue([{uri, name}]);
       (RNFS.exists as jest.Mock).mockResolvedValue(false);
-      const {getByTestId} = render(<ModelsScreen />);
-      fireEvent.press(getByTestId('fab-group'));
+      const {getByTestId} = await render(<ModelsScreen />);
+      await fireEvent.press(getByTestId('fab-group'));
       await act(async () => {
-        fireEvent.press(
+        await fireEvent.press(
           getByTestId('local-fab', {includeHiddenElements: true}),
         );
       });
@@ -175,11 +175,11 @@ describe('ModelsScreen', () => {
       buttons![0].onPress!();
     });
 
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     // Open the FAB group
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
 
     // Wait for the FAB group to open and its children to be accessible
     await waitFor(() => {
@@ -191,7 +191,7 @@ describe('ModelsScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.press(addLocalModelButton);
+      await fireEvent.press(addLocalModelButton);
     });
 
     await waitFor(() => {
@@ -221,10 +221,10 @@ describe('ModelsScreen', () => {
       buttons![2].onPress!();
     });
 
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
     // Open the FAB group
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
 
     // Wait for the FAB group to open and its children to be accessible
     await waitFor(() => {
@@ -236,7 +236,7 @@ describe('ModelsScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.press(addLocalModelButton);
+      await fireEvent.press(addLocalModelButton);
     });
 
     await waitFor(() => {
@@ -269,11 +269,11 @@ describe('ModelsScreen', () => {
       return true; // Original file exists
     });
 
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     // Open the FAB group
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
 
     // Wait for the FAB group to open and its children to be accessible
     await waitFor(() => {
@@ -285,7 +285,7 @@ describe('ModelsScreen', () => {
     });
 
     await act(async () => {
-      fireEvent.press(addLocalModelButton);
+      await fireEvent.press(addLocalModelButton);
     });
 
     await waitFor(() => {
@@ -319,18 +319,20 @@ describe('ModelsScreen', () => {
       {uri: '/mock/file/path', name: 'mockModelFile.bin'},
     ]);
 
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     // Open FAB, press local
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
     await waitFor(() => {
       expect(
         getByTestId('local-fab', {includeHiddenElements: true}),
       ).toBeTruthy();
     });
     await act(async () => {
-      fireEvent.press(getByTestId('local-fab', {includeHiddenElements: true}));
+      await fireEvent.press(
+        getByTestId('local-fab', {includeHiddenElements: true}),
+      );
     });
 
     // Snackbar should be visible while copy is pending
@@ -357,17 +359,19 @@ describe('ModelsScreen', () => {
       {uri: '/mock/file/path', name: 'mockModelFile.bin'},
     ]);
 
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
     await waitFor(() => {
       expect(
         getByTestId('local-fab', {includeHiddenElements: true}),
       ).toBeTruthy();
     });
     await act(async () => {
-      fireEvent.press(getByTestId('local-fab', {includeHiddenElements: true}));
+      await fireEvent.press(
+        getByTestId('local-fab', {includeHiddenElements: true}),
+      );
     });
 
     await waitFor(() => {
@@ -390,18 +394,20 @@ describe('ModelsScreen', () => {
       {uri: '/mock/file/path', name: 'mockModelFile.bin'},
     ]);
 
-    const {getByTestId} = render(<ModelsScreen />);
+    const {getByTestId} = await render(<ModelsScreen />);
 
     // Open FAB and press local to start the first copy
     const fabGroup = getByTestId('fab-group');
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
     await waitFor(() => {
       expect(
         getByTestId('local-fab', {includeHiddenElements: true}),
       ).toBeTruthy();
     });
     await act(async () => {
-      fireEvent.press(getByTestId('local-fab', {includeHiddenElements: true}));
+      await fireEvent.press(
+        getByTestId('local-fab', {includeHiddenElements: true}),
+      );
     });
 
     // Verify first copy started
@@ -413,14 +419,16 @@ describe('ModelsScreen', () => {
     (pick as jest.Mock).mockClear();
 
     // Try to press local FAB again while copy is in progress
-    fireEvent.press(fabGroup);
+    await fireEvent.press(fabGroup);
     await waitFor(() => {
       expect(
         getByTestId('local-fab', {includeHiddenElements: true}),
       ).toBeTruthy();
     });
     await act(async () => {
-      fireEvent.press(getByTestId('local-fab', {includeHiddenElements: true}));
+      await fireEvent.press(
+        getByTestId('local-fab', {includeHiddenElements: true}),
+      );
     });
 
     // pick should NOT have been called again — the early return guard blocks it
@@ -438,7 +446,7 @@ describe('ModelsScreen', () => {
     it('should filter downloaded models when downloaded filter is active', async () => {
       uiStore.pageStates.modelsScreen.filters = ['downloaded'];
 
-      const {getByText, queryByText} = render(<ModelsScreen />);
+      const {getByText, queryByText} = await render(<ModelsScreen />);
 
       await waitFor(() => {
         expect(getByText('downloaded model')).toBeTruthy();
@@ -449,11 +457,13 @@ describe('ModelsScreen', () => {
     it('should filter HF models when HF filter is active', async () => {
       uiStore.pageStates.modelsScreen.filters = ['hf'];
 
-      const {getByText, queryByText, getAllByText} = render(<ModelsScreen />);
+      const {getByText, queryByText, getAllByText} = await render(
+        <ModelsScreen />,
+      );
 
       // Open the Available to Download group, since hf mocked models are not downloaded.
       const button = getByText('Available to Download');
-      fireEvent.press(button);
+      await fireEvent.press(button);
 
       await waitFor(() => {
         // Use getAllByText to get all instances and check the first one exists
@@ -466,7 +476,7 @@ describe('ModelsScreen', () => {
     it('should group models by type when grouped filter is active', async () => {
       uiStore.pageStates.modelsScreen.filters = ['grouped'];
 
-      const {getByText} = render(<ModelsScreen />);
+      const {getByText} = await render(<ModelsScreen />);
 
       await waitFor(() => {
         expect(getByText('Test Model Type')).toBeTruthy();
@@ -476,7 +486,7 @@ describe('ModelsScreen', () => {
     it('should group models into ready-to-use and available-to-download when not grouped', async () => {
       uiStore.pageStates.modelsScreen.filters = [];
 
-      const {getByText} = render(<ModelsScreen />);
+      const {getByText} = await render(<ModelsScreen />);
 
       await waitFor(() => {
         expect(getByText('Ready to Use')).toBeTruthy();
@@ -487,7 +497,7 @@ describe('ModelsScreen', () => {
     it('should handle group expansion and collapse', async () => {
       uiStore.pageStates.modelsScreen.filters = [];
 
-      const {getByText, queryByText} = render(<ModelsScreen />);
+      const {getByText, queryByText} = await render(<ModelsScreen />);
 
       // Not downloaded model should not be visible
       await waitFor(() => {
@@ -495,7 +505,7 @@ describe('ModelsScreen', () => {
       });
 
       const availableGroup = getByText('Available to Download');
-      fireEvent.press(availableGroup);
+      await fireEvent.press(availableGroup);
 
       // Not downloaded model should be visible after expanding the group
       await waitFor(() => {

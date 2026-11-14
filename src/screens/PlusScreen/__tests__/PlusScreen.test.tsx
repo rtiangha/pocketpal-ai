@@ -1,16 +1,7 @@
 import React from 'react';
-import {
-  AccessibilityInfo,
-  ActivityIndicator,
-  Linking,
-  Platform,
-  StyleSheet,
-} from 'react-native';
+import {AccessibilityInfo, Linking, Platform, StyleSheet} from 'react-native';
 import {runInAction} from 'mobx';
-import type {
-  ReactTestInstance,
-  ReactTestRendererJSON,
-} from 'react-test-renderer';
+import type {TestInstance, JsonElement} from 'test-renderer';
 
 import {
   act,
@@ -18,6 +9,7 @@ import {
   fireEvent,
   render,
   waitFor,
+  screen,
 } from '../../../../jest/test-utils';
 import {mockPurchaseStore as purchaseStore} from '../../../../__mocks__/stores/purchaseStore';
 import {fakePlusFeatures, fakePlusL10n} from '../../../../jest/fixtures/plus';
@@ -95,7 +87,7 @@ const screenElement = (onClose: () => void) => (
   </L10nContext.Provider>
 );
 
-const expectLiveRegionOnlyOn = (title: ReactTestInstance) => {
+const expectLiveRegionOnlyOn = (title: TestInstance) => {
   expect(title.props.accessibilityLiveRegion).toBe('polite');
   for (let node = title.parent; node; node = node.parent) {
     if (typeof node.type === 'string') {
@@ -104,10 +96,10 @@ const expectLiveRegionOnlyOn = (title: ReactTestInstance) => {
   }
 };
 
-const renderScreen = () => {
+const renderScreen = async () => {
   const onClose = jest.fn();
-  const screen = render(screenElement(onClose), {withSafeArea: true});
-  return {...screen, onClose};
+  const rendered = await render(screenElement(onClose), {withSafeArea: true});
+  return {...rendered, onClose};
 };
 
 describe('PlusScreen', () => {
@@ -134,8 +126,8 @@ describe('PlusScreen', () => {
   });
 
   describe('idle', () => {
-    it('shows the features, no tile selected and Choose an amount', () => {
-      const {getByTestId, getByText, queryByTestId} = renderScreen();
+    it('shows the features, no tile selected and Choose an amount', async () => {
+      const {getByTestId, getByText, queryByTestId} = await renderScreen();
 
       expect(getByText('Push local AI further.')).toBeTruthy();
       expect(
@@ -184,9 +176,9 @@ describe('PlusScreen', () => {
       expect(queryByTestId('plus-error-line')).toBeNull();
     });
 
-    it('orders tiles from the catalog', () => {
+    it('orders tiles from the catalog', async () => {
       setProducts(['plus.4', 'plus.2', 'plus.1', 'plus.3']);
-      const {getAllByRole} = renderScreen();
+      const {getAllByRole} = await renderScreen();
 
       expect(getAllByRole('radio').map(tile => tile.props.testID)).toEqual([
         'plus-tile-plus.1',
@@ -196,13 +188,13 @@ describe('PlusScreen', () => {
       ]);
     });
 
-    it('buys nothing until a tile is picked', () => {
-      const {getByTestId, getByText} = renderScreen();
+    it('buys nothing until a tile is picked', async () => {
+      const {getByTestId, getByText} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-cta'));
+      await fireEvent.press(getByTestId('plus-cta'));
       expect(purchaseStore.buyPlus).not.toHaveBeenCalled();
 
-      fireEvent.press(getByTestId('plus-tile-plus.3'));
+      await fireEvent.press(getByTestId('plus-tile-plus.3'));
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $24.99');
       expect(getByTestId('plus-cta').props.accessibilityLabel).toBe(
         'Get Plus · $24.99',
@@ -219,11 +211,11 @@ describe('PlusScreen', () => {
       ).toBe(themeFixtures.lightTheme.colors.background);
     });
 
-    it('checks only the last picked tile', () => {
-      const {getByTestId} = renderScreen();
+    it('checks only the last picked tile', async () => {
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-tile-plus.3'));
-      fireEvent.press(getByTestId('plus-tile-plus.2'));
+      await fireEvent.press(getByTestId('plus-tile-plus.3'));
+      await fireEvent.press(getByTestId('plus-tile-plus.2'));
 
       expect(
         ['plus.1', 'plus.2', 'plus.3', 'plus.4'].map(
@@ -233,14 +225,15 @@ describe('PlusScreen', () => {
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $9.99');
     });
 
-    it('forgets the pick when the screen opens again', () => {
-      const {getByTestId, queryByTestId, rerender, onClose} = renderScreen();
-      fireEvent.press(getByTestId('plus-tile-plus.2'));
+    it('forgets the pick when the screen opens again', async () => {
+      const {getByTestId, queryByTestId, rerender, onClose} =
+        await renderScreen();
+      await fireEvent.press(getByTestId('plus-tile-plus.2'));
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $9.99');
 
-      rerender(<></>);
+      await rerender(<></>);
       expect(queryByTestId('plus-cta')).toBeNull();
-      rerender(screenElement(onClose));
+      await rerender(screenElement(onClose));
 
       expect(getByTestId('plus-cta')).toHaveTextContent('Choose an amount');
       expect(
@@ -248,26 +241,26 @@ describe('PlusScreen', () => {
       ).toBe(false);
     });
 
-    it('falls back to Choose an amount when the picked price goes away', () => {
-      const {getByTestId} = renderScreen();
-      fireEvent.press(getByTestId('plus-tile-plus.4'));
+    it('falls back to Choose an amount when the picked price goes away', async () => {
+      const {getByTestId} = await renderScreen();
+      await fireEvent.press(getByTestId('plus-tile-plus.4'));
 
-      act(() => setProducts(['plus.1', 'plus.2', 'plus.3']));
+      await act(() => setProducts(['plus.1', 'plus.2', 'plus.3']));
 
       expect(getByTestId('plus-cta')).toHaveTextContent('Choose an amount');
       expect(getByTestId('plus-cta').props.accessibilityState).toMatchObject({
         disabled: true,
       });
-      fireEvent.press(getByTestId('plus-cta'));
+      await fireEvent.press(getByTestId('plus-cta'));
       expect(purchaseStore.buyPlus).not.toHaveBeenCalled();
     });
 
     it('buys the selected price', async () => {
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-tile-plus.3'));
+      await fireEvent.press(getByTestId('plus-tile-plus.3'));
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $24.99');
-      fireEvent.press(getByTestId('plus-cta'));
+      await fireEvent.press(getByTestId('plus-cta'));
 
       await waitFor(() =>
         expect(purchaseStore.buyPlus).toHaveBeenCalledWith('plus.3'),
@@ -275,9 +268,9 @@ describe('PlusScreen', () => {
     });
   });
 
-  it('shows a spinner and locks the tiles while paying', () => {
+  it('shows a spinner and locks the tiles while paying', async () => {
     set({plusFlow: 'paying'});
-    const {getByTestId} = renderScreen();
+    const {getByTestId} = await renderScreen();
 
     expect(getByTestId('plus-cta')).not.toHaveTextContent('Choose an amount');
     expect(getByTestId('plus-cta').props.accessibilityLabel).toBe('Loading');
@@ -291,9 +284,9 @@ describe('PlusScreen', () => {
     });
   });
 
-  it('shows the pending notice with a disabled button and no prices', () => {
+  it('shows the pending notice with a disabled button and no prices', async () => {
     set({plusPending: true});
-    const {getByTestId, queryByTestId} = renderScreen();
+    const {getByTestId, queryByTestId} = await renderScreen();
 
     expect(getByTestId('plus-pending-notice')).toHaveTextContent(
       'Waiting for the store to confirm your payment.',
@@ -309,10 +302,10 @@ describe('PlusScreen', () => {
 
   it('returns quietly to the same price on cancel', async () => {
     purchaseStore.buyPlus.mockResolvedValue('cancelled');
-    const {getByTestId, queryByTestId} = renderScreen();
+    const {getByTestId, queryByTestId} = await renderScreen();
 
-    fireEvent.press(getByTestId('plus-tile-plus.2'));
-    fireEvent.press(getByTestId('plus-cta'));
+    await fireEvent.press(getByTestId('plus-tile-plus.2'));
+    await fireEvent.press(getByTestId('plus-cta'));
     await act(async () => {});
 
     expect(queryByTestId('plus-error-line')).toBeNull();
@@ -321,11 +314,11 @@ describe('PlusScreen', () => {
 
   it('shows an inline error and lets the user try again', async () => {
     purchaseStore.buyPlus.mockResolvedValueOnce('error');
-    const {getByTestId, queryByTestId, queryByText} = renderScreen();
+    const {getByTestId, queryByTestId, queryByText} = await renderScreen();
 
-    fireEvent.press(getByTestId('plus-tile-plus.1'));
+    await fireEvent.press(getByTestId('plus-tile-plus.1'));
     await act(async () => {
-      fireEvent.press(getByTestId('plus-cta'));
+      await fireEvent.press(getByTestId('plus-cta'));
     });
 
     expect(getByTestId('plus-error-line')).toHaveTextContent(
@@ -344,20 +337,20 @@ describe('PlusScreen', () => {
 
     purchaseStore.buyPlus.mockResolvedValueOnce('cancelled');
     await act(async () => {
-      fireEvent.press(getByTestId('plus-cta'));
+      await fireEvent.press(getByTestId('plus-cta'));
     });
     expect(queryByTestId('plus-error-line')).toBeNull();
     expect(purchaseStore.buyPlus).toHaveBeenCalledTimes(2);
   });
 
-  it('thanks the owner and offers only Done', () => {
+  it('thanks the owner and offers only Done', async () => {
     set({plusUnlocked: true});
-    const {getByTestId, getByText, queryByTestId, onClose, UNSAFE_root} =
-      renderScreen();
+    const {getByTestId, getByText, queryByTestId, onClose} =
+      await renderScreen();
 
     expect(getByText('Thank you for keeping PocketPal going.')).toBeTruthy();
     expect(getByText('Plus is unlocked on this device.')).toBeTruthy();
-    const hearts = UNSAFE_root.findAll(
+    const hearts = screen.container.queryAll(
       node => (node.type as string) === 'HeartIcon',
     );
     expect(hearts).toHaveLength(1);
@@ -371,47 +364,47 @@ describe('PlusScreen', () => {
     expect(queryByTestId('plus-free-line')).toBeNull();
     expect(getByTestId('plus-done').props.accessibilityLabel).toBe('Done');
 
-    fireEvent.press(getByTestId('plus-done'));
+    await fireEvent.press(getByTestId('plus-done'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps one button while paying and mounts a new one when pending', () => {
-    const {getByTestId} = renderScreen();
-    fireEvent.press(getByTestId('plus-tile-plus.1'));
+  it('keeps one button while paying and mounts a new one when pending', async () => {
+    const {getByTestId} = await renderScreen();
+    await fireEvent.press(getByTestId('plus-tile-plus.1'));
     const buy = getByTestId('plus-cta');
 
-    act(() => set({plusFlow: 'paying'}));
+    await act(() => set({plusFlow: 'paying'}));
     expect(getByTestId('plus-cta')).toBe(buy);
     expect(buy.props.accessibilityLabel).toBe('Loading');
 
-    act(() => set({plusFlow: 'idle', plusPending: true}));
+    await act(() => set({plusFlow: 'idle', plusPending: true}));
     expect(getByTestId('plus-cta')).not.toBe(buy);
   });
 
-  it('mounts a new button when Plus unlocks', () => {
-    const {getByTestId} = renderScreen();
+  it('mounts a new button when Plus unlocks', async () => {
+    const {getByTestId} = await renderScreen();
     const buy = getByTestId('plus-cta');
 
-    act(() => set({plusUnlocked: true}));
+    await act(() => set({plusUnlocked: true}));
 
     expect(getByTestId('plus-done')).not.toBe(buy);
   });
 
-  it('closes from any state', () => {
+  it('closes from any state', async () => {
     set({plusPending: true});
-    const {getByTestId, onClose} = renderScreen();
+    const {getByTestId, onClose} = await renderScreen();
 
-    fireEvent.press(getByTestId('plus-close'));
+    await fireEvent.press(getByTestId('plus-close'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   describe('feature rows', () => {
-    it('below its device gate, shows hands-free voice as Off with the Settings note under its name', () => {
+    it('below its device gate, shows hands-free voice as Off with the Settings note under its name', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'low';
       });
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
       expect(getByTestId('plus-feature-handsFreeVoice')).toHaveTextContent(
         "Hands-free voiceOff on this phone. Turn it on in Settings if you're brave.Off",
@@ -419,16 +412,16 @@ describe('PlusScreen', () => {
       expect(getByTestId('plus-feature-note-handsFreeVoice')).toHaveTextContent(
         "Off on this phone. Turn it on in Settings if you're brave.",
       );
-      fireEvent.press(getByTestId('plus-tile-plus.1'));
+      await fireEvent.press(getByTestId('plus-tile-plus.1'));
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $4.99');
     });
 
-    it('below its device gate, shows hands-free voice as Ready once turned on in Settings', () => {
+    it('below its device gate, shows hands-free voice as Ready once turned on in Settings', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'low';
         voiceModeStore.userVoiceModeOverride = true;
       });
-      const {getByTestId, queryByTestId} = renderScreen();
+      const {getByTestId, queryByTestId} = await renderScreen();
 
       expect(getByTestId('plus-feature-handsFreeVoice')).toHaveTextContent(
         'Hands-free voiceReady',
@@ -439,11 +432,11 @@ describe('PlusScreen', () => {
       });
     });
 
-    it('on a supported phone, shows hands-free voice as Off when turned off in Settings', () => {
+    it('on a supported phone, shows hands-free voice as Off when turned off in Settings', async () => {
       runInAction(() => {
         voiceModeStore.userVoiceModeOverride = false;
       });
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
       expect(getByTestId('plus-feature-handsFreeVoice')).toHaveTextContent(
         'Hands-free voiceTurned off in Settings.Off',
@@ -451,15 +444,15 @@ describe('PlusScreen', () => {
       expect(getByTestId('plus-feature-note-handsFreeVoice')).toHaveTextContent(
         'Turned off in Settings.',
       );
-      fireEvent.press(getByTestId('plus-tile-plus.1'));
+      await fireEvent.press(getByTestId('plus-tile-plus.1'));
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $4.99');
       runInAction(() => {
         voiceModeStore.userVoiceModeOverride = null;
       });
     });
 
-    it('on a supported phone, shows hands-free voice as Ready by default', () => {
-      const {getByTestId, queryByTestId} = renderScreen();
+    it('on a supported phone, shows hands-free voice as Ready by default', async () => {
+      const {getByTestId, queryByTestId} = await renderScreen();
 
       expect(getByTestId('plus-feature-handsFreeVoice')).toHaveTextContent(
         'Hands-free voiceReady',
@@ -467,13 +460,13 @@ describe('PlusScreen', () => {
       expect(queryByTestId('plus-feature-note-handsFreeVoice')).toBeNull();
     });
 
-    it('shows Ready, Needs N GB and Coming soon', () => {
+    it('shows Ready, Needs N GB and Coming soon', async () => {
       mockFeatures = fakePlusFeatures([
         {id: 'open', shipped: true},
         {id: 'big', shipped: true, minRamGb: 16},
         {id: 'later', shipped: false},
       ]);
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
       expect(getByTestId('plus-feature-open')).toHaveTextContent(
         'Open featureReady',
@@ -486,26 +479,26 @@ describe('PlusScreen', () => {
       );
     });
 
-    it('offers Get Plus when one shipped feature runs here', () => {
+    it('offers Get Plus when one shipped feature runs here', async () => {
       mockFeatures = fakePlusFeatures([
         {id: 'open', shipped: true},
         {id: 'later', shipped: false},
       ]);
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-tile-plus.1'));
+      await fireEvent.press(getByTestId('plus-tile-plus.1'));
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $4.99');
     });
 
-    it('offers Get Plus anyway when no shipped feature runs here', () => {
+    it('offers Get Plus anyway when no shipped feature runs here', async () => {
       mockFeatures = fakePlusFeatures([
         {id: 'big', shipped: true, minRamGb: 16},
         {id: 'bigger', shipped: true, minRamGb: 24},
       ]);
-      const {getByTestId, getByText} = renderScreen();
+      const {getByTestId, getByText} = await renderScreen();
 
       expect(getByTestId('plus-cta')).toHaveTextContent('Choose an amount');
-      fireEvent.press(getByTestId('plus-tile-plus.1'));
+      await fireEvent.press(getByTestId('plus-tile-plus.1'));
       expect(getByTestId('plus-cta')).toHaveTextContent(
         'Get Plus anyway · $4.99',
       );
@@ -516,7 +509,7 @@ describe('PlusScreen', () => {
       ).toBeTruthy();
     });
 
-    it('withholds RAM-gated rows for an owner until RAM is known', () => {
+    it('withholds RAM-gated rows for an owner until RAM is known', async () => {
       mockFeatures = fakePlusFeatures([
         {id: 'big', shipped: true, minRamGb: 16},
         {id: 'open', shipped: true},
@@ -525,18 +518,18 @@ describe('PlusScreen', () => {
       runInAction(() => {
         deviceRam.ramBytes = null;
       });
-      const {queryByTestId} = renderScreen();
+      const {queryByTestId} = await renderScreen();
 
       expect(queryByTestId('plus-feature-big')).toBeNull();
       expect(queryByTestId('plus-feature-open')).toBeTruthy();
     });
 
-    it('swaps the speed line for the in-development note on ⓘ', () => {
+    it('swaps the speed line for the in-development note on ⓘ', async () => {
       mockFeatures = fakePlusFeatures([
         {id: 'open', shipped: true},
         {id: 'later', shipped: false},
       ]);
-      const {getByTestId, getByText, queryByText} = renderScreen();
+      const {getByTestId, getByText, queryByText} = await renderScreen();
       const info = getByTestId('plus-info-later');
 
       expect(info.props.accessibilityLabel).toBe(
@@ -546,7 +539,7 @@ describe('PlusScreen', () => {
         getByText('Speed depends on your phone and model.').props
           .accessibilityLiveRegion,
       ).toBeUndefined();
-      fireEvent.press(info);
+      await fireEvent.press(info);
 
       expect(
         getByText('Features in development may change or not ship.').props
@@ -554,7 +547,7 @@ describe('PlusScreen', () => {
       ).toBe('polite');
       expect(queryByText('Speed depends on your phone and model.')).toBeNull();
 
-      fireEvent.press(info);
+      await fireEvent.press(info);
       expect(
         getByText('Speed depends on your phone and model.').props
           .accessibilityLiveRegion,
@@ -563,9 +556,9 @@ describe('PlusScreen', () => {
   });
 
   describe('unavailable and loading', () => {
-    it('shows the unavailable notice with Restore when billing is down', () => {
+    it('shows the unavailable notice with Restore when billing is down', async () => {
       set({availability: 'unavailable'});
-      const {getByTestId, queryByTestId} = renderScreen();
+      const {getByTestId, queryByTestId} = await renderScreen();
 
       expect(getByTestId('plus-unavailable-notice')).toHaveTextContent(
         "Purchases aren't available right now.",
@@ -576,16 +569,16 @@ describe('PlusScreen', () => {
       expectLiveRegionOnlyOn(getByTestId('plus-unavailable-notice'));
     });
 
-    it('shows unavailable when the store returned no Plus product', () => {
+    it('shows unavailable when the store returned no Plus product', async () => {
       setProducts([]);
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
       expect(getByTestId('plus-unavailable-notice')).toBeTruthy();
     });
 
-    it('shows a spinner in place of the prices while loading', () => {
+    it('shows a spinner in place of the prices while loading', async () => {
       set({plusChecked: false});
-      const {getByLabelText, getByTestId, queryByTestId} = renderScreen();
+      const {getByLabelText, getByTestId, queryByTestId} = await renderScreen();
 
       expect(getByTestId('plus-loading')).toBeTruthy();
       expect(getByLabelText('Loading')).toBeTruthy();
@@ -595,67 +588,70 @@ describe('PlusScreen', () => {
       expect(getByTestId('plus-restore')).toBeTruthy();
     });
 
-    it('draws the loading slot like the paying button', () => {
+    it('draws the loading slot like the paying button', async () => {
       set({plusChecked: false});
-      const {getByLabelText, getByTestId, UNSAFE_getByType} = renderScreen();
+      const {getByLabelText, getByTestId} = await renderScreen();
       const loadingFill = StyleSheet.flatten(
         getByTestId('plus-loading').props.style,
       ).backgroundColor;
       const loadingSpinner = getByLabelText('Loading').props.color;
 
-      act(() => set({plusChecked: true, plusFlow: 'paying'}));
+      await act(() => set({plusChecked: true, plusFlow: 'paying'}));
 
       expect(loadingFill).toBe(
         StyleSheet.flatten(getByTestId('plus-cta').props.style).backgroundColor,
       );
-      expect(loadingSpinner).toBe(
-        UNSAFE_getByType(ActivityIndicator).props.color,
-      );
+      // The paying spinner is the ActivityIndicator inside the CTA button
+      // (the only node there carrying a direct color prop).
+      const payingSpinner = getByTestId('plus-cta').queryAll(
+        (n: any) => n.props.color !== undefined,
+      )[0].props.color;
+      expect(loadingSpinner).toBe(payingSpinner);
     });
 
-    it('keeps the loaded prices while a missing one reloads', () => {
+    it('keeps the loaded prices while a missing one reloads', async () => {
       setProducts(['plus.1', 'plus.2', 'plus.3']);
       set({plusProductsLoading: true});
-      const {getByTestId, queryByTestId} = renderScreen();
+      const {getByTestId, queryByTestId} = await renderScreen();
 
       expect(queryByTestId('plus-loading')).toBeNull();
       expect(getByTestId('plus-tile-plus.3')).toBeTruthy();
-      fireEvent.press(getByTestId('plus-tile-plus.1'));
+      await fireEvent.press(getByTestId('plus-tile-plus.1'));
       expect(getByTestId('plus-cta')).toHaveTextContent('Get Plus · $4.99');
     });
   });
 
   describe('licence line', () => {
-    it('shows the licence line and drops One-time purchase', () => {
+    it('shows the licence line and drops One-time purchase', async () => {
       set({showsLicenseNotice: true});
-      const {getByTestId, getByText, queryByText} = renderScreen();
+      const {getByTestId, getByText, queryByText} = await renderScreen();
 
       expect(getByTestId('plus-licence')).toHaveTextContent(
         'One-time purchase of a licence to use Plus. Terms · Apple Media Services Terms',
       );
       expect(queryByText('One-time purchase')).toBeNull();
 
-      fireEvent.press(getByText('Terms'));
-      fireEvent.press(getByText('Apple Media Services Terms'));
+      await fireEvent.press(getByText('Terms'));
+      await fireEvent.press(getByText('Apple Media Services Terms'));
       expect(openURL).toHaveBeenNthCalledWith(1, APPLE_EULA_URL);
       expect(openURL).toHaveBeenNthCalledWith(2, APPLE_MEDIA_TERMS_URL);
     });
   });
 
   describe('footer', () => {
-    it('opens the public repository', () => {
-      const {getByTestId} = renderScreen();
+    it('opens the public repository', async () => {
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-open-source'));
+      await fireEvent.press(getByTestId('plus-open-source'));
 
       expect(openURL).toHaveBeenCalledWith(REPO_URL);
       expect(REPO_URL).toBe('https://github.com/a-ghorbani/pocketpal-ai');
     });
 
     it('says when no Plus purchase was found', async () => {
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-restore'));
+      await fireEvent.press(getByTestId('plus-restore'));
 
       await waitFor(() =>
         expect(getByTestId('plus-restore-note')).toHaveTextContent(
@@ -668,9 +664,9 @@ describe('PlusScreen', () => {
       purchaseStore.restore.mockResolvedValueOnce({
         queryOk: false,
       });
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-restore'));
+      await fireEvent.press(getByTestId('plus-restore'));
 
       await waitFor(() =>
         expect(getByTestId('plus-restore-note')).toHaveTextContent(
@@ -681,9 +677,9 @@ describe('PlusScreen', () => {
 
     it('treats a failed restore as unreachable', async () => {
       purchaseStore.restore.mockRejectedValueOnce(new Error('boom'));
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-restore'));
+      await fireEvent.press(getByTestId('plus-restore'));
 
       await waitFor(() =>
         expect(getByTestId('plus-restore-note')).toHaveTextContent(
@@ -697,19 +693,19 @@ describe('PlusScreen', () => {
         set({plusUnlocked: true});
         return {queryOk: true};
       });
-      const {getByTestId, queryByTestId} = renderScreen();
+      const {getByTestId, queryByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-restore'));
+      await fireEvent.press(getByTestId('plus-restore'));
 
       await waitFor(() => expect(getByTestId('plus-done')).toBeTruthy());
       expect(queryByTestId('plus-restore-note')).toBeNull();
     });
 
-    it('shows Restore busy and disabled while a restore runs', () => {
+    it('shows Restore busy and disabled while a restore runs', async () => {
       set({isRestoring: true});
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-restore'));
+      await fireEvent.press(getByTestId('plus-restore'));
 
       expect(getByTestId('plus-restore').props.accessibilityLabel).toBe(
         'Restore',
@@ -722,11 +718,11 @@ describe('PlusScreen', () => {
       expect(purchaseStore.restore).not.toHaveBeenCalled();
     });
 
-    it('disables Restore while paying', () => {
+    it('disables Restore while paying', async () => {
       set({plusFlow: 'paying'});
-      const {getByTestId, queryByTestId} = renderScreen();
+      const {getByTestId, queryByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-restore'));
+      await fireEvent.press(getByTestId('plus-restore'));
 
       expect(getByTestId('plus-restore').props.accessibilityState).toEqual({
         disabled: true,
@@ -736,8 +732,8 @@ describe('PlusScreen', () => {
       expect(purchaseStore.restore).not.toHaveBeenCalled();
     });
 
-    it('shows no spinner on Restore while idle', () => {
-      const {getByTestId, queryByTestId} = renderScreen();
+    it('shows no spinner on Restore while idle', async () => {
+      const {getByTestId, queryByTestId} = await renderScreen();
 
       expect(getByTestId('plus-restore').props.accessibilityLabel).toBe(
         'Restore',
@@ -754,10 +750,10 @@ describe('PlusScreen', () => {
         set({plusPending: true});
         return {queryOk: true};
       });
-      const {getByTestId, queryByTestId} = renderScreen();
+      const {getByTestId, queryByTestId} = await renderScreen();
 
       await act(async () => {
-        fireEvent.press(getByTestId('plus-restore'));
+        await fireEvent.press(getByTestId('plus-restore'));
       });
       expect(queryByTestId('plus-restore-note')).toBeNull();
 
@@ -766,7 +762,7 @@ describe('PlusScreen', () => {
         return {queryOk: true};
       });
       await act(async () => {
-        fireEvent.press(getByTestId('plus-restore'));
+        await fireEvent.press(getByTestId('plus-restore'));
       });
       expect(getByTestId('plus-restore-note')).toHaveTextContent(
         'No Plus purchase found.',
@@ -796,18 +792,21 @@ describe('PlusScreen', () => {
         'plus-restore',
         'No Plus purchase found.',
       ],
+
       [
         'store unreachable',
         () => purchaseStore.restore.mockResolvedValueOnce({queryOk: false}),
         'plus-restore',
         "Couldn't reach the store. Try again.",
       ],
+
       [
         'buy error',
         () => purchaseStore.buyPlus.mockResolvedValueOnce('error'),
         'plus-cta',
         "The purchase didn't go through. Try again.",
       ],
+
       [
         'pending buy',
         () =>
@@ -825,45 +824,45 @@ describe('PlusScreen', () => {
       async (_label, arrange, testID, text) => {
         (Platform as any).OS = 'ios';
         arrange();
-        const {getByTestId} = renderScreen();
+        const {getByTestId} = await renderScreen();
 
-        fireEvent.press(getByTestId('plus-tile-plus.1'));
+        await fireEvent.press(getByTestId('plus-tile-plus.1'));
         await act(async () => {
-          fireEvent.press(getByTestId(testID));
+          await fireEvent.press(getByTestId(testID));
         });
 
         expect(announceSpy.mock.calls).toEqual([[text]]);
       },
     );
 
-    it('iOS: announces the in-development note only when shown', () => {
+    it('iOS: announces the in-development note only when shown', async () => {
       (Platform as any).OS = 'ios';
       mockFeatures = fakePlusFeatures([
         {id: 'open', shipped: true},
         {id: 'later', shipped: false},
       ]);
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
       const info = getByTestId('plus-info-later');
 
-      fireEvent.press(info);
+      await fireEvent.press(info);
       expect(announceSpy.mock.calls).toEqual([
         ['Features in development may change or not ship.'],
       ]);
 
-      fireEvent.press(info);
+      await fireEvent.press(info);
       expect(announceSpy).toHaveBeenCalledTimes(1);
     });
 
-    it('Android: leaves the in-development note to the live region', () => {
+    it('Android: leaves the in-development note to the live region', async () => {
       (Platform as any).OS = 'android';
       mockFeatures = fakePlusFeatures([
         {id: 'open', shipped: true},
         {id: 'later', shipped: false},
       ]);
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-info-later'));
-      fireEvent.press(getByTestId('plus-info-later'));
+      await fireEvent.press(getByTestId('plus-info-later'));
+      await fireEvent.press(getByTestId('plus-info-later'));
 
       expect(announceSpy).not.toHaveBeenCalled();
     });
@@ -873,11 +872,11 @@ describe('PlusScreen', () => {
       async (_label, arrange, testID, text) => {
         (Platform as any).OS = 'android';
         arrange();
-        const {getByTestId, getByText} = renderScreen();
+        const {getByTestId, getByText} = await renderScreen();
 
-        fireEvent.press(getByTestId('plus-tile-plus.1'));
+        await fireEvent.press(getByTestId('plus-tile-plus.1'));
         await act(async () => {
-          fireEvent.press(getByTestId(testID));
+          await fireEvent.press(getByTestId(testID));
         });
 
         expect(announceSpy).not.toHaveBeenCalled();
@@ -886,18 +885,18 @@ describe('PlusScreen', () => {
     );
   });
 
-  it('returns to idle when Plus is relocked while open', () => {
+  it('returns to idle when Plus is relocked while open', async () => {
     set({plusUnlocked: true});
-    const {getByTestId, queryByTestId} = renderScreen();
+    const {getByTestId, queryByTestId} = await renderScreen();
     expect(queryByTestId('plus-cta')).toBeNull();
 
-    act(() => set({plusUnlocked: false}));
+    await act(() => set({plusUnlocked: false}));
 
     expect(getByTestId('plus-cta')).toHaveTextContent('Choose an amount');
   });
 
   describe('layout', () => {
-    type Node = ReactTestRendererJSON | string;
+    type Node = JsonElement | string;
     const textOf = (node: Node): string =>
       typeof node === 'string'
         ? node
@@ -921,9 +920,9 @@ describe('PlusScreen', () => {
 
     it.each([667, 923])(
       'puts the free line, then the prices, right after the speed line at %i dp',
-      height => {
+      async height => {
         mockWindow.height = height;
-        const tree = renderScreen().toJSON() as ReactTestRendererJSON;
+        const tree = (await renderScreen()).toJSON() as JsonElement;
         const next = nodeAfter(tree, 'Speed depends on your phone and model.');
         const free = 'Plus is optional. Chatting stays free.';
 
@@ -936,9 +935,9 @@ describe('PlusScreen', () => {
 
     it.each([false, true])(
       'wraps the centred footer at large text sizes (licence line %s)',
-      showsLicenseNotice => {
+      async showsLicenseNotice => {
         set({showsLicenseNotice});
-        const {getByTestId} = renderScreen();
+        const {getByTestId} = await renderScreen();
         const footer = StyleSheet.flatten(
           getByTestId('plus-footer').props.style,
         );
@@ -977,14 +976,11 @@ describe('PlusScreen', () => {
       [true, ['plus-open-source']],
     ])(
       'keeps each footer dot with the item after it (licence line %s)',
-      (showsLicenseNotice, afterDots) => {
+      async (showsLicenseNotice, afterDots) => {
         set({showsLicenseNotice});
-        const tree = renderScreen().toJSON() as ReactTestRendererJSON;
-        const footer = findByTestID(
-          tree,
-          'plus-footer',
-        ) as ReactTestRendererJSON;
-        const items = footer.children as ReactTestRendererJSON[];
+        const tree = (await renderScreen()).toJSON() as JsonElement;
+        const footer = findByTestID(tree, 'plus-footer') as JsonElement;
+        const items = footer.children as JsonElement[];
 
         expect(items.some(item => textOf(item) === '·')).toBe(false);
         const groups = items.filter(
@@ -993,14 +989,14 @@ describe('PlusScreen', () => {
         expect(
           groups.map(group => {
             expect(group.children).toHaveLength(2);
-            return (group.children![1] as ReactTestRendererJSON).props.testID;
+            return (group.children![1] as JsonElement).props.testID;
           }),
         ).toEqual(afterDots);
       },
     );
 
-    it('spaces every footer item and dot evenly', () => {
-      const {getByTestId, getByText, getAllByText} = renderScreen();
+    it('spaces every footer item and dot evenly', async () => {
+      const {getByTestId, getByText, getAllByText} = await renderScreen();
       const padding = (style: unknown) =>
         StyleSheet.flatten(style as any).paddingHorizontal;
       const gap = padding(getByTestId('plus-restore').props.style);
@@ -1013,8 +1009,8 @@ describe('PlusScreen', () => {
       expect(padding(getByTestId('plus-open-source').props.style)).toBe(gap);
     });
 
-    it('lets the price tiles and the main button grow with the text', () => {
-      const {getByTestId} = renderScreen();
+    it('lets the price tiles and the main button grow with the text', async () => {
+      const {getByTestId} = await renderScreen();
 
       ['plus-tile-plus.1', 'plus-cta'].forEach(testID => {
         const style = StyleSheet.flatten(getByTestId(testID).props.style);
@@ -1025,10 +1021,10 @@ describe('PlusScreen', () => {
 
     it('lets the inline error wrap beside its icon', async () => {
       purchaseStore.buyPlus.mockResolvedValueOnce('error');
-      const {getByTestId} = renderScreen();
+      const {getByTestId} = await renderScreen();
 
-      fireEvent.press(getByTestId('plus-tile-plus.1'));
-      fireEvent.press(getByTestId('plus-cta'));
+      await fireEvent.press(getByTestId('plus-tile-plus.1'));
+      await fireEvent.press(getByTestId('plus-cta'));
       await waitFor(() => expect(getByTestId('plus-error-line')).toBeTruthy());
 
       expect(
@@ -1037,8 +1033,8 @@ describe('PlusScreen', () => {
       ).toBe(1);
     });
 
-    it('uses a tighter gap above the prices on a small phone', () => {
-      const {getByText, rerender} = renderScreen();
+    it('uses a tighter gap above the prices on a small phone', async () => {
+      const {getByText, rerender} = await renderScreen();
       const gapBelowSpeedLine = () =>
         StyleSheet.flatten(
           getByText('Speed depends on your phone and model.').props.style,
@@ -1046,7 +1042,7 @@ describe('PlusScreen', () => {
       const tall = gapBelowSpeedLine();
 
       mockWindow.height = 667;
-      rerender(screenElement(jest.fn()));
+      await rerender(screenElement(jest.fn()));
 
       expect(gapBelowSpeedLine()).toBeLessThan(tall);
     });

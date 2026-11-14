@@ -6,9 +6,9 @@ import {lightTheme} from '../../../utils/theme';
 import {StatusIcon} from '../StatusIcon';
 
 describe('status icon', () => {
-  it('should render null if show status is false', () => {
+  it('should render null if show status is false', async () => {
     expect.assertions(1);
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor={false}
         showStatus={false}
@@ -18,9 +18,9 @@ describe('status icon', () => {
     expect(queryByTestId('StatusIconContainer')).toBeNull();
   });
 
-  it('should render delivered icon', () => {
+  it('should render delivered icon', async () => {
     expect.assertions(1);
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -31,9 +31,9 @@ describe('status icon', () => {
     expect(getByTestId('DeliveredIcon')).toBeDefined();
   });
 
-  it('should render delivered icon from theme', () => {
+  it('should render delivered icon from theme', async () => {
     expect.assertions(1);
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -51,9 +51,9 @@ describe('status icon', () => {
     expect(queryByTestId('DeliveredIcon')).toBeNull();
   });
 
-  it('should render delivered icon with sent status', () => {
+  it('should render delivered icon with sent status', async () => {
     expect.assertions(1);
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -64,9 +64,9 @@ describe('status icon', () => {
     expect(getByTestId('DeliveredIcon')).toBeDefined();
   });
 
-  it('should render delivered icon with sent status from theme', () => {
+  it('should render delivered icon with sent status from theme', async () => {
     expect.assertions(1);
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -84,9 +84,9 @@ describe('status icon', () => {
     expect(queryByTestId('DeliveredIcon')).toBeNull();
   });
 
-  it('should render error icon', () => {
+  it('should render error icon', async () => {
     expect.assertions(1);
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -97,9 +97,9 @@ describe('status icon', () => {
     expect(getByTestId('ErrorIcon')).toBeDefined();
   });
 
-  it('should render error icon from theme', () => {
+  it('should render error icon from theme', async () => {
     expect.assertions(1);
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -117,9 +117,9 @@ describe('status icon', () => {
     expect(queryByTestId('ErrorIcon')).toBeNull();
   });
 
-  it('should render seen icon', () => {
+  it('should render seen icon', async () => {
     expect.assertions(1);
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -130,9 +130,9 @@ describe('status icon', () => {
     expect(getByTestId('SeenIcon')).toBeDefined();
   });
 
-  it('should render seen icon from theme', () => {
+  it('should render seen icon from theme', async () => {
     expect.assertions(1);
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -150,9 +150,9 @@ describe('status icon', () => {
     expect(queryByTestId('SeenIcon')).toBeNull();
   });
 
-  it('should render activity indicator', () => {
+  it('should render activity indicator', async () => {
     expect.assertions(1);
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus
@@ -163,9 +163,9 @@ describe('status icon', () => {
     expect(getByTestId('CircularActivityIndicator')).toBeDefined();
   });
 
-  it('should render sending icon from theme', () => {
+  it('should render sending icon from theme', async () => {
     expect.assertions(1);
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <StatusIcon
         currentUserIsAuthor
         showStatus

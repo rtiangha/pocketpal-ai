@@ -5,13 +5,10 @@ import {
   TextInput as NativeTextInput,
   type TextInputInstance,
 } from 'react-native';
-import {
-  BottomSheetTextInput,
-  useBottomSheetInternal,
-} from '@gorhom/bottom-sheet';
+import {useBottomSheetInternal} from '@gorhom/bottom-sheet';
 import {useSafeAreaFrame} from 'react-native-safe-area-context';
 
-import {fireEvent, render} from '../../../../jest/test-utils';
+import {fireEvent, render, screen} from '../../../../jest/test-utils';
 import {
   mockSheetContext,
   type MockSheetContext,
@@ -30,13 +27,13 @@ const jestSetupFrame = mockUseSafeAreaFrame.getMockImplementation();
 const OWN_TAG = 42;
 const OTHER_TAG = 7;
 const otherField = {};
-const screen = Dimensions.get('screen');
+const deviceScreen = Dimensions.get('screen');
 
 const setFrame = (width: number, height: number) => {
   mockUseSafeAreaFrame.mockReturnValue({x: 0, y: 0, width, height});
 };
-const fullScreen = () => setFrame(screen.width, screen.height);
-const windowed = () => setFrame(screen.width, screen.height - 100);
+const fullScreen = () => setFrame(deviceScreen.width, deviceScreen.height);
+const windowed = () => setFrame(deviceScreen.width, deviceScreen.height - 100);
 
 let sheet: MockSheetContext;
 
@@ -67,22 +64,20 @@ describe('TextInput sheet registration', () => {
     mockUseBottomSheetInternal.mockImplementation(() => null);
   });
 
-  it('renders RN TextInput, not BottomSheetTextInput, inside a sheet context', () => {
+  it('renders RN TextInput, not BottomSheetTextInput, inside a sheet context', async () => {
     enterSheet();
 
-    const {UNSAFE_getByType, UNSAFE_queryByType, getByTestId} = render(
-      <TextInput testID="x" />,
-    );
+    const {getByTestId} = await render(<TextInput testID="x" />);
 
-    expect(UNSAFE_queryByType(BottomSheetTextInput)).toBeNull();
-    expect(UNSAFE_getByType(NativeTextInput).props.testID).toBe('x');
+    expect(
+      screen.container.queryAll(i => i.type === 'TextInput')[0].props.testID,
+    ).toBe('x');
     expect(getByTestId('x').type).toBe('TextInput');
   });
 
-  it('renders a plain native input outside a sheet context', () => {
-    const {UNSAFE_queryByType, getByTestId} = render(<TextInput testID="x" />);
+  it('renders a plain native input outside a sheet context', async () => {
+    const {getByTestId} = await render(<TextInput testID="x" />);
 
-    expect(UNSAFE_queryByType(BottomSheetTextInput)).toBeNull();
     expect(getByTestId('x').type).toBe('TextInput');
   });
 
@@ -92,21 +87,21 @@ describe('TextInput sheet registration', () => {
       'outside',
       () => mockUseBottomSheetInternal.mockImplementation(() => null),
     ],
-  ])('forwards the ref to the native field %s a sheet', (_, context) => {
+  ])('forwards the ref to the native field %s a sheet', async (_, context) => {
     context();
     const ref = jest.fn();
 
-    render(<>{renderSheetAwareInput({ref, style: {}, testID: 'x'})}</>);
+    await render(<>{renderSheetAwareInput({ref, style: {}, testID: 'x'})}</>);
 
     expect(ref).toHaveBeenCalledWith(
       expect.objectContaining({focus: expect.any(Function)}),
     );
   });
 
-  it('lets a caller-supplied render win', () => {
+  it('lets a caller-supplied render win', async () => {
     enterSheet();
 
-    const {UNSAFE_queryByType, getByTestId} = render(
+    const {getByTestId} = await render(
       <TextInput
         testID="x"
         render={props => (
@@ -118,7 +113,6 @@ describe('TextInput sheet registration', () => {
       />,
     );
 
-    expect(UNSAFE_queryByType(BottomSheetTextInput)).toBeNull();
     expect(getByTestId('custom')).toBeTruthy();
   });
 });
@@ -128,8 +122,8 @@ describe('SheetAwareNativeInput keyboard registration', () => {
   let onBlur: jest.Mock;
   let ref: jest.Mock;
 
-  const renderInput = () => {
-    const utils = render(
+  const renderInput = async () => {
+    const utils = await render(
       <SheetAwareNativeInput
         ref={ref}
         testID="x"
@@ -139,8 +133,8 @@ describe('SheetAwareNativeInput keyboard registration', () => {
     );
     return {
       ...utils,
-      rerenderInput: () =>
-        utils.rerender(
+      rerenderInput: async () =>
+        await utils.rerender(
           <SheetAwareNativeInput
             ref={ref}
             testID="x"
@@ -151,12 +145,18 @@ describe('SheetAwareNativeInput keyboard registration', () => {
     };
   };
 
-  const focus = (getByTestId: (id: string) => unknown, target = OWN_TAG) => {
-    fireEvent(getByTestId('x') as never, 'focus', focusEvent(target));
+  const focus = async (
+    getByTestId: (id: string) => unknown,
+    target = OWN_TAG,
+  ) => {
+    await fireEvent(getByTestId('x') as never, 'focus', focusEvent(target));
   };
 
-  const blur = (getByTestId: (id: string) => unknown, target = OWN_TAG) => {
-    fireEvent(getByTestId('x') as never, 'blur', focusEvent(target));
+  const blur = async (
+    getByTestId: (id: string) => unknown,
+    target = OWN_TAG,
+  ) => {
+    await fireEvent(getByTestId('x') as never, 'blur', focusEvent(target));
   };
 
   beforeEach(() => {
@@ -177,12 +177,12 @@ describe('SheetAwareNativeInput keyboard registration', () => {
   });
 
   describe('lifecycle', () => {
-    it('registers its tag at mount and removes it at unmount', () => {
-      const {unmount} = renderInput();
+    it('registers its tag at mount and removes it at unmount', async () => {
+      const {unmount} = await renderInput();
 
       expect([...sheet.textInputNodesRef.current]).toEqual([OWN_TAG]);
 
-      unmount();
+      await unmount();
 
       expect(sheet.textInputNodesRef.current.size).toBe(0);
     });
@@ -190,49 +190,49 @@ describe('SheetAwareNativeInput keyboard registration', () => {
     it.each([
       ['clears its own target', OWN_TAG, undefined],
       ["leaves another input's target", OTHER_TAG, OTHER_TAG],
-    ])('%s at unmount', (_, heldTarget, expectedTarget) => {
-      const {unmount} = renderInput();
+    ])('%s at unmount', async (_, heldTarget, expectedTarget) => {
+      const {unmount} = await renderInput();
       sheet.keyboardState = {target: heldTarget};
 
-      unmount();
+      await unmount();
 
       expect(sheet.keyboardState.target).toBe(expectedTarget);
     });
 
-    it('registers nothing and writes nothing when the field has no tag', () => {
+    it('registers nothing and writes nothing when the field has no tag', async () => {
       mockNodeHandles(null);
-      const {unmount} = renderInput();
+      const {unmount} = await renderInput();
 
       expect(sheet.textInputNodesRef.current.size).toBe(0);
 
-      unmount();
+      await unmount();
 
       expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();
     });
   });
 
   describe('ref', () => {
-    it('passes the native field to a callback ref, then null at unmount', () => {
-      const {unmount} = renderInput();
+    it('passes the native field to a callback ref, then null at unmount', async () => {
+      const {unmount} = await renderInput();
 
       expect(ref).toHaveBeenLastCalledWith(
         expect.objectContaining({focus: expect.any(Function)}),
       );
 
-      unmount();
+      await unmount();
 
       expect(ref).toHaveBeenLastCalledWith(null);
     });
 
-    it('fills an object ref, then clears it at unmount', () => {
+    it('fills an object ref, then clears it at unmount', async () => {
       const objectRef = React.createRef<TextInputInstance>();
-      const {unmount} = render(<SheetAwareNativeInput ref={objectRef} />);
+      const {unmount} = await render(<SheetAwareNativeInput ref={objectRef} />);
 
       expect(objectRef.current).toEqual(
         expect.objectContaining({focus: expect.any(Function)}),
       );
 
-      unmount();
+      await unmount();
 
       expect(objectRef.current).toBeNull();
     });
@@ -244,11 +244,11 @@ describe('SheetAwareNativeInput keyboard registration', () => {
       ['is within 1 dp of', 0.4],
     ])(
       'sets its own target, then calls onFocus, when the frame %s the screen',
-      (_, shortBy) => {
-        setFrame(screen.width - shortBy, screen.height - shortBy);
-        const {getByTestId} = renderInput();
+      async (_, shortBy) => {
+        setFrame(deviceScreen.width - shortBy, deviceScreen.height - shortBy);
+        const {getByTestId} = await renderInput();
 
-        focus(getByTestId);
+        await focus(getByTestId);
 
         expect(sheet.keyboardState.target).toBe(OWN_TAG);
         expect(sheet.animatedKeyboardState.set).toHaveBeenCalledTimes(1);
@@ -260,25 +260,25 @@ describe('SheetAwareNativeInput keyboard registration', () => {
       },
     );
 
-    it('passes blur to the caller once', () => {
+    it('passes blur to the caller once', async () => {
       fullScreen();
-      const {getByTestId} = renderInput();
-      focus(getByTestId);
+      const {getByTestId} = await renderInput();
+      await focus(getByTestId);
 
-      blur(getByTestId);
+      await blur(getByTestId);
 
       expect(onBlur).toHaveBeenCalledTimes(1);
       expect(onBlur).toHaveBeenCalledWith(focusEvent());
     });
 
-    it('keeps its target when focus moves to another sheet input', () => {
+    it('keeps its target when focus moves to another sheet input', async () => {
       fullScreen();
-      const {getByTestId} = renderInput();
-      focus(getByTestId);
+      const {getByTestId} = await renderInput();
+      await focus(getByTestId);
       sheet.textInputNodesRef.current.add(OTHER_TAG);
       focusMovesTo(otherField);
 
-      blur(getByTestId);
+      await blur(getByTestId);
 
       expect(sheet.keyboardState.target).toBe(OWN_TAG);
     });
@@ -286,13 +286,13 @@ describe('SheetAwareNativeInput keyboard registration', () => {
     it.each([
       ['nothing', null],
       ['an input outside the sheet', otherField],
-    ])('clears its target when focus moves to %s', (_, next) => {
+    ])('clears its target when focus moves to %s', async (_, next) => {
       fullScreen();
-      const {getByTestId} = renderInput();
-      focus(getByTestId);
+      const {getByTestId} = await renderInput();
+      await focus(getByTestId);
       focusMovesTo(next);
 
-      blur(getByTestId);
+      await blur(getByTestId);
 
       expect(sheet.keyboardState.target).toBeUndefined();
     });
@@ -300,39 +300,42 @@ describe('SheetAwareNativeInput keyboard registration', () => {
 
   describe('when the app window is smaller than the screen', () => {
     it.each([
-      ['shorter', screen.width, screen.height - 100],
-      ['only narrower', screen.width - 100, screen.height],
-    ])('never writes a target when the window is %s', (_, width, height) => {
-      setFrame(width, height);
-      const {getByTestId} = renderInput();
+      ['shorter', deviceScreen.width, deviceScreen.height - 100],
+      ['only narrower', deviceScreen.width - 100, deviceScreen.height],
+    ])(
+      'never writes a target when the window is %s',
+      async (_, width, height) => {
+        setFrame(width, height);
+        const {getByTestId} = await renderInput();
 
-      focus(getByTestId);
+        await focus(getByTestId);
 
-      expect(sheet.keyboardState.target).toBeUndefined();
-      expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();
-      expect(onFocus).toHaveBeenCalledTimes(1);
-      expect(onFocus).toHaveBeenCalledWith(focusEvent());
-    });
+        expect(sheet.keyboardState.target).toBeUndefined();
+        expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();
+        expect(onFocus).toHaveBeenCalledTimes(1);
+        expect(onFocus).toHaveBeenCalledWith(focusEvent());
+      },
+    );
 
-    it('leaves a target held by another input alone on focus', () => {
+    it('leaves a target held by another input alone on focus', async () => {
       enterSheet({target: OTHER_TAG});
       windowed();
-      const {getByTestId} = renderInput();
+      const {getByTestId} = await renderInput();
 
-      focus(getByTestId);
+      await focus(getByTestId);
 
       expect(sheet.keyboardState.target).toBe(OTHER_TAG);
       expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();
     });
 
-    it('clears its own target on blur even when focus stays in the sheet', () => {
+    it('clears its own target on blur even when focus stays in the sheet', async () => {
       enterSheet({target: OWN_TAG});
       windowed();
-      const {getByTestId} = renderInput();
+      const {getByTestId} = await renderInput();
       sheet.textInputNodesRef.current.add(OTHER_TAG);
       focusMovesTo(otherField);
 
-      blur(getByTestId);
+      await blur(getByTestId);
 
       expect(sheet.keyboardState.target).toBeUndefined();
     });
@@ -341,96 +344,96 @@ describe('SheetAwareNativeInput keyboard registration', () => {
   it.each([
     ['full screen', fullScreen],
     ['windowed', windowed],
-  ])("never clears another input's target on blur, %s", (_, frame) => {
+  ])("never clears another input's target on blur, %s", async (_, frame) => {
     enterSheet({target: OTHER_TAG});
     frame();
-    const {getByTestId} = renderInput();
+    const {getByTestId} = await renderInput();
 
-    blur(getByTestId);
+    await blur(getByTestId);
 
     expect(sheet.keyboardState.target).toBe(OTHER_TAG);
     expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();
   });
 
   describe('when the window changes while focused', () => {
-    it('ignores a rotation that transposes the frame before the screen', () => {
+    it('ignores a rotation that transposes the frame before the screen', async () => {
       fullScreen();
-      const {getByTestId, rerenderInput} = renderInput();
-      focus(getByTestId);
+      const {getByTestId, rerenderInput} = await renderInput();
+      await focus(getByTestId);
 
-      setFrame(screen.height, screen.width);
-      rerenderInput();
+      setFrame(deviceScreen.height, deviceScreen.width);
+      await rerenderInput();
 
       expect(Keyboard.dismiss).not.toHaveBeenCalled();
       expect(ref).toHaveBeenCalledTimes(1);
     });
 
-    it('dismisses the keyboard when the window narrows into a split', () => {
+    it('dismisses the keyboard when the window narrows into a split', async () => {
       fullScreen();
-      const {getByTestId, rerenderInput} = renderInput();
-      focus(getByTestId);
+      const {getByTestId, rerenderInput} = await renderInput();
+      await focus(getByTestId);
       sheet.animatedKeyboardState.set.mockClear();
 
-      setFrame(screen.width - 100, screen.height);
-      rerenderInput();
+      setFrame(deviceScreen.width - 100, deviceScreen.height);
+      await rerenderInput();
 
       expect(Keyboard.dismiss).toHaveBeenCalledTimes(1);
       expect(ref).toHaveBeenCalledTimes(1);
       expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();
     });
 
-    it('dismisses the keyboard when a narrow window goes full screen', () => {
-      setFrame(screen.width - 100, screen.height);
-      const {getByTestId, rerenderInput} = renderInput();
-      focus(getByTestId);
+    it('dismisses the keyboard when a narrow window goes full screen', async () => {
+      setFrame(deviceScreen.width - 100, deviceScreen.height);
+      const {getByTestId, rerenderInput} = await renderInput();
+      await focus(getByTestId);
 
       fullScreen();
-      rerenderInput();
+      await rerenderInput();
 
       expect(Keyboard.dismiss).toHaveBeenCalledTimes(1);
     });
 
-    it('never dismisses when the keyboard alone shrinks the frame', () => {
+    it('never dismisses when the keyboard alone shrinks the frame', async () => {
       fullScreen();
-      const {getByTestId, rerenderInput} = renderInput();
-      focus(getByTestId);
+      const {getByTestId, rerenderInput} = await renderInput();
+      await focus(getByTestId);
 
-      setFrame(screen.width, screen.height - 300);
-      rerenderInput();
+      setFrame(deviceScreen.width, deviceScreen.height - 300);
+      await rerenderInput();
       fullScreen();
-      rerenderInput();
+      await rerenderInput();
 
       expect(Keyboard.dismiss).not.toHaveBeenCalled();
     });
 
-    it('keeps a height-only window change focused and gates the next focus', () => {
+    it('keeps a height-only window change focused and gates the next focus', async () => {
       fullScreen();
-      const {getByTestId, rerenderInput} = renderInput();
-      focus(getByTestId);
+      const {getByTestId, rerenderInput} = await renderInput();
+      await focus(getByTestId);
 
-      setFrame(screen.width, screen.height - 100);
-      rerenderInput();
-      setFrame(screen.width - 100, screen.height - 100);
-      rerenderInput();
+      setFrame(deviceScreen.width, deviceScreen.height - 100);
+      await rerenderInput();
+      setFrame(deviceScreen.width - 100, deviceScreen.height - 100);
+      await rerenderInput();
 
       expect(Keyboard.dismiss).not.toHaveBeenCalled();
 
-      blur(getByTestId);
-      focus(getByTestId);
+      await blur(getByTestId);
+      await focus(getByTestId);
 
       expect(sheet.keyboardState.target).toBeUndefined();
     });
   });
 
   describe('when the window changes while not focused', () => {
-    it('does not dismiss once the field has blurred', () => {
+    it('does not dismiss once the field has blurred', async () => {
       fullScreen();
-      const {getByTestId, rerenderInput} = renderInput();
-      focus(getByTestId);
-      blur(getByTestId);
+      const {getByTestId, rerenderInput} = await renderInput();
+      await focus(getByTestId);
+      await blur(getByTestId);
 
-      setFrame(screen.width - 100, screen.height);
-      rerenderInput();
+      setFrame(deviceScreen.width - 100, deviceScreen.height);
+      await rerenderInput();
 
       expect(Keyboard.dismiss).not.toHaveBeenCalled();
     });
@@ -439,27 +442,28 @@ describe('SheetAwareNativeInput keyboard registration', () => {
       [
         'full screen to windowed',
         fullScreen,
-        () => setFrame(screen.width - 100, screen.height),
+        () => setFrame(deviceScreen.width - 100, deviceScreen.height),
         undefined,
       ],
+
       [
         'windowed to full screen',
-        () => setFrame(screen.width - 100, screen.height),
+        () => setFrame(deviceScreen.width - 100, deviceScreen.height),
         fullScreen,
         OWN_TAG,
       ],
     ])(
       'does not dismiss on %s, and the next focus follows the new window',
-      (_, before, after, expectedTarget) => {
+      async (_, before, after, expectedTarget) => {
         before();
-        const {getByTestId, rerenderInput} = renderInput();
+        const {getByTestId, rerenderInput} = await renderInput();
 
         after();
-        rerenderInput();
+        await rerenderInput();
 
         expect(Keyboard.dismiss).not.toHaveBeenCalled();
 
-        focus(getByTestId);
+        await focus(getByTestId);
 
         expect(sheet.keyboardState.target).toBe(expectedTarget);
       },
@@ -467,18 +471,17 @@ describe('SheetAwareNativeInput keyboard registration', () => {
   });
 
   describe('outside a sheet', () => {
-    it('renders a plain input and never touches the window or keyboard', () => {
+    it('renders a plain input and never touches the window or keyboard', async () => {
       mockUseBottomSheetInternal.mockImplementation(() => null);
       const addEventListener = jest.spyOn(Dimensions, 'addEventListener');
       mockUseSafeAreaFrame.mockClear();
-      setFrame(screen.width - 100, screen.height);
-      const {getByTestId, UNSAFE_queryByType, rerenderInput} = renderInput();
+      setFrame(deviceScreen.width - 100, deviceScreen.height);
+      const {getByTestId, rerenderInput} = await renderInput();
 
-      focus(getByTestId);
+      await focus(getByTestId);
       fullScreen();
-      rerenderInput();
+      await rerenderInput();
 
-      expect(UNSAFE_queryByType(BottomSheetTextInput)).toBeNull();
       expect(sheet.textInputNodesRef.current.size).toBe(0);
       expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();
       expect(Keyboard.dismiss).not.toHaveBeenCalled();

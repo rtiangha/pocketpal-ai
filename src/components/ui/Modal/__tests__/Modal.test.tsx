@@ -5,8 +5,8 @@ import {render} from '../../../../../jest/test-utils';
 import {Modal} from '../Modal';
 
 describe('Modal', () => {
-  it('renders a single ui-header when visible', () => {
-    const {getAllByTestId} = render(
+  it('renders a single ui-header when visible', async () => {
+    const {getAllByTestId} = await render(
       <Modal isVisible title="Settings">
         <Text>body</Text>
       </Modal>,
@@ -15,8 +15,8 @@ describe('Modal', () => {
     expect(headers).toHaveLength(1);
   });
 
-  it('renders nothing when not visible', () => {
-    const {queryByTestId} = render(
+  it('renders nothing when not visible', async () => {
+    const {queryByTestId} = await render(
       <Modal title="Settings">
         <Text>body</Text>
       </Modal>,

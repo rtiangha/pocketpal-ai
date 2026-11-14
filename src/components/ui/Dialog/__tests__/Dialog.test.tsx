@@ -15,8 +15,8 @@ const fillsParent = {
 };
 
 describe('Dialog', () => {
-  it('renders a single ui-header when visible', () => {
-    const {getAllByTestId} = render(
+  it('renders a single ui-header when visible', async () => {
+    const {getAllByTestId} = await render(
       <Dialog isVisible title="Confirm">
         <Text>body</Text>
       </Dialog>,
@@ -25,8 +25,8 @@ describe('Dialog', () => {
     expect(headers).toHaveLength(1);
   });
 
-  it('renders nothing when not visible', () => {
-    const {queryByTestId} = render(
+  it('renders nothing when not visible', async () => {
+    const {queryByTestId} = await render(
       <Dialog title="Confirm">
         <Text>body</Text>
       </Dialog>,

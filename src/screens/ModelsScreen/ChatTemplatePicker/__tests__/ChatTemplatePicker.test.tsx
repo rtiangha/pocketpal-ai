@@ -14,8 +14,8 @@ jest.mock('../../../../utils/chat', () => ({
 }));
 
 describe('ChatTemplatePicker', () => {
-  it('renders correctly with initial value', () => {
-    const {getByText, getByTestId} = render(
+  it('renders correctly with initial value', async () => {
+    const {getByText, getByTestId} = await render(
       <ChatTemplatePicker
         selectedTemplateName="template1"
         handleChatTemplateNameChange={jest.fn()}
@@ -26,8 +26,8 @@ describe('ChatTemplatePicker', () => {
     expect(getByTestId('text_input').props.value).toBe('Template 1');
   });
 
-  it('displays the correct templates in the picker', () => {
-    const {getByText, getByTestId} = render(
+  it('displays the correct templates in the picker', async () => {
+    const {getByText, getByTestId} = await render(
       <ChatTemplatePicker
         selectedTemplateName="template2"
         handleChatTemplateNameChange={jest.fn()}
@@ -38,9 +38,9 @@ describe('ChatTemplatePicker', () => {
     expect(getByTestId('text_input').props.value).toBe('Template 2');
   });
 
-  it('calls handleChatTemplateNameChange when a template is selected', () => {
+  it('calls handleChatTemplateNameChange when a template is selected', async () => {
     const mockHandleChatTemplateNameChange = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ChatTemplatePicker
         selectedTemplateName="template1"
         handleChatTemplateNameChange={mockHandleChatTemplateNameChange}
@@ -48,7 +48,7 @@ describe('ChatTemplatePicker', () => {
     );
 
     const textInput = getByTestId('text_input');
-    fireEvent(textInput, 'onValueChange', 'template2');
+    await fireEvent(textInput, 'onValueChange', 'template2');
     expect(mockHandleChatTemplateNameChange).toHaveBeenCalledWith('template2');
   });
 });

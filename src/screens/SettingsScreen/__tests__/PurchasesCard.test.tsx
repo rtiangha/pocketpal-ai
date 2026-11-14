@@ -49,7 +49,7 @@ describe('PurchasesCard', () => {
     });
   });
 
-  it('lists store-owned Pals with status and support code', () => {
+  it('lists store-owned Pals with status and support code', async () => {
     setRecords(
       rec('a', 'active'),
       rec('b', 'unfulfillable'),
@@ -57,7 +57,7 @@ describe('PurchasesCard', () => {
       rec('d', 'pending_payment'),
       rec('e', 'removed'),
     );
-    const {getByTestId, queryByTestId, getByText} = render(
+    const {getByTestId, queryByTestId, getByText} = await render(
       <PurchasesCard onSignInPress={jest.fn()} />,
     );
 
@@ -73,92 +73,102 @@ describe('PurchasesCard', () => {
     expect(queryByTestId('purchase-row-e')).toBeNull();
   });
 
-  it('never lists account-only Pals', () => {
+  it('never lists account-only Pals', async () => {
     palStore.userLibrary = [{id: 'library-only'} as any];
-    const {queryByTestId} = render(<PurchasesCard onSignInPress={jest.fn()} />);
+    const {queryByTestId} = await render(
+      <PurchasesCard onSignInPress={jest.fn()} />,
+    );
     expect(queryByTestId('purchase-row-library-only')).toBeNull();
     palStore.userLibrary = [];
   });
 
-  it('restores purchases', () => {
-    const {getByTestId} = render(<PurchasesCard onSignInPress={jest.fn()} />);
-    fireEvent.press(getByTestId('settings-restore-purchases'));
+  it('restores purchases', async () => {
+    const {getByTestId} = await render(
+      <PurchasesCard onSignInPress={jest.fn()} />,
+    );
+    await fireEvent.press(getByTestId('settings-restore-purchases'));
     expect(purchaseStore.restore).toHaveBeenCalled();
   });
 
-  it('signs in and links when signed out', () => {
+  it('signs in and links when signed out', async () => {
     setRecords(rec('a', 'active'));
     runInAction(() => {
       (purchaseStore as any).needsLink = true;
     });
     const onSignInPress = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <PurchasesCard onSignInPress={onSignInPress} />,
     );
-    fireEvent.press(getByTestId('settings-link-purchases'));
+    await fireEvent.press(getByTestId('settings-link-purchases'));
     expect(purchaseStore.requestLink).toHaveBeenCalled();
     expect(onSignInPress).toHaveBeenCalled();
     expect(purchaseStore.link).not.toHaveBeenCalled();
   });
 
-  it('links directly when signed in', () => {
+  it('links directly when signed in', async () => {
     (authService as any).isAuthenticated = true;
     setRecords(rec('a', 'active'));
     runInAction(() => {
       (purchaseStore as any).needsLink = true;
     });
     const onSignInPress = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <PurchasesCard onSignInPress={onSignInPress} />,
     );
-    fireEvent.press(getByTestId('settings-link-purchases'));
+    await fireEvent.press(getByTestId('settings-link-purchases'));
     expect(purchaseStore.link).toHaveBeenCalled();
     expect(onSignInPress).not.toHaveBeenCalled();
   });
 
-  it('hides the link row while account linking is off', () => {
+  it('hides the link row while account linking is off', async () => {
     mockAccountLinkEnabled = false;
     setRecords(rec('a', 'active'));
     runInAction(() => {
       (purchaseStore as any).needsLink = true;
     });
-    const {getByTestId, queryByTestId} = render(
+    const {getByTestId, queryByTestId} = await render(
       <PurchasesCard onSignInPress={jest.fn()} />,
     );
     expect(getByTestId('settings-restore-purchases')).toBeTruthy();
     expect(queryByTestId('settings-link-purchases')).toBeNull();
   });
 
-  it('hides the link row when everything is linked', () => {
+  it('hides the link row when everything is linked', async () => {
     (authService as any).isAuthenticated = true;
     setRecords(rec('a', 'active', {linkedUserId: 'user-1'}));
-    const {queryByTestId} = render(<PurchasesCard onSignInPress={jest.fn()} />);
+    const {queryByTestId} = await render(
+      <PurchasesCard onSignInPress={jest.fn()} />,
+    );
     expect(queryByTestId('settings-link-purchases')).toBeNull();
   });
 
-  it('is hidden when billing is unavailable and nothing was bought', () => {
+  it('is hidden when billing is unavailable and nothing was bought', async () => {
     runInAction(() => {
       purchaseStore.availability = 'unavailable';
     });
-    const {queryByTestId} = render(<PurchasesCard onSignInPress={jest.fn()} />);
+    const {queryByTestId} = await render(
+      <PurchasesCard onSignInPress={jest.fn()} />,
+    );
     expect(queryByTestId('purchases-card')).toBeNull();
   });
 
-  it('still lists purchases without a restore button when billing is unavailable', () => {
+  it('still lists purchases without a restore button when billing is unavailable', async () => {
     runInAction(() => {
       purchaseStore.availability = 'unavailable';
     });
     setRecords(rec('a', 'active'));
-    const {getByTestId, queryByTestId} = render(
+    const {getByTestId, queryByTestId} = await render(
       <PurchasesCard onSignInPress={jest.fn()} />,
     );
     expect(getByTestId('purchase-row-a')).toBeTruthy();
     expect(queryByTestId('settings-restore-purchases')).toBeNull();
   });
 
-  it('lists a held purchase with its code', () => {
+  it('lists a held purchase with its code', async () => {
     setRecords(rec('h', 'held_invalid'));
-    const {getByText} = render(<PurchasesCard onSignInPress={jest.fn()} />);
+    const {getByText} = await render(
+      <PurchasesCard onSignInPress={jest.fn()} />,
+    );
     expect(
       getByText(
         "We couldn't unlock this purchase. Contact support with this code.\nSupport code: SUP-h",
@@ -178,16 +188,19 @@ describe('PurchasesCard', () => {
         false,
         'This Pal is no longer available. You can ask Apple for a refund.\nSupport code: SUP-b',
       ],
+
       [
         'ios',
         true,
         'This Pal is no longer available. You can ask Apple for a refund.\nSupport code: SUP-b',
       ],
+
       [
         'android',
         false,
         "This purchase couldn't be completed. Google will refund you.\nSupport code: SUP-b",
       ],
+
       [
         'android',
         true,
@@ -195,7 +208,7 @@ describe('PurchasesCard', () => {
       ],
     ])(
       'uses the %s wording (withdrawn after delivery: %p)',
-      (os, delivered, copy) => {
+      async (os, delivered, copy) => {
         (Platform as any).OS = os;
         setRecords(
           rec(
@@ -204,7 +217,9 @@ describe('PurchasesCard', () => {
             delivered ? {withdrawnAfterDelivery: true} : {},
           ),
         );
-        const {getByText} = render(<PurchasesCard onSignInPress={jest.fn()} />);
+        const {getByText} = await render(
+          <PurchasesCard onSignInPress={jest.fn()} />,
+        );
         expect(getByText(copy)).toBeTruthy();
       },
     );

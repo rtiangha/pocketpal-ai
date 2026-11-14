@@ -1,6 +1,6 @@
 import React from 'react';
 import {ScrollView, Text} from 'react-native';
-import {render, fireEvent} from '../../../../jest/test-utils';
+import {render, fireEvent, screen} from '../../../../jest/test-utils';
 import {ThinkingBubble} from '../ThinkingBubble';
 import {L10nContext} from '../../../utils';
 import {l10n} from '../../../locales';
@@ -29,8 +29,8 @@ describe('ThinkingBubble', () => {
     jest.useRealTimers();
   });
 
-  const renderThinkingBubble = (children = 'Test thinking content') => {
-    return render(
+  const renderThinkingBubble = async (children = 'Test thinking content') => {
+    return await render(
       <L10nContext.Provider value={l10n.en}>
         <ThinkingBubble>
           <Text testID="thinking-content">{children}</Text>
@@ -40,8 +40,8 @@ describe('ThinkingBubble', () => {
     );
   };
 
-  it('renders correctly in initial PARTIAL state', () => {
-    const {getByText, getByTestId} = renderThinkingBubble();
+  it('renders correctly in initial PARTIAL state', async () => {
+    const {getByText, getByTestId} = await renderThinkingBubble();
 
     // Check if the header text is rendered
     expect(getByText(l10n.en.components.thinkingBubble.reasoning)).toBeTruthy();
@@ -52,62 +52,64 @@ describe('ThinkingBubble', () => {
     expect(getByTestId('chevron-icon')).toBeTruthy();
   });
 
-  it('transitions from PARTIAL to EXPANDED state when pressed', () => {
-    const {getByText} = renderThinkingBubble();
+  it('transitions from PARTIAL to EXPANDED state when pressed', async () => {
+    const {getByText} = await renderThinkingBubble();
 
     // Get the header text element which is part of the touchable component
     const headerText = getByText(l10n.en.components.thinkingBubble.reasoning);
 
     // Press the component to toggle state from PARTIAL to EXPANDED
-    fireEvent.press(headerText);
+    await fireEvent.press(headerText);
 
     // In EXPANDED state, the content should still be visible
     // We can't directly test the state, but we can check if LayoutAnimation was called
     expect(LayoutAnimation.configureNext).toHaveBeenCalled();
   });
 
-  it('transitions through all states when pressed multiple times', () => {
-    const {getByText, queryByTestId} = renderThinkingBubble();
+  it('transitions through all states when pressed multiple times', async () => {
+    const {getByText, queryByTestId} = await renderThinkingBubble();
 
     // The reasoning label is rendered in PARTIAL/EXPANDED inside
     // headerContainer and in COLLAPSED inside collapsedRow — different
     // elements, same text. Re-query after each press so the press
     // event lands on the live element.
-    const press = () =>
-      fireEvent.press(getByText(l10n.en.components.thinkingBubble.reasoning));
+    const press = async () =>
+      await fireEvent.press(
+        getByText(l10n.en.components.thinkingBubble.reasoning),
+      );
 
     // Initial: PARTIAL — no collapsed row
     expect(queryByTestId('thinking-bubble-collapsed')).toBeNull();
 
     // Press 1: PARTIAL → EXPANDED (still card, no collapsed row)
-    press();
+    await press();
     expect(queryByTestId('thinking-bubble-collapsed')).toBeNull();
     expect(
       require('react-native').LayoutAnimation.configureNext,
     ).toHaveBeenCalledTimes(1);
 
     // Press 2: EXPANDED → COLLAPSED (text-only row appears)
-    press();
+    await press();
     expect(queryByTestId('thinking-bubble-collapsed')).not.toBeNull();
     expect(
       require('react-native').LayoutAnimation.configureNext,
     ).toHaveBeenCalledTimes(2);
 
     // Press 3: COLLAPSED → PARTIAL (back to card)
-    press();
+    await press();
     expect(queryByTestId('thinking-bubble-collapsed')).toBeNull();
     expect(
       require('react-native').LayoutAnimation.configureNext,
     ).toHaveBeenCalledTimes(3);
   });
 
-  it('animates the chevron when state changes', () => {
-    const {getByText} = renderThinkingBubble();
+  it('animates the chevron when state changes', async () => {
+    const {getByText} = await renderThinkingBubble();
 
     const headerText = getByText(l10n.en.components.thinkingBubble.reasoning);
 
     // Press to change state
-    fireEvent.press(headerText);
+    await fireEvent.press(headerText);
 
     // Check if Animated.timing or Animated.spring was called for chevron animation
     const animatedTiming = require('react-native').Animated.timing;
@@ -118,14 +120,15 @@ describe('ThinkingBubble', () => {
     ).toBeTruthy();
   });
 
-  it('auto-scrolls to the bottom when content changes', () => {
-    const {rerender, getByTestId} = renderThinkingBubble('Initial content');
+  it('auto-scrolls to the bottom when content changes', async () => {
+    const {rerender, getByTestId} =
+      await renderThinkingBubble('Initial content');
 
     // Advance timers to trigger the auto-scroll setTimeout
     jest.advanceTimersByTime(200);
 
     // Update the content
-    rerender(
+    await rerender(
       <L10nContext.Provider value={l10n.en}>
         <ThinkingBubble>
           <Text testID="thinking-content">Updated content</Text>
@@ -142,19 +145,21 @@ describe('ThinkingBubble', () => {
     );
   });
 
-  it('renders MaskedView in PARTIAL state when not animating', () => {
-    const {getByTestId} = renderThinkingBubble();
+  it('renders MaskedView in PARTIAL state when not animating', async () => {
+    const {getByTestId} = await renderThinkingBubble();
 
     // In PARTIAL state and not animating, it should use MaskedView
     expect(getByTestId('masked-view')).toBeTruthy();
   });
 
-  it('leaves vertical drags on the PARTIAL card to the chat and still scrolls it to the end', () => {
+  it('leaves vertical drags on the PARTIAL card to the chat and still scrolls it to the end', async () => {
     const scrollToEnd = jest
       .spyOn(ScrollView.prototype, 'scrollToEnd')
       .mockImplementation(jest.fn());
-    const {UNSAFE_getByType} = renderThinkingBubble();
-    const card = UNSAFE_getByType(ScrollView);
+    await renderThinkingBubble();
+    const card = screen.container.queryAll(
+      i => i.type === 'RCTScrollView' || i.type === 'ScrollView',
+    )[0];
 
     expect(card.props.scrollEnabled).toBe(false);
 
@@ -163,12 +168,12 @@ describe('ThinkingBubble', () => {
     scrollToEnd.mockRestore();
   });
 
-  it('handles long content properly', () => {
+  it('handles long content properly', async () => {
     const longContent =
       'This is a very long content that should trigger scrolling behavior. '.repeat(
         20,
       );
-    const {getByTestId} = renderThinkingBubble(longContent);
+    const {getByTestId} = await renderThinkingBubble(longContent);
 
     // Check if the content is rendered
     expect(getByTestId('thinking-content')).toBeTruthy();

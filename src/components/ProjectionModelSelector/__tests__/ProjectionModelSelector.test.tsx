@@ -34,22 +34,22 @@ describe('ProjectionModelSelector', () => {
   });
 
   describe('Visibility and Rendering', () => {
-    it('should not render for models that do not support multimodal', () => {
+    it('should not render for models that do not support multimodal', async () => {
       const nonMultimodalModel = createModel({
         id: 'non-multimodal',
         name: 'Regular Model',
         supportsMultimodal: false,
       });
 
-      const {queryByTestId} = render(
+      const {queryByTestId} = await render(
         <ProjectionModelSelector model={nonMultimodalModel} />,
       );
 
       expect(queryByTestId('projection-model-selector')).toBeNull();
     });
 
-    it('should display available projection models to the user', () => {
-      const {getByText} = render(
+    it('should display available projection models to the user', async () => {
+      const {getByText} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -65,8 +65,8 @@ describe('ProjectionModelSelector', () => {
       expect(getByText('Projection Model 2')).toBeTruthy();
     });
 
-    it('should show empty state when no compatible models are available', () => {
-      const {getByText} = render(
+    it('should show empty state when no compatible models are available', async () => {
+      const {getByText} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -81,10 +81,10 @@ describe('ProjectionModelSelector', () => {
   });
 
   describe('Model Selection', () => {
-    it('should call onProjectionModelSelect when user selects a model', () => {
+    it('should call onProjectionModelSelect when user selects a model', async () => {
       const mockCallback = jest.fn();
 
-      const {getAllByTestId} = render(
+      const {getAllByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -96,7 +96,7 @@ describe('ProjectionModelSelector', () => {
       );
 
       const selectButtons = getAllByTestId('select-projection-model-button');
-      fireEvent.press(selectButtons[0]);
+      await fireEvent.press(selectButtons[0]);
 
       expect(mockCallback).toHaveBeenCalledWith('proj-model-1');
     });
@@ -104,7 +104,7 @@ describe('ProjectionModelSelector', () => {
 
   describe('Expand/Collapse Behavior', () => {
     it('should toggle expansion when user taps the header', async () => {
-      const {getByTestId, queryAllByTestId} = render(
+      const {getByTestId, queryAllByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -121,7 +121,7 @@ describe('ProjectionModelSelector', () => {
 
       // Tap header to collapse
       const header = getByTestId('projection-model-selector-header');
-      fireEvent.press(header);
+      await fireEvent.press(header);
 
       // Models should be hidden
       await waitFor(() => {
@@ -129,8 +129,8 @@ describe('ProjectionModelSelector', () => {
       });
     });
 
-    it('should start expanded when initialExpanded is true', () => {
-      const {queryByTestId} = render(
+    it('should start expanded when initialExpanded is true', async () => {
+      const {queryByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -155,14 +155,14 @@ describe('ProjectionModelSelector', () => {
       jest.restoreAllMocks();
     });
 
-    it('should prevent deletion of active projection model', () => {
+    it('should prevent deletion of active projection model', async () => {
       const {modelStore} = require('../../../store');
       modelStore.activeModelId = 'proj-model-1';
       modelStore.getDownloadedLLMsUsingProjectionModel = jest
         .fn()
         .mockReturnValue([]);
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -174,7 +174,7 @@ describe('ProjectionModelSelector', () => {
 
       // Find and press the delete button
       const deleteButton = getByTestId('delete-projection-model-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       // Verify Alert was called with cannot delete message
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -187,7 +187,7 @@ describe('ProjectionModelSelector', () => {
       expect(modelStore.deleteModel).not.toHaveBeenCalled();
     });
 
-    it('should show warning when deleting projection model with dependent models', () => {
+    it('should show warning when deleting projection model with dependent models', async () => {
       const {modelStore} = require('../../../store');
       modelStore.activeModelId = null;
 
@@ -203,7 +203,7 @@ describe('ProjectionModelSelector', () => {
         .mockReturnValue([dependentModel]);
       modelStore.deleteModel = jest.fn().mockResolvedValue(undefined);
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -215,7 +215,7 @@ describe('ProjectionModelSelector', () => {
 
       // Find and press the delete button
       const deleteButton = getByTestId('delete-projection-model-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       // Verify Alert was called with warning about dependent models
       expect(Alert.alert).toHaveBeenCalledWith(
@@ -269,7 +269,7 @@ describe('ProjectionModelSelector', () => {
         },
       );
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -281,7 +281,7 @@ describe('ProjectionModelSelector', () => {
 
       // Press the delete button to trigger the deletion flow
       const deleteButton = getByTestId('delete-projection-model-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       // Wait for async operations to complete
       await waitFor(() => {
@@ -319,7 +319,7 @@ describe('ProjectionModelSelector', () => {
         },
       );
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -331,7 +331,7 @@ describe('ProjectionModelSelector', () => {
 
       // Press the delete button
       const deleteButton = getByTestId('delete-projection-model-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       // Wait for error alert to be shown
       await waitFor(() => {
@@ -347,7 +347,7 @@ describe('ProjectionModelSelector', () => {
       expect(modelStore.deleteModel).toHaveBeenCalled();
     });
 
-    it('should call checkSpaceAndDownload when download button is pressed', () => {
+    it('should call checkSpaceAndDownload when download button is pressed', async () => {
       const {modelStore} = require('../../../store');
       modelStore.checkSpaceAndDownload = jest.fn();
 
@@ -358,7 +358,7 @@ describe('ProjectionModelSelector', () => {
         progress: 0,
       });
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -370,7 +370,7 @@ describe('ProjectionModelSelector', () => {
 
       // Find and press the download button
       const downloadButton = getByTestId('download-projection-model-button');
-      fireEvent.press(downloadButton);
+      await fireEvent.press(downloadButton);
 
       // Verify checkSpaceAndDownload was called with the correct model ID
       expect(modelStore.checkSpaceAndDownload).toHaveBeenCalledWith(
@@ -378,7 +378,7 @@ describe('ProjectionModelSelector', () => {
       );
     });
 
-    it('offers download, not a spinner, for retained progress with no running download', () => {
+    it('offers download, not a spinner, for retained progress with no running download', async () => {
       const {downloadManager} = require('../../../services/downloads');
       downloadManager.isDownloading.mockReturnValue(false);
       const failedModel = createModel({
@@ -388,7 +388,7 @@ describe('ProjectionModelSelector', () => {
         progress: 40,
       });
 
-      const {getByTestId, queryByText} = render(
+      const {getByTestId, queryByText} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"
@@ -402,7 +402,7 @@ describe('ProjectionModelSelector', () => {
       expect(queryByText('40%')).toBeNull();
     });
 
-    it('shows progress while the projection model is downloading', () => {
+    it('shows progress while the projection model is downloading', async () => {
       const {downloadManager} = require('../../../services/downloads');
       downloadManager.isDownloading.mockReturnValue(true);
       const downloadingModel = createModel({
@@ -412,7 +412,7 @@ describe('ProjectionModelSelector', () => {
         progress: 40,
       });
 
-      const {getByText, queryByTestId} = render(
+      const {getByText, queryByTestId} = await render(
         <ProjectionModelSelector
           model={mockModel}
           context="search"

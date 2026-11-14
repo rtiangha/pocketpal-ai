@@ -63,7 +63,7 @@ jest
   .mockImplementation(async () => 'mocked prompt');
 
 const send = async () => {
-  const {result} = renderHook(() =>
+  const {result} = await renderHook(() =>
     useChatSession({current: null}, textMessage.author, mockAssistant),
   );
   await act(async () => {

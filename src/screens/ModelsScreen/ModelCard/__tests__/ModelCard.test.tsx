@@ -1,5 +1,5 @@
 import React from 'react';
-import {Linking, Alert, StyleSheet} from 'react-native';
+import {Linking, Alert, StyleSheet, LayoutAnimation} from 'react-native';
 
 import {observable, runInAction} from 'mobx';
 
@@ -37,6 +37,11 @@ import {l10n} from '../../../../locales';
 
 jest.useFakeTimers(); // Mock all timers
 
+// LayoutAnimation.configureNext under fake timers poisons the next render
+// in RNTL v14 (empty container). Mock it as a no-op; the expand toggle
+// still flips state, only the animation is skipped.
+jest.spyOn(LayoutAnimation, 'configureNext').mockImplementation(() => {});
+
 // Mock Linking - need to spy on the actual Linking object
 const mockOpenURL = jest.fn().mockImplementation(() => Promise.resolve());
 jest.spyOn(Linking, 'openURL').mockImplementation(mockOpenURL);
@@ -49,8 +54,12 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-const customRender = (ui: React.ReactElement, options: any = {}) =>
-  render(ui, {withBottomSheetProvider: true, withNavigation: true, ...options});
+const customRender = async (ui: React.ReactElement, options: any = {}) =>
+  await render(ui, {
+    withBottomSheetProvider: true,
+    withNavigation: true,
+    ...options,
+  });
 
 /**
  * Every `.svg` resolves to the same mock component, so the two header glyphs
@@ -59,22 +68,34 @@ const customRender = (ui: React.ReactElement, options: any = {}) =>
 const glyphStroke = (glyphWrapper: any): string =>
   glyphWrapper.props.children.props.stroke;
 
+// Rendered text of a host node (v14): join the string children of its
+// descendant Text nodes. Stable across re-renders, unlike .props.children
+// (a React-element tree that toEqual cannot reliably compare here).
+const nodeText = (node: any): string =>
+  node
+    .queryAll((n: any) => n.type === 'Text')
+    .map((t: any) =>
+      Array.isArray(t.props.children)
+        ? t.props.children.join('')
+        : String(t.props.children ?? ''),
+    )
+    .join('');
+
 describe('ModelCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders model details correctly', async () => {
-    const {getByText} = customRender(<ModelCard model={basicModel} />);
+    const {getByText} = await customRender(<ModelCard model={basicModel} />);
     await waitFor(() => {
       expect(getByText(basicModel.name)).toBeTruthy();
     });
   });
 
   it('handles memory warning correctly', async () => {
-    const {getByText, getByTestId, queryByText, queryByTestId} = customRender(
-      <ModelCard model={largeMemoryModel} />,
-    );
+    const {getByText, getByTestId, queryByText, queryByTestId} =
+      await customRender(<ModelCard model={largeMemoryModel} />);
 
     // If the model is downloaded and the device is low on memory, the warning should be displayed.
     // Now uses memoryTight or lowMemory instead of shortWarning
@@ -87,15 +108,15 @@ describe('ModelCard', () => {
     });
 
     // Snackbar
-    act(() => {
-      fireEvent.press(getByTestId('memory-warning-button'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('memory-warning-button'));
     });
     await waitFor(() => {
       expect(getByText(l10n.en.common.dismiss)).toBeTruthy();
       expect(queryByTestId('memory-warning-snackbar')).toBeTruthy();
     });
-    act(() => {
-      fireEvent.press(getByText(l10n.en.common.dismiss));
+    await act(async () => {
+      await fireEvent.press(getByText(l10n.en.common.dismiss));
     });
     await waitFor(() => {
       expect(queryByText(l10n.en.common.dismiss)).toBeNull();
@@ -108,7 +129,7 @@ describe('ModelCard', () => {
       jest.spyOn(modelStore, 'checkSpaceAndDownload');
     }
 
-    const {getByTestId, queryByTestId} = customRender(
+    const {getByTestId, queryByTestId} = await customRender(
       <ModelCard model={basicModel} />,
     );
 
@@ -118,8 +139,8 @@ describe('ModelCard', () => {
     });
     const downloadButton = getByTestId('download-button');
 
-    act(() => {
-      fireEvent.press(downloadButton);
+    await act(async () => {
+      await fireEvent.press(downloadButton);
     });
 
     expect(modelStore.checkSpaceAndDownload).toHaveBeenCalledWith(
@@ -140,7 +161,7 @@ describe('ModelCard', () => {
       },
     );
 
-    const {getByTestId, queryByTestId, rerender} = customRender(
+    const {getByTestId, queryByTestId, rerender} = await customRender(
       <ModelCard model={basicModel} />,
     );
 
@@ -149,7 +170,7 @@ describe('ModelCard', () => {
       expect(queryByTestId('download-progress-bar')).toBeNull();
     });
 
-    rerender(<ModelCard model={downloadingModel} />);
+    await rerender(<ModelCard model={downloadingModel} />);
 
     await waitFor(() => {
       expect(getByTestId('download-progress-bar')).toBeTruthy();
@@ -157,35 +178,36 @@ describe('ModelCard', () => {
   });
 
   it('opens the HuggingFace URL when the icon button is pressed', async () => {
-    const {getByTestId} = customRender(<ModelCard model={basicModel} />);
+    const {getByTestId} = await customRender(<ModelCard model={basicModel} />);
 
     // First expand the details to see the HuggingFace link
     const expandButton = getByTestId('expand-details-button');
-    fireEvent.press(expandButton);
+    await fireEvent.press(expandButton);
 
-    await waitFor(() => {
-      const openButton = getByTestId('open-huggingface-url');
-      fireEvent.press(openButton);
-    });
+    // v14: do not press inside waitFor's async callback — it poisons the
+    // next render under fake timers. The button is present right after expand.
+    await fireEvent.press(getByTestId('open-huggingface-url'));
 
     expect(Linking.openURL).toHaveBeenCalledWith(basicModel.hfUrl);
   });
 
   it('handles model load correctly', async () => {
-    const {getByTestId} = customRender(<ModelCard model={downloadedModel} />);
+    const {getByTestId} = await customRender(
+      <ModelCard model={downloadedModel} />,
+    );
 
     expect(getByTestId('load-button')).toBeTruthy();
 
-    act(() => {
-      fireEvent.press(getByTestId('load-button'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('load-button'));
     });
 
     expect(modelStore.selectModel).toHaveBeenCalledWith(downloadedModel);
     expect(mockNavigate).not.toHaveBeenCalled();
 
     uiStore.autoNavigatetoChat = true;
-    act(() => {
-      fireEvent.press(getByTestId('load-button'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('load-button'));
     });
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('Chat');
@@ -193,14 +215,14 @@ describe('ModelCard', () => {
   });
 
   it('handles model offload', async () => {
-    const {getByTestId} = customRender(
+    const {getByTestId} = await customRender(
       <ModelCard model={downloadedModel} activeModelId={downloadedModel.id} />,
     );
 
     expect(getByTestId('offload-button')).toBeTruthy();
 
-    act(() => {
-      fireEvent.press(getByTestId('offload-button'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('offload-button'));
     });
 
     expect(modelStore.manualReleaseContext).toHaveBeenCalled();
@@ -214,10 +236,12 @@ describe('ModelCard', () => {
     });
 
     it('shows delete confirmation for regular models', async () => {
-      const {getByTestId} = customRender(<ModelCard model={downloadedModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={downloadedModel} />,
+      );
 
       const deleteButton = getByTestId('delete-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       expect(Alert.alert).toHaveBeenCalledWith(
         expect.stringContaining('Delete'),
@@ -237,10 +261,12 @@ describe('ModelCard', () => {
         },
       );
 
-      const {getByTestId} = customRender(<ModelCard model={downloadedModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={downloadedModel} />,
+      );
 
       const deleteButton = getByTestId('delete-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       expect(modelStore.deleteModel).toHaveBeenCalledWith(downloadedModel);
     });
@@ -251,10 +277,12 @@ describe('ModelCard', () => {
         modelType: ModelType.PROJECTION,
       };
 
-      const {getByTestId} = customRender(<ModelCard model={projectionModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={projectionModel} />,
+      );
 
       const deleteButton = getByTestId('delete-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       expect(Alert.alert).toHaveBeenCalledWith(
         expect.stringContaining('Delete'),
@@ -276,7 +304,7 @@ describe('ModelCard', () => {
     it('shows cancel button when downloading', async () => {
       (downloadManager.isDownloading as jest.Mock).mockReturnValue(true);
 
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard model={downloadingModel} />,
       );
 
@@ -288,12 +316,12 @@ describe('ModelCard', () => {
     it('handles download cancellation', async () => {
       (downloadManager.isDownloading as jest.Mock).mockReturnValue(true);
 
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard model={downloadingModel} />,
       );
 
       const cancelButton = getByTestId('cancel-button');
-      fireEvent.press(cancelButton);
+      await fireEvent.press(cancelButton);
 
       expect(modelStore.cancelDownload).toHaveBeenCalledWith(
         downloadingModel.id,
@@ -317,7 +345,7 @@ describe('ModelCard', () => {
     });
 
     it('calls onOpenSettings when settings button is pressed', async () => {
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={downloadedModel}
           onOpenSettings={mockOnOpenSettings}
@@ -325,7 +353,7 @@ describe('ModelCard', () => {
       );
 
       const settingsButton = getByTestId('settings-button');
-      fireEvent.press(settingsButton);
+      await fireEvent.press(settingsButton);
 
       expect(mockOnOpenSettings).toHaveBeenCalled();
     });
@@ -353,7 +381,9 @@ describe('ModelCard', () => {
       modelStore.isContextLoading = true;
       modelStore.loadingModel = downloadedModel;
 
-      const {getByTestId} = customRender(<ModelCard model={downloadedModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={downloadedModel} />,
+      );
 
       await waitFor(() => {
         expect(getByTestId('loading-indicator')).toBeTruthy();
@@ -366,10 +396,12 @@ describe('ModelCard', () => {
         new Error('Loading failed'),
       );
 
-      const {getByTestId} = customRender(<ModelCard model={downloadedModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={downloadedModel} />,
+      );
 
       const loadButton = getByTestId('load-button');
-      fireEvent.press(loadButton);
+      await fireEvent.press(loadButton);
 
       await waitFor(() => {
         expect(consoleLogSpy).toHaveBeenCalledWith(
@@ -416,13 +448,13 @@ describe('ModelCard', () => {
     });
 
     it('shows vision controls for vision models', async () => {
-      const {getByTestId, getByText} = customRender(
+      const {getByTestId, getByText} = await customRender(
         <ModelCard model={visionModel} />,
       );
 
       // First expand the details to see the vision toggle
       const expandButton = getByTestId('expand-details-button');
-      fireEvent.press(expandButton);
+      await fireEvent.press(expandButton);
 
       await waitFor(() => {
         expect(getByText('Vision')).toBeTruthy();
@@ -434,14 +466,16 @@ describe('ModelCard', () => {
     });
 
     it('shows projection model selector for vision models', async () => {
-      const {getByTestId} = customRender(<ModelCard model={visionModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={visionModel} />,
+      );
       (modelStore.getCompatibleProjectionModels as jest.Mock) = jest
         .fn()
         .mockReturnValue([projectionModel]);
 
       // First expand the details to see the projection model selector
       const expandButton = getByTestId('expand-details-button');
-      fireEvent.press(expandButton);
+      await fireEvent.press(expandButton);
 
       await waitFor(() => {
         expect(getByTestId('projection-model-selector')).toBeTruthy();
@@ -450,7 +484,7 @@ describe('ModelCard', () => {
       const projectionModelButton = getByTestId(
         'select-projection-model-button',
       );
-      fireEvent.press(projectionModelButton);
+      await fireEvent.press(projectionModelButton);
 
       expect(modelStore.setDefaultProjectionModel).toHaveBeenCalledWith(
         visionModel.id,
@@ -486,7 +520,7 @@ describe('ModelCard', () => {
           state: 'missing',
           projectionModel: missingProjector,
         });
-        const {getByTestId, getByText} = customRender(
+        const {getByTestId, getByText} = await customRender(
           <ModelCard model={visionModelWithMissingProjection} />,
         );
 
@@ -505,7 +539,7 @@ describe('ModelCard', () => {
       });
 
       it('falls back to Download without a projector size', async () => {
-        const {getByTestId, getByText, queryByText} = customRender(
+        const {getByTestId, getByText, queryByText} = await customRender(
           <ModelCard model={visionModelWithMissingProjection} />,
         );
 
@@ -519,14 +553,14 @@ describe('ModelCard', () => {
       });
 
       it('shows on the collapsed card and downloads the selected projector', async () => {
-        const {getByTestId} = customRender(
+        const {getByTestId} = await customRender(
           <ModelCard model={visionModelWithMissingProjection} />,
         );
 
         await waitFor(() => {
           expect(getByTestId('projection-warning-badge')).toBeTruthy();
         });
-        fireEvent.press(getByTestId('projection-warning-badge'));
+        await fireEvent.press(getByTestId('projection-warning-badge'));
 
         expect(modelStore.checkSpaceAndDownload).toHaveBeenCalledWith(
           'missing/projection-model',
@@ -534,11 +568,11 @@ describe('ModelCard', () => {
       });
 
       it('renders once when the card is expanded', async () => {
-        const {getAllByTestId, getByTestId} = customRender(
+        const {getAllByTestId, getByTestId} = await customRender(
           <ModelCard model={visionModelWithMissingProjection} />,
         );
 
-        fireEvent.press(getByTestId('expand-details-button'));
+        await fireEvent.press(getByTestId('expand-details-button'));
 
         await waitFor(() => {
           expect(getAllByTestId('projection-warning-badge')).toHaveLength(1);
@@ -551,7 +585,7 @@ describe('ModelCard', () => {
           state: 'downloading',
           projectionModel: {...missingProjector, progress: 34.4},
         });
-        const {getByTestId, queryByTestId} = customRender(
+        const {getByTestId, queryByTestId} = await customRender(
           <ModelCard model={visionModelWithMissingProjection} />,
         );
 
@@ -581,19 +615,19 @@ describe('ModelCard', () => {
                 projectionModel: projector,
               },
         );
-        const {getByTestId, getByText, queryByTestId} = customRender(
+        const {getByTestId, getByText, queryByTestId} = await customRender(
           <ModelCard model={visionModelWithMissingProjection} />,
         );
         expect(getByText('Downloading projection model · 10%')).toBeTruthy();
 
-        act(() => {
+        await act(() => {
           runInAction(() => {
             projector.progress = 60;
           });
         });
         expect(getByText('Downloading projection model · 60%')).toBeTruthy();
 
-        act(() => {
+        await act(() => {
           runInAction(() => {
             download.active = false;
           });
@@ -617,7 +651,7 @@ describe('ModelCard', () => {
             projectionModel: {...missingProjector, progress: 50},
           });
 
-          const {queryByTestId} = customRender(
+          const {queryByTestId} = await customRender(
             <ModelCard
               model={{...visionModelWithMissingProjection, ...overrides}}
             />,
@@ -650,12 +684,12 @@ describe('ModelCard', () => {
             state: projectorState,
           });
 
-          const {getByTestId, queryByTestId} = customRender(
+          const {getByTestId, queryByTestId} = await customRender(
             <ModelCard
               model={{...visionModelWithMissingProjection, ...overrides}}
             />,
           );
-          fireEvent.press(getByTestId('expand-details-button'));
+          await fireEvent.press(getByTestId('expand-details-button'));
 
           await waitFor(() => {
             expect(queryByTestId('projection-warning-badge')).toBeNull();
@@ -673,7 +707,7 @@ describe('ModelCard', () => {
     });
 
     it('renders server name link for remote models', async () => {
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={remoteModel}
           onOpenServerDetails={mockOnOpenServerDetails}
@@ -686,17 +720,16 @@ describe('ModelCard', () => {
     });
 
     it('calls onOpenServerDetails when server link is pressed', async () => {
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={remoteModel}
           onOpenServerDetails={mockOnOpenServerDetails}
         />,
       );
 
-      await waitFor(() => {
-        const serverLink = getByTestId('server-link');
-        fireEvent.press(serverLink);
-      });
+      // v14: do not press inside waitFor's async callback — it poisons
+      // the next render under fake timers.
+      await fireEvent.press(getByTestId('server-link'));
 
       expect(mockOnOpenServerDetails).toHaveBeenCalledWith(
         remoteModel.serverId,
@@ -704,7 +737,7 @@ describe('ModelCard', () => {
     });
 
     it('shows delete button for remote models', async () => {
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={remoteModel}
           onOpenServerDetails={mockOnOpenServerDetails}
@@ -717,7 +750,7 @@ describe('ModelCard', () => {
     });
 
     it('shows a settings button for remote models', async () => {
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={remoteModel}
           onOpenServerDetails={mockOnOpenServerDetails}
@@ -731,7 +764,7 @@ describe('ModelCard', () => {
 
     it('calls onOpenSettings when the remote settings button is pressed', async () => {
       const mockOnOpenSettings = jest.fn();
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={remoteModel}
           onOpenSettings={mockOnOpenSettings}
@@ -739,14 +772,14 @@ describe('ModelCard', () => {
         />,
       );
 
-      fireEvent.press(getByTestId('settings-button'));
+      await fireEvent.press(getByTestId('settings-button'));
       expect(mockOnOpenSettings).toHaveBeenCalled();
     });
 
     it('shows delete confirmation dialog for remote models', async () => {
       jest.spyOn(Alert, 'alert').mockImplementation();
 
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={remoteModel}
           onOpenServerDetails={mockOnOpenServerDetails}
@@ -754,7 +787,7 @@ describe('ModelCard', () => {
       );
 
       const deleteButton = getByTestId('delete-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       expect(Alert.alert).toHaveBeenCalledWith(
         expect.any(String),
@@ -777,7 +810,7 @@ describe('ModelCard', () => {
           destructiveButton?.onPress();
         });
 
-      const {getByTestId} = customRender(
+      const {getByTestId} = await customRender(
         <ModelCard
           model={remoteModel}
           onOpenServerDetails={mockOnOpenServerDetails}
@@ -785,7 +818,7 @@ describe('ModelCard', () => {
       );
 
       const deleteButton = getByTestId('delete-button');
-      fireEvent.press(deleteButton);
+      await fireEvent.press(deleteButton);
 
       expect(serverStore.removeUserSelectedModel).toHaveBeenCalledWith(
         remoteModel.serverId,
@@ -823,11 +856,11 @@ describe('ModelCard', () => {
     );
 
     it('appends the MTP skill in the expanded details when the model is MTP-capable', async () => {
-      const {getByTestId, getByText} = customRender(
+      const {getByTestId, getByText} = await customRender(
         <ModelCard model={mtpModel} />,
       );
 
-      fireEvent.press(getByTestId('expand-details-button'));
+      await fireEvent.press(getByTestId('expand-details-button'));
 
       await waitFor(() => {
         expect(getByText(mtpLabelPattern)).toBeTruthy();
@@ -835,11 +868,11 @@ describe('ModelCard', () => {
     });
 
     it('omits the MTP skill when the model is not MTP-capable', async () => {
-      const {getByTestId, queryByText} = customRender(
+      const {getByTestId, queryByText} = await customRender(
         <ModelCard model={plainModel} />,
       );
 
-      fireEvent.press(getByTestId('expand-details-button'));
+      await fireEvent.press(getByTestId('expand-details-button'));
 
       await waitFor(() => {
         expect(getByTestId('expand-details-button')).toBeTruthy();
@@ -852,9 +885,9 @@ describe('ModelCard', () => {
     const contextCell = `model-card-context-length-${remoteModel.id}`;
     const headerGlyph = `model-card-vision-${remoteModel.id}`;
 
-    const expand = (getByTestId: any) => {
-      act(() => {
-        fireEvent.press(getByTestId('expand-details-button'));
+    const expand = async (getByTestId: any) => {
+      await act(async () => {
+        await fireEvent.press(getByTestId('expand-details-button'));
       });
     };
 
@@ -865,10 +898,12 @@ describe('ModelCard', () => {
     });
 
     it('offers the expand affordance and opens the details block', async () => {
-      const {getByTestId} = customRender(<ModelCard model={remoteModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={remoteModel} />,
+      );
 
       expect(getByTestId('expand-details-button')).toBeTruthy();
-      expand(getByTestId);
+      await expand(getByTestId);
 
       await waitFor(() => {
         expect(getByTestId(visionCell)).toBeTruthy();
@@ -881,10 +916,10 @@ describe('ModelCard', () => {
           [remoteModel.id]: {supportsVision: true, contextLength: 8192},
         };
       });
-      const {getByTestId, queryByTestId, queryByText} = customRender(
+      const {getByTestId, queryByTestId, queryByText} = await customRender(
         <ModelCard model={remoteModel} />,
       );
-      expand(getByTestId);
+      await expand(getByTestId);
 
       await waitFor(() => {
         expect(getByTestId(visionCell)).toBeTruthy();
@@ -911,10 +946,10 @@ describe('ModelCard', () => {
     });
 
     it('reports vision as unknown, never unsupported, when the server has no /props', async () => {
-      const {getByTestId, queryByTestId, queryByText} = customRender(
+      const {getByTestId, queryByTestId, queryByText} = await customRender(
         <ModelCard model={remoteModel} />,
       );
-      expand(getByTestId);
+      await expand(getByTestId);
 
       await waitFor(() => {
         expect(getByTestId(visionCell)).toBeTruthy();
@@ -930,10 +965,10 @@ describe('ModelCard', () => {
     });
 
     it('reflects capabilities that land while the card is already open', async () => {
-      const {getByTestId, queryByTestId, queryByText} = customRender(
+      const {getByTestId, queryByTestId, queryByText} = await customRender(
         <ModelCard model={remoteModel} />,
       );
-      expand(getByTestId);
+      await expand(getByTestId);
 
       await waitFor(() => {
         expect(
@@ -942,7 +977,7 @@ describe('ModelCard', () => {
       });
       expect(queryByTestId(contextCell)).toBeNull();
 
-      act(() => {
+      await act(() => {
         runInAction(() => {
           serverStore.remoteCaps = {
             [remoteModel.id]: {supportsVision: true, contextLength: 8192},
@@ -963,10 +998,10 @@ describe('ModelCard', () => {
           [remoteModelSibling.id]: {supportsVision: false},
         };
       });
-      const {getByTestId, queryByText} = customRender(
+      const {getByTestId, queryByText} = await customRender(
         <ModelCard model={remoteModelSibling} />,
       );
-      expand(getByTestId);
+      await expand(getByTestId);
 
       await waitFor(() => {
         expect(
@@ -979,10 +1014,10 @@ describe('ModelCard', () => {
       runInAction(() => {
         serverStore.remoteCaps = {[remoteModel.id]: {supportsVision: true}};
       });
-      const {getByTestId, getAllByLabelText} = customRender(
+      const {getByTestId, getAllByLabelText} = await customRender(
         <ModelCard model={remoteModel} />,
       );
-      expand(getByTestId);
+      await expand(getByTestId);
 
       // Header glyph and expanded cell, reading the same value — the pair is
       // the assertion, since a header that disagreed with the body would
@@ -993,32 +1028,36 @@ describe('ModelCard', () => {
     });
 
     it('announces an unresolved capability as unknown in both places', async () => {
-      const {getByTestId, getAllByLabelText} = customRender(
+      const {getByTestId, getAllByLabelText} = await customRender(
         <ModelCard model={remoteModel} />,
       );
-      expand(getByTestId);
+      await expand(getByTestId);
 
       await waitFor(() => {
         expect(getAllByLabelText('Vision: Unknown')).toHaveLength(2);
       });
     });
 
-    it('shows the vision glyph without the model ever being activated', () => {
+    it('shows the vision glyph without the model ever being activated', async () => {
       runInAction(() => {
         serverStore.remoteCaps = {[remoteModel.id]: {supportsVision: true}};
       });
-      const {getByTestId} = customRender(<ModelCard model={remoteModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={remoteModel} />,
+      );
 
       expect(glyphStroke(getByTestId(headerGlyph))).toBe(
         themeFixtures.lightTheme.colors.iconModelTypeVision,
       );
     });
 
-    it('keeps the text glyph when the server reports no vision', () => {
+    it('keeps the text glyph when the server reports no vision', async () => {
       runInAction(() => {
         serverStore.remoteCaps = {[remoteModel.id]: {supportsVision: false}};
       });
-      const {getByTestId} = customRender(<ModelCard model={remoteModel} />);
+      const {getByTestId} = await customRender(
+        <ModelCard model={remoteModel} />,
+      );
 
       expect(glyphStroke(getByTestId(headerGlyph))).toBe(
         themeFixtures.lightTheme.colors.iconModelTypeText,
@@ -1044,6 +1083,7 @@ describe('ModelCard', () => {
               serverType,
             },
           ];
+
           serverStore.serverModels.set(
             remoteModel.serverId!,
             rows ?? [rowFor(remoteModel.remoteModelId!, 'gemma-4-e2b')],
@@ -1061,14 +1101,14 @@ describe('ModelCard', () => {
       it('states vision and the window without the model ever being activated', async () => {
         listServer('llama.cpp');
 
-        const {getByTestId, queryByText} = customRender(
+        const {getByTestId, queryByText} = await customRender(
           <ModelCard model={remoteModel} />,
         );
 
         expect(glyphStroke(getByTestId(headerGlyph))).toBe(
           themeFixtures.lightTheme.colors.iconModelTypeVision,
         );
-        expand(getByTestId);
+        await expand(getByTestId);
         await waitFor(() => {
           expect(
             queryByText(l10n.en.models.modelCard.labels.visionSupported),
@@ -1084,10 +1124,10 @@ describe('ModelCard', () => {
           rowFor(remoteModelSibling.remoteModelId!, 'gemma-3-4b'),
         ]);
 
-        const {getByTestId, queryByText} = customRender(
+        const {getByTestId, queryByText} = await customRender(
           <ModelCard model={remoteModelSibling} />,
         );
-        expand(getByTestId);
+        await expand(getByTestId);
 
         await waitFor(() => {
           expect(
@@ -1099,20 +1139,20 @@ describe('ModelCard', () => {
       it('changes nothing visible when the model is then activated', async () => {
         listServer('llama.cpp');
 
-        const {getByTestId, queryByText} = customRender(
+        const {getByTestId, queryByText} = await customRender(
           <ModelCard model={remoteModel} />,
         );
-        expand(getByTestId);
+        await expand(getByTestId);
         await waitFor(() => {
           expect(getByTestId(contextCell)).toBeTruthy();
         });
         const before = [
           glyphStroke(getByTestId(headerGlyph)),
           getByTestId(visionCell).props.accessibilityLabel,
-          getByTestId(contextCell).props.children,
+          nodeText(getByTestId(contextCell)),
         ];
 
-        act(() => {
+        await act(() => {
           runInAction(() => {
             serverStore.remoteCaps = {
               [remoteModel.id]: {supportsVision: true, contextLength: 8192},
@@ -1123,7 +1163,7 @@ describe('ModelCard', () => {
         expect([
           glyphStroke(getByTestId(headerGlyph)),
           getByTestId(visionCell).props.accessibilityLabel,
-          getByTestId(contextCell).props.children,
+          nodeText(getByTestId(contextCell)),
         ]).toEqual(before);
         expect(
           queryByText(l10n.en.models.modelCard.labels.visionSupported),
@@ -1143,10 +1183,10 @@ describe('ModelCard', () => {
           ];
         });
 
-        const {getByTestId, queryByTestId, queryByText} = customRender(
+        const {getByTestId, queryByTestId, queryByText} = await customRender(
           <ModelCard model={remoteModel} />,
         );
-        expand(getByTestId);
+        await expand(getByTestId);
         await waitFor(() => {
           expect(
             queryByText(l10n.en.models.modelCard.labels.visionUnknown),
@@ -1154,7 +1194,7 @@ describe('ModelCard', () => {
         });
         expect(queryByTestId(contextCell)).toBeNull();
 
-        act(() => {
+        await act(() => {
           runInAction(() => {
             serverStore.serverModels.set(remoteModel.serverId!, [
               rowFor(remoteModel.remoteModelId!, 'gemma-4-e2b'),
@@ -1174,14 +1214,14 @@ describe('ModelCard', () => {
       it('reads nothing off a server of another type', async () => {
         listServer('Ollama');
 
-        const {getByTestId, queryByTestId, queryByText} = customRender(
+        const {getByTestId, queryByTestId, queryByText} = await customRender(
           <ModelCard model={remoteModel} />,
         );
 
         expect(glyphStroke(getByTestId(headerGlyph))).toBe(
           themeFixtures.lightTheme.colors.iconModelTypeText,
         );
-        expand(getByTestId);
+        await expand(getByTestId);
         await waitFor(() => {
           expect(
             queryByText(l10n.en.models.modelCard.labels.visionUnknown),
@@ -1191,19 +1231,21 @@ describe('ModelCard', () => {
       });
     });
 
-    it('gives every remote card an addressable root', () => {
-      const {getByTestId} = customRender(<ModelCard model={remoteModel} />);
+    it('gives every remote card an addressable root', async () => {
+      const {getByTestId} = await customRender(
+        <ModelCard model={remoteModel} />,
+      );
       expect(getByTestId(`model-card-${remoteModel.id}`)).toBeTruthy();
     });
   });
 
   it('renders no vision cell on a local card', async () => {
-    const {getByTestId, queryByTestId} = customRender(
+    const {getByTestId, queryByTestId} = await customRender(
       <ModelCard model={downloadedModel} />,
     );
 
-    act(() => {
-      fireEvent.press(getByTestId('expand-details-button'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('expand-details-button'));
     });
 
     await waitFor(() => {
@@ -1215,12 +1257,12 @@ describe('ModelCard', () => {
   });
 
   it('gives a local card no spoken vision stop at all', async () => {
-    const {getByTestId, queryAllByLabelText} = customRender(
+    const {getByTestId, queryAllByLabelText} = await customRender(
       <ModelCard model={downloadedModel} />,
     );
 
-    act(() => {
-      fireEvent.press(getByTestId('expand-details-button'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('expand-details-button'));
     });
 
     await waitFor(() => {

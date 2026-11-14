@@ -1,5 +1,5 @@
 import DeviceInfo from 'react-native-device-info';
-import {renderHook} from '@testing-library/react-hooks';
+import {renderHook, act} from '@testing-library/react-native';
 import {runInAction} from 'mobx';
 
 import {
@@ -36,15 +36,9 @@ describe('useMemoryCheck', () => {
     // localModel.size is 2GB, requirement = 2GB × 1.2 = 2.4GB (fallback estimation)
     // ceiling = max(4GB, 5GB) = 5GB
     // 2.4GB <= 5GB → passes
-    const {result, waitForNextUpdate} = renderHook(() =>
-      useMemoryCheck(localModel),
-    );
+    const {result} = await renderHook(() => useMemoryCheck(localModel));
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     expect(result.current).toEqual({
       memoryWarning: '',
@@ -64,15 +58,9 @@ describe('useMemoryCheck', () => {
     // largeMemoryModel.size = totalMemory × 1.1 (from fixture)
     // requirement = size × 1.2 (fallback estimation)
     // This will exceed the 2GB ceiling
-    const {result, waitForNextUpdate} = renderHook(() =>
-      useMemoryCheck(largeMemoryModel),
-    );
+    const {result} = await renderHook(() => useMemoryCheck(largeMemoryModel));
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     // Should have tight or wont_fit status with appropriate warnings
     expect(result.current.fitStatus).not.toBe('fits');
@@ -90,15 +78,9 @@ describe('useMemoryCheck', () => {
     // localModel.size = 2GB, requirement = 2.4GB
     // availableBytes = max(0, 5GB) = 5GB
     // 2.4GB <= 5GB → fits
-    const {result, waitForNextUpdate} = renderHook(() =>
-      useMemoryCheck(localModel),
-    );
+    const {result} = await renderHook(() => useMemoryCheck(localModel));
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     expect(result.current).toEqual({
       memoryWarning: '',
@@ -118,15 +100,9 @@ describe('useMemoryCheck', () => {
     // localModel.size = 2GB, requirement = 2.4GB
     // ceiling = max(2GB, 5GB) = 5GB
     // 2.4GB <= 5GB → passes
-    const {result, waitForNextUpdate} = renderHook(() =>
-      useMemoryCheck(localModel),
-    );
+    const {result} = await renderHook(() => useMemoryCheck(localModel));
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     expect(result.current).toEqual({
       memoryWarning: '',
@@ -146,15 +122,9 @@ describe('useMemoryCheck', () => {
       modelStore.largestSuccessfulLoad = 3 * 1e9;
     });
 
-    const {result, waitForNextUpdate} = renderHook(() =>
-      useMemoryCheck(localModel),
-    );
+    const {result} = await renderHook(() => useMemoryCheck(localModel));
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     expect(result.current.memoryWarning).toBe('');
     expect(result.current.fitStatus).toBe('fits');
@@ -167,15 +137,11 @@ describe('useMemoryCheck', () => {
       modelStore.largestSuccessfulLoad = 2 * 1e9;
     });
 
-    const {result: result2, waitForNextUpdate: wait2} = renderHook(() =>
+    const {result: result2} = await renderHook(() =>
       useMemoryCheck(localModel),
     );
 
-    try {
-      await wait2();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     // Should show memory tight or low memory warning with detailed message
     expect(result2.current.fitStatus).not.toBe('fits');
@@ -199,15 +165,9 @@ describe('useMemoryCheck', () => {
       .spyOn(console, 'error')
       .mockImplementation(() => {});
 
-    const {result, waitForNextUpdate} = renderHook(() =>
-      useMemoryCheck(largeMemoryModel),
-    );
+    const {result} = await renderHook(() => useMemoryCheck(largeMemoryModel));
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     // Ensure no warnings are shown when there's an error
     expect(result.current).toEqual({
@@ -239,15 +199,11 @@ describe('useMemoryCheck', () => {
     // Mock total memory to be higher than requirement
     (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValue(8 * 1e9); // 8GB total
 
-    const {result, waitForNextUpdate} = renderHook(
+    const {result} = await renderHook(
       () => useMemoryCheck(localModel), // 2GB model → 2.4GB requirement
     );
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     // 2.4GB > 2GB available but < 8GB total → tight
     expect(result.current.fitStatus).toBe('tight');
@@ -268,24 +224,16 @@ describe('useMemoryCheck', () => {
 
     const draftModel = {size: 1 * 1e9} as any; // 1GB draft
 
-    const {result: fitsAlone, waitForNextUpdate: waitAlone} = renderHook(() =>
+    const {result: fitsAlone} = await renderHook(() =>
       useMemoryCheck(localModel),
     );
-    try {
-      await waitAlone();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
     expect(fitsAlone.current.fitStatus).toBe('fits');
 
-    const {result: withDraft, waitForNextUpdate: waitDraft} = renderHook(() =>
+    const {result: withDraft} = await renderHook(() =>
       useMemoryCheck(localModel, undefined, draftModel),
     );
-    try {
-      await waitDraft();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     // Adding the draft alone tips the same target over the ceiling.
     expect(withDraft.current.fitStatus).not.toBe('fits');
@@ -302,15 +250,11 @@ describe('useMemoryCheck', () => {
     // Mock total memory to be less than requirement
     (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValue(2 * 1e9); // 2GB total
 
-    const {result, waitForNextUpdate} = renderHook(
+    const {result} = await renderHook(
       () => useMemoryCheck(localModel), // 2GB model → 2.4GB requirement
     );
 
-    try {
-      await waitForNextUpdate();
-    } catch {
-      // Ignoring timeout
-    }
+    await act(async () => {});
 
     // 2.4GB > 2GB total → wont_fit
     expect(result.current.fitStatus).toBe('wont_fit');
@@ -356,25 +300,17 @@ describe('useMemoryCheck', () => {
       });
       (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValue(8 * 1e9);
 
-      const {result, rerender, waitForNextUpdate} = renderHook(() =>
+      const {result, rerender} = await renderHook(() =>
         useMemoryCheck(swaModel),
       );
-      try {
-        await waitForNextUpdate();
-      } catch {
-        // Ignoring timeout
-      }
+      await act(async () => {});
       expect(result.current.fitStatus).toBe('fits');
 
       runInAction(() => {
         modelStore.deviceTier = 'mid';
       });
-      rerender();
-      try {
-        await waitForNextUpdate();
-      } catch {
-        // Ignoring timeout
-      }
+      await rerender(undefined);
+      await act(async () => {});
       expect(result.current.fitStatus).toBe('tight');
     });
 

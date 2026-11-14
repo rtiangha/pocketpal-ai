@@ -31,6 +31,7 @@ jest.mock('../../Sheet', () => {
   Sheet.ScrollView = ({children, testID}: any) => (
     <View testID={testID}>{children}</View>
   );
+
   return {Sheet};
 });
 
@@ -38,7 +39,8 @@ const strings = l10n.en.voiceInput;
 const asr = asrStore as any;
 const onClosed = jest.fn();
 
-const renderSheet = () => render(<MicSetupSheet onClosed={onClosed} />);
+const renderSheet = async () =>
+  await render(<MicSetupSheet onClosed={onClosed} />);
 
 describe('MicSetupSheet', () => {
   beforeEach(() => {
@@ -54,83 +56,83 @@ describe('MicSetupSheet', () => {
     });
   });
 
-  it('offers the base download', () => {
-    const {getByTestId, getByText} = renderSheet();
+  it('offers the base download', async () => {
+    const {getByTestId, getByText} = await renderSheet();
 
     expect(getByText(strings.setupSheetTitle)).toBeTruthy();
     expect(getByText(/^Whisper Base · /)).toBeTruthy();
-    fireEvent.press(getByTestId('mic-setup-download'));
+    await fireEvent.press(getByTestId('mic-setup-download'));
 
     expect(asrStore.downloadModel).toHaveBeenCalledWith('base');
   });
 
-  it('offers base while another tier downloads and none is installed', () => {
+  it('offers base while another tier downloads and none is installed', async () => {
     runInAction(() => {
       asr.downloadStates.small = 'downloading';
     });
-    const {getByTestId, getByText} = renderSheet();
+    const {getByTestId, getByText} = await renderSheet();
 
     expect(getByText(/^Whisper Base · /)).toBeTruthy();
     expect(getByTestId('mic-setup-download')).not.toBeDisabled();
-    fireEvent.press(getByTestId('mic-setup-download'));
+    await fireEvent.press(getByTestId('mic-setup-download'));
 
     expect(asrStore.downloadModel).toHaveBeenCalledWith('base');
   });
 
-  it('offers base, not a stale uninstalled tier, before init reconciles', () => {
+  it('offers base, not a stale uninstalled tier, before init reconciles', async () => {
     runInAction(() => {
       asr.selectedTier = 'small';
     });
-    const {getByTestId, getByText} = renderSheet();
+    const {getByTestId, getByText} = await renderSheet();
 
     expect(getByText(/^Whisper Base · /)).toBeTruthy();
-    fireEvent.press(getByTestId('mic-setup-download'));
+    await fireEvent.press(getByTestId('mic-setup-download'));
 
     expect(asrStore.downloadModel).toHaveBeenCalledWith('base');
     expect(asrStore.selectTier).not.toHaveBeenCalled();
   });
 
-  it('shows progress and holds the button while downloading', () => {
+  it('shows progress and holds the button while downloading', async () => {
     runInAction(() => {
       asr.downloadStates.base = 'downloading';
       asr.downloadProgress.base = 0.5;
     });
-    const {getByTestId, getByText} = renderSheet();
+    const {getByTestId, getByText} = await renderSheet();
 
     expect(getByTestId('mic-setup-download')).toBeDisabled();
     expect(getByText(strings.downloadingLabel)).toBeTruthy();
     expect(getByTestId('mic-setup-stt')).toHaveTextContent(/ of /);
   });
 
-  it('offers Retry after a failed download', () => {
+  it('offers Retry after a failed download', async () => {
     runInAction(() => {
       asr.downloadStates.base = 'error';
       asr.downloadError.base = 'network';
     });
-    const {getByTestId, getByText} = renderSheet();
+    const {getByTestId, getByText} = await renderSheet();
 
     expect(getByText(l10n.en.voiceMode.sttDownloadFailed)).toBeTruthy();
-    fireEvent.press(getByTestId('mic-setup-download'));
+    await fireEvent.press(getByTestId('mic-setup-download'));
 
     expect(asrStore.retryDownload).toHaveBeenCalledWith('base');
   });
 
-  it('shows the disk shortfall', () => {
+  it('shows the disk shortfall', async () => {
     runInAction(() => {
       asr.downloadStates.base = 'error';
       asr.downloadError.base = ASR_INSUFFICIENT_STORAGE;
       asr.freeDiskBytes = 50 * 1024 * 1024;
     });
-    const {getByTestId, getByText} = renderSheet();
+    const {getByTestId, getByText} = await renderSheet();
 
     expect(getByTestId('mic-setup-low-disk')).toBeTruthy();
     expect(getByText(strings.retryCta)).toBeTruthy();
   });
 
-  it('closes itself once a tier is ready', () => {
-    const {queryByTestId} = renderSheet();
+  it('closes itself once a tier is ready', async () => {
+    const {queryByTestId} = await renderSheet();
 
-    act(() =>
+    await act(() =>
       runInAction(() => {
         asr.downloadStates.base = 'ready';
       }),
@@ -140,13 +142,13 @@ describe('MicSetupSheet', () => {
     expect(onClosed).toHaveBeenCalled();
   });
 
-  it('Cancel closes the sheet and leaves the download running', () => {
+  it('Cancel closes the sheet and leaves the download running', async () => {
     runInAction(() => {
       asr.downloadStates.base = 'downloading';
     });
-    const {getByTestId, queryByTestId} = renderSheet();
+    const {getByTestId, queryByTestId} = await renderSheet();
 
-    fireEvent.press(getByTestId('mic-setup-cancel'));
+    await fireEvent.press(getByTestId('mic-setup-cancel'));
 
     expect(queryByTestId('mic-setup-sheet')).toBeNull();
     expect(onClosed).toHaveBeenCalled();

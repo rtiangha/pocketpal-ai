@@ -20,13 +20,14 @@ jest.mock('../../Sheet/Sheet', () => {
   const MockSheet = ({children, isVisible, title}: any) =>
     isVisible ? (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         {children}
       </View>
     ) : null;
   MockSheet.ScrollView = ({children, ...props}: any) => (
     <View {...props}>{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -44,8 +45,8 @@ const results = [
 ];
 
 describe('WebSearchResultBubble', () => {
-  it('renders a compact trigger with query and result count, not the full list', () => {
-    const {getByTestId, getByText, queryByTestId} = render(
+  it('renders a compact trigger with query and result count, not the full list', async () => {
+    const {getByTestId, getByText, queryByTestId} = await render(
       <WebSearchResultBubble query="mars rover" results={results} />,
     );
 
@@ -57,12 +58,12 @@ describe('WebSearchResultBubble', () => {
     expect(queryByTestId('web-search-result-row')).toBeNull();
   });
 
-  it('opens the sheet with the full result list when the trigger is tapped', () => {
-    const {getByTestId, getAllByTestId, getByText} = render(
+  it('opens the sheet with the full result list when the trigger is tapped', async () => {
+    const {getByTestId, getAllByTestId, getByText} = await render(
       <WebSearchResultBubble query="mars rover" results={results} />,
     );
 
-    fireEvent.press(getByTestId('web-search-result-trigger'));
+    await fireEvent.press(getByTestId('web-search-result-trigger'));
 
     expect(getByTestId('web-search-results-sheet')).toBeTruthy();
     expect(getAllByTestId('web-search-result-row')).toHaveLength(2);
@@ -71,8 +72,8 @@ describe('WebSearchResultBubble', () => {
     expect(getByText('Latest rover update.')).toBeTruthy();
   });
 
-  it('renders a non-tappable empty state when there are no results', () => {
-    const {getByText, queryByTestId} = render(
+  it('renders a non-tappable empty state when there are no results', async () => {
+    const {getByText, queryByTestId} = await render(
       <WebSearchResultBubble query="nothing" results={[]} />,
     );
 
@@ -82,8 +83,8 @@ describe('WebSearchResultBubble', () => {
 });
 
 describe('WebSearchResultsSheet', () => {
-  it('renders a row per result with title, url and snippet', () => {
-    const {getAllByTestId, getByText} = render(
+  it('renders a row per result with title, url and snippet', async () => {
+    const {getAllByTestId, getByText} = await render(
       <WebSearchResultsSheet
         isVisible
         query="mars rover"
@@ -97,8 +98,8 @@ describe('WebSearchResultsSheet', () => {
     expect(getByText('https://example.com/curiosity')).toBeTruthy();
   });
 
-  it('falls back to the URL when a result has no title', () => {
-    const {getByTestId, getAllByText} = render(
+  it('falls back to the URL when a result has no title', async () => {
+    const {getByTestId, getAllByText} = await render(
       <WebSearchResultsSheet
         isVisible
         query="q"
@@ -111,10 +112,10 @@ describe('WebSearchResultsSheet', () => {
     expect(getAllByText('https://only-url.com').length).toBeGreaterThan(0);
   });
 
-  it('opens an http(s) url in the system browser when a row is tapped', () => {
+  it('opens an http(s) url in the system browser when a row is tapped', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
 
-    const {getAllByTestId} = render(
+    const {getAllByTestId} = await render(
       <WebSearchResultsSheet
         isVisible
         query="mars rover"
@@ -123,16 +124,16 @@ describe('WebSearchResultsSheet', () => {
       />,
     );
 
-    fireEvent.press(getAllByTestId('web-search-result-row')[0]);
+    await fireEvent.press(getAllByTestId('web-search-result-row')[0]);
     expect(openURL).toHaveBeenCalledWith('https://nasa.gov/mars');
 
     openURL.mockRestore();
   });
 
-  it('does not open a non-http(s) url', () => {
+  it('does not open a non-http(s) url', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <WebSearchResultsSheet
         isVisible
         query="q"
@@ -142,7 +143,7 @@ describe('WebSearchResultsSheet', () => {
       />,
     );
 
-    fireEvent.press(getByTestId('web-search-result-row'));
+    await fireEvent.press(getByTestId('web-search-result-row'));
     expect(openURL).not.toHaveBeenCalled();
 
     openURL.mockRestore();
@@ -153,7 +154,7 @@ describe('WebSearchResultsSheet', () => {
       .spyOn(Linking, 'openURL')
       .mockRejectedValue(new Error('no handler'));
 
-    const {getAllByTestId, getByText} = render(
+    const {getAllByTestId, getByText} = await render(
       <WebSearchResultsSheet
         isVisible
         query="mars rover"
@@ -162,7 +163,7 @@ describe('WebSearchResultsSheet', () => {
       />,
     );
 
-    fireEvent.press(getAllByTestId('web-search-result-row')[0]);
+    await fireEvent.press(getAllByTestId('web-search-result-row')[0]);
     await waitFor(() =>
       expect(getByText("Couldn't open this link.")).toBeTruthy(),
     );
@@ -170,8 +171,8 @@ describe('WebSearchResultsSheet', () => {
     openURL.mockRestore();
   });
 
-  it('renders an empty state when there are no results', () => {
-    const {getByTestId, queryAllByTestId} = render(
+  it('renders an empty state when there are no results', async () => {
+    const {getByTestId, queryAllByTestId} = await render(
       <WebSearchResultsSheet
         isVisible
         query="nothing"

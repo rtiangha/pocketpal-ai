@@ -58,8 +58,8 @@ describe('TalentSection', () => {
   });
 
   describe('Rendering', () => {
-    it('renders the talent section container', () => {
-      const {getByTestId} = render(
+    it('renders the talent section container', async () => {
+      const {getByTestId} = await render(
         <FormWrapper>
           <TalentSection />
         </FormWrapper>,
@@ -68,8 +68,8 @@ describe('TalentSection', () => {
       expect(getByTestId('talent-section')).toBeTruthy();
     });
 
-    it('renders a switch for each registered talent', () => {
-      const {getByTestId} = render(
+    it('renders a switch for each registered talent', async () => {
+      const {getByTestId} = await render(
         <FormWrapper>
           <TalentSection />
         </FormWrapper>,
@@ -82,8 +82,8 @@ describe('TalentSection', () => {
       expect(getByTestId('talent-switch-read_url')).toBeTruthy();
     });
 
-    it('renders talent item containers for each talent', () => {
-      const {getByTestId} = render(
+    it('renders talent item containers for each talent', async () => {
+      const {getByTestId} = await render(
         <FormWrapper>
           <TalentSection />
         </FormWrapper>,
@@ -96,8 +96,8 @@ describe('TalentSection', () => {
       expect(getByTestId('talent-item-read_url')).toBeTruthy();
     });
 
-    it('renders talent natural names from l10n', () => {
-      const {getByText} = render(
+    it('renders talent natural names from l10n', async () => {
+      const {getByText} = await render(
         <FormWrapper>
           <TalentSection />
         </FormWrapper>,
@@ -111,8 +111,8 @@ describe('TalentSection', () => {
       expect(getByText(names.read_url)).toBeTruthy();
     });
 
-    it('renders talent descriptions from l10n', () => {
-      const {getByText} = render(
+    it('renders talent descriptions from l10n', async () => {
+      const {getByText} = await render(
         <FormWrapper>
           <TalentSection />
         </FormWrapper>,
@@ -126,8 +126,8 @@ describe('TalentSection', () => {
       expect(getByText(descriptions.read_url)).toBeTruthy();
     });
 
-    it('renders the section divider with "Talents" label', () => {
-      const {getByText} = render(
+    it('renders the section divider with "Talents" label', async () => {
+      const {getByText} = await render(
         <FormWrapper>
           <TalentSection />
         </FormWrapper>,
@@ -141,7 +141,7 @@ describe('TalentSection', () => {
     it('toggling a switch on adds the talent name to form value', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <FormWrapper
           onFormValues={getValues => {
             getFormValues = getValues;
@@ -154,7 +154,11 @@ describe('TalentSection', () => {
       expect(getFormValues!().talents).toEqual([]);
 
       // Toggle calculate on
-      fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', true);
+      await fireEvent(
+        getByTestId('talent-switch-calculate'),
+        'valueChange',
+        true,
+      );
 
       await waitFor(() => {
         expect(getFormValues!().talents).toContain('calculate');
@@ -164,7 +168,7 @@ describe('TalentSection', () => {
     it('toggling a switch off removes the talent name from form value', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <FormWrapper
           defaultValues={{talents: ['calculate', 'datetime']}}
           onFormValues={getValues => {
@@ -179,7 +183,11 @@ describe('TalentSection', () => {
       expect(getFormValues!().talents).toContain('datetime');
 
       // Toggle calculate off
-      fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', false);
+      await fireEvent(
+        getByTestId('talent-switch-calculate'),
+        'valueChange',
+        false,
+      );
 
       await waitFor(() => {
         const talents = getFormValues!().talents;
@@ -191,7 +199,7 @@ describe('TalentSection', () => {
     it('toggling multiple switches on accumulates talent names', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <FormWrapper
           onFormValues={getValues => {
             getFormValues = getValues;
@@ -200,13 +208,21 @@ describe('TalentSection', () => {
         </FormWrapper>,
       );
 
-      fireEvent(getByTestId('talent-switch-render_html'), 'valueChange', true);
+      await fireEvent(
+        getByTestId('talent-switch-render_html'),
+        'valueChange',
+        true,
+      );
 
       await waitFor(() => {
         expect(getFormValues!().talents).toContain('render_html');
       });
 
-      fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', true);
+      await fireEvent(
+        getByTestId('talent-switch-calculate'),
+        'valueChange',
+        true,
+      );
 
       await waitFor(() => {
         const talents = getFormValues!().talents;
@@ -217,8 +233,8 @@ describe('TalentSection', () => {
   });
 
   describe('Pre-selected talents', () => {
-    it('pre-selected talents from form default values show as enabled', () => {
-      const {getByTestId} = render(
+    it('pre-selected talents from form default values show as enabled', async () => {
+      const {getByTestId} = await render(
         <FormWrapper defaultValues={{talents: ['calculate', 'datetime']}}>
           <TalentSection />
         </FormWrapper>,
@@ -232,8 +248,8 @@ describe('TalentSection', () => {
       expect(getByTestId('talent-switch-render_html').props.value).toBe(false);
     });
 
-    it('all talents pre-selected shows all switches as enabled', () => {
-      const {getByTestId} = render(
+    it('all talents pre-selected shows all switches as enabled', async () => {
+      const {getByTestId} = await render(
         <FormWrapper
           defaultValues={{
             talents: ['render_html', 'calculate', 'datetime'],
@@ -247,8 +263,8 @@ describe('TalentSection', () => {
       expect(getByTestId('talent-switch-datetime').props.value).toBe(true);
     });
 
-    it('no pre-selected talents shows all switches as disabled', () => {
-      const {getByTestId} = render(
+    it('no pre-selected talents shows all switches as disabled', async () => {
+      const {getByTestId} = await render(
         <FormWrapper defaultValues={{talents: []}}>
           <TalentSection />
         </FormWrapper>,

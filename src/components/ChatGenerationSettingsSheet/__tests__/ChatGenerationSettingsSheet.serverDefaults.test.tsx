@@ -47,9 +47,9 @@ describe('ChatGenerationSettingsSheet server defaults', () => {
     });
   });
 
-  it('shows a llama.cpp server its own defaults', () => {
+  it('shows a llama.cpp server its own defaults', async () => {
     startSession('llama.cpp');
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ChatGenerationSettingsSheet isVisible onClose={jest.fn()} />,
     );
 
@@ -58,9 +58,9 @@ describe('ChatGenerationSettingsSheet server defaults', () => {
 
   it.each<ServerType>(['OpenAI', 'Ollama', 'LM Studio', 'vLLM', 'unknown'])(
     'shows a %s session no server-default row',
-    serverType => {
+    async serverType => {
       startSession(serverType);
-      const {queryAllByTestId, getByTestId} = render(
+      const {queryAllByTestId, getByTestId} = await render(
         <ChatGenerationSettingsSheet isVisible onClose={jest.fn()} />,
       );
 

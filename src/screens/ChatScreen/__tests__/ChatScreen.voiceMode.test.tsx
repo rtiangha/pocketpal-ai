@@ -58,8 +58,8 @@ jest.mock('../../../components/VoiceMemorySheet', () => ({
 const pickerOpen = () =>
   mockPickerVisible[mockPickerVisible.length - 1] ?? false;
 
-const renderScreen = () =>
-  render(<ChatScreen />, {
+const renderScreen = async () =>
+  await render(<ChatScreen />, {
     withNavigation: true,
     withBottomSheetProvider: true,
   });
@@ -82,11 +82,11 @@ describe('ChatScreen voice mode entry', () => {
     runInAction(() => {
       modelStore.activeModelId = undefined;
     });
-    const {getByTestId} = renderScreen();
+    const {getByTestId} = await renderScreen();
     expect(pickerOpen()).toBe(false);
 
     await act(async () => {
-      fireEvent.press(getByTestId('voice-mode-button'));
+      await fireEvent.press(getByTestId('voice-mode-button'));
     });
 
     expect(pickerOpen()).toBe(true);
@@ -103,9 +103,9 @@ describe('ChatScreen voice mode entry', () => {
         modelStore.models = modelsList as any;
         modelStore.activeModelId = modelsList[0].id;
       });
-      const screen = renderScreen();
+      const screen = await renderScreen();
       await act(async () => {
-        fireEvent.press(screen.getByTestId('voice-mode-button'));
+        await fireEvent.press(screen.getByTestId('voice-mode-button'));
       });
       return screen;
     };
@@ -124,10 +124,10 @@ describe('ChatScreen voice mode entry', () => {
       expect(voiceModeStore.phase).toBe('closed');
       expect(pickerOpen()).toBe(false);
 
-      fireEvent.press(getByTestId('voice-teaser-close'));
+      await fireEvent.press(getByTestId('voice-teaser-close'));
       expect(queryByTestId('voice-teaser')).toBeNull();
       await act(async () => {
-        fireEvent.press(getByTestId('voice-mode-button'));
+        await fireEvent.press(getByTestId('voice-mode-button'));
       });
       expect(getByTestId('voice-teaser')).toBeTruthy();
     });
@@ -135,7 +135,7 @@ describe('ChatScreen voice mode entry', () => {
     it('Get Plus closes the teaser and opens the paywall once', async () => {
       const {getByTestId, queryByTestId} = await tapLocked();
 
-      fireEvent.press(getByTestId('voice-teaser-get-plus'));
+      await fireEvent.press(getByTestId('voice-teaser-get-plus'));
 
       expect(queryByTestId('voice-teaser')).toBeNull();
       expect(openPaywall()).toHaveBeenCalledTimes(1);
@@ -145,7 +145,7 @@ describe('ChatScreen voice mode entry', () => {
     it('Keep typing closes the teaser and focuses the composer', async () => {
       const {getByTestId, queryByTestId} = await tapLocked();
 
-      fireEvent.press(getByTestId('voice-teaser-keep-typing'));
+      await fireEvent.press(getByTestId('voice-teaser-keep-typing'));
 
       expect(queryByTestId('voice-teaser')).toBeNull();
       await waitFor(() =>
@@ -157,7 +157,7 @@ describe('ChatScreen voice mode entry', () => {
     it('the close button returns to the chat without focusing it', async () => {
       const {getByTestId, queryByTestId} = await tapLocked();
 
-      fireEvent.press(getByTestId('voice-teaser-close'));
+      await fireEvent.press(getByTestId('voice-teaser-close'));
 
       expect(queryByTestId('voice-teaser')).toBeNull();
       expect(getByTestId('chat-input')).toBeTruthy();
@@ -172,11 +172,11 @@ describe('ChatScreen voice mode entry', () => {
       modelStore.models = modelsList as any;
       modelStore.activeModelId = modelsList[0].id;
     });
-    const {getByTestId, queryByTestId} = renderScreen();
+    const {getByTestId, queryByTestId} = await renderScreen();
     expect(queryByTestId('voice-mode-lock')).toBeNull();
 
     await act(async () => {
-      fireEvent.press(getByTestId('voice-mode-button'));
+      await fireEvent.press(getByTestId('voice-mode-button'));
     });
 
     expect(
@@ -212,12 +212,12 @@ describe('ChatScreen voice mode entry', () => {
         modelStore.models = modelsList as any;
         modelStore.activeModelId = modelsList[0].id;
       });
-      const {getByTestId, queryByTestId} = renderScreen();
+      const {getByTestId, queryByTestId} = await renderScreen();
       expect(purchaseStore.plusUnlocked).toBe(false);
       expect(queryByTestId('voice-mode-lock')).toBeNull();
 
       await act(async () => {
-        fireEvent.press(getByTestId('voice-mode-button'));
+        await fireEvent.press(getByTestId('voice-mode-button'));
       });
 
       expect(queryByTestId('voice-teaser')).toBeNull();
@@ -233,24 +233,24 @@ describe('ChatScreen voice mode entry', () => {
       modelStore.activeModelId = modelsList[0].id;
       asrStore.downloadStates.base = 'not_installed';
     });
-    const {getByTestId} = renderScreen();
+    const {getByTestId} = await renderScreen();
     await act(async () => {
-      fireEvent.press(getByTestId('voice-mode-button'));
+      await fireEvent.press(getByTestId('voice-mode-button'));
     });
     expect(mockSheet.setupVisible).toBe(true);
 
-    act(() => mockSheet.closeMemory());
+    await act(() => mockSheet.closeMemory());
     expect(mockSheet.setupVisible).toBe(true);
 
-    act(() => mockSheet.closeSetup());
+    await act(() => mockSheet.closeSetup());
     expect(mockSheet.setupVisible).toBe(false);
   });
 
-  it('shows the voice view over the chat while open in full view', () => {
+  it('shows the voice view over the chat while open in full view', async () => {
     runInAction(() => {
       voiceModeStore.phase = 'listening';
     });
-    const {getByTestId, queryByTestId} = renderScreen();
+    const {getByTestId, queryByTestId} = await renderScreen();
     expect(getByTestId('voice-view')).toBeTruthy();
     expect(queryByTestId('voice-bar')).toBeNull();
     expect(

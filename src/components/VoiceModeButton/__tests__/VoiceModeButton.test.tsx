@@ -17,43 +17,47 @@ describe('VoiceModeButton', () => {
     voiceModeStore.setUnlockOverride(true);
   });
 
-  it('renders nothing on a device that cannot run voice mode', () => {
+  it('renders nothing on a device that cannot run voice mode', async () => {
     runInAction(() => {
       modelStore.deviceTier = 'low';
     });
-    const {queryByTestId} = render(<VoiceModeButton onPress={jest.fn()} />);
+    const {queryByTestId} = await render(
+      <VoiceModeButton onPress={jest.fn()} />,
+    );
     expect(queryByTestId('voice-mode-button')).toBeNull();
   });
 
-  it('shows on a weaker device once turned on in Settings', () => {
+  it('shows on a weaker device once turned on in Settings', async () => {
     runInAction(() => {
       modelStore.deviceTier = 'low';
     });
     voiceModeStore.setUserVoiceModeOverride(true);
-    const {getByTestId} = render(<VoiceModeButton onPress={jest.fn()} />);
+    const {getByTestId} = await render(<VoiceModeButton onPress={jest.fn()} />);
     expect(getByTestId('voice-mode-button')).toBeTruthy();
   });
 
-  it('hides on a capable device once turned off in Settings', () => {
+  it('hides on a capable device once turned off in Settings', async () => {
     voiceModeStore.setUserVoiceModeOverride(false);
-    const {queryByTestId} = render(<VoiceModeButton onPress={jest.fn()} />);
+    const {queryByTestId} = await render(
+      <VoiceModeButton onPress={jest.fn()} />,
+    );
     expect(queryByTestId('voice-mode-button')).toBeNull();
   });
 
-  it('starts voice mode on press, without a lock when unlocked', () => {
+  it('starts voice mode on press, without a lock when unlocked', async () => {
     const onPress = jest.fn();
-    const {getByTestId, queryByTestId} = render(
+    const {getByTestId, queryByTestId} = await render(
       <VoiceModeButton onPress={onPress} />,
     );
-    fireEvent.press(getByTestId('voice-mode-button'));
+    await fireEvent.press(getByTestId('voice-mode-button'));
     expect(onPress).toHaveBeenCalledTimes(1);
     expect(queryByTestId('voice-mode-lock')).toBeNull();
   });
 
-  it('shows a Plus badge when locked, says what it opens, and still takes the tap', () => {
+  it('shows a Plus badge when locked, says what it opens, and still takes the tap', async () => {
     voiceModeStore.setUnlockOverride(false);
     const onPress = jest.fn();
-    const {getByTestId} = render(<VoiceModeButton onPress={onPress} />);
+    const {getByTestId} = await render(<VoiceModeButton onPress={onPress} />);
     const button = getByTestId('voice-mode-button');
     expect(getByTestId('voice-mode-lock')).toBeTruthy();
     expect(button.props.accessibilityLabel).toBe(
@@ -62,23 +66,23 @@ describe('VoiceModeButton', () => {
     expect(button.props.accessibilityHint).toBe(
       'Opens a short preview. Typing and dictation stay free.',
     );
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the primary look and no hint when unlocked', () => {
-    const {getByTestId} = render(<VoiceModeButton onPress={jest.fn()} />);
+  it('keeps the primary look and no hint when unlocked', async () => {
+    const {getByTestId} = await render(<VoiceModeButton onPress={jest.fn()} />);
     const button = getByTestId('voice-mode-button');
     expect(button.props.accessibilityLabel).toBe('Start voice mode');
     expect(button.props.accessibilityHint).toBeUndefined();
     expect(button).toHaveStyle({backgroundColor: '#333333'});
   });
 
-  it('is disabled while the model loads', () => {
+  it('is disabled while the model loads', async () => {
     runInAction(() => {
       modelStore.isContextLoading = true;
     });
-    const {getByTestId} = render(<VoiceModeButton onPress={jest.fn()} />);
+    const {getByTestId} = await render(<VoiceModeButton onPress={jest.fn()} />);
     expect(getByTestId('voice-mode-button')).toBeDisabled();
   });
 });

@@ -51,7 +51,7 @@ jest.mock('../../Sheet/Sheet', () => {
     }
     return (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         <Button title="Close" onPress={onClose} testID="sheet-close-button" />
         {children}
       </View>
@@ -60,9 +60,11 @@ jest.mock('../../Sheet/Sheet', () => {
   MockSheet.ScrollView = ({children}) => (
     <View testID="sheet-scroll-view">{children}</View>
   );
+
   MockSheet.Actions = ({children}) => (
     <View testID="sheet-actions">{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -79,6 +81,7 @@ jest.mock('../../../store', () => ({
         },
       },
     ],
+
     activeSessionId: 'test-session',
     newChatCompletionSettings: {
       temperature: 0.8,
@@ -110,8 +113,8 @@ describe('ChatGenerationSettingsSheet', () => {
     (validateCompletionSettings as jest.Mock).mockReturnValue({errors: {}});
   });
 
-  it('renders correctly when visible', () => {
-    const {getByTestId} = render(
+  it('renders correctly when visible', async () => {
+    const {getByTestId} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
@@ -120,7 +123,7 @@ describe('ChatGenerationSettingsSheet', () => {
   });
 
   it('picks up a server default that lands while the sheet is open', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
@@ -140,7 +143,7 @@ describe('ChatGenerationSettingsSheet', () => {
       '{"top_k":40}',
     );
 
-    act(() => {
+    await act(() => {
       runInAction(() => {
         (modelStore as any).activeSamplerDefaults = undefined;
       });
@@ -155,7 +158,7 @@ describe('ChatGenerationSettingsSheet', () => {
     (chatSessionStore as any).activeSessionId = undefined;
 
     try {
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <ChatGenerationSettingsSheet {...defaultProps} />,
       );
 
@@ -163,7 +166,7 @@ describe('ChatGenerationSettingsSheet', () => {
       expect(getByTestId('mock-server-defaults').props.children).toBe('null');
     } finally {
       (chatSessionStore as any).activeSessionId = previousSessionId;
-      act(() => {
+      await act(() => {
         runInAction(() => {
           (modelStore as any).activeSamplerDefaults = undefined;
         });
@@ -171,16 +174,16 @@ describe('ChatGenerationSettingsSheet', () => {
     }
   });
 
-  it('does not render when not visible', () => {
-    const {queryByTestId} = render(
+  it('does not render when not visible', async () => {
+    const {queryByTestId} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} isVisible={false} />,
     );
 
     expect(queryByTestId('sheet')).toBeNull();
   });
 
-  it('loads active session settings when available', () => {
-    const {getByTestId} = render(
+  it('loads active session settings when available', async () => {
+    const {getByTestId} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
@@ -188,12 +191,12 @@ describe('ChatGenerationSettingsSheet', () => {
     // Settings from active session should be loaded
   });
 
-  it('loads new chat settings when no active session', () => {
+  it('loads new chat settings when no active session', async () => {
     // Temporarily modify the mock to simulate no active session
     const originalSessions = chatSessionStore.sessions;
     chatSessionStore.sessions = [];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
@@ -205,12 +208,12 @@ describe('ChatGenerationSettingsSheet', () => {
   });
 
   it('handles save settings correctly for active session', async () => {
-    const {getByText} = render(
+    const {getByText} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
     await act(async () => {
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
     });
 
     expect(chatSessionStore.updateSessionCompletionSettings).toHaveBeenCalled();
@@ -222,12 +225,12 @@ describe('ChatGenerationSettingsSheet', () => {
     const originalSessions = chatSessionStore.sessions;
     chatSessionStore.sessions = [];
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
     await act(async () => {
-      fireEvent.press(getByText('Save Changes'));
+      await fireEvent.press(getByText('Save Changes'));
     });
 
     expect(chatSessionStore.setNewChatCompletionSettings).toHaveBeenCalled();
@@ -238,21 +241,21 @@ describe('ChatGenerationSettingsSheet', () => {
   });
 
   it('handles reset settings correctly', async () => {
-    const {getByText} = render(
+    const {getByText} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
     await act(async () => {
-      fireEvent.press(getByText('Reset'));
+      await fireEvent.press(getByText('Reset'));
     });
 
     await act(async () => {
-      fireEvent.press(getByText('Reset to System Defaults'));
+      await fireEvent.press(getByText('Reset to System Defaults'));
     });
 
     // After reset, saving should use default settings
     await act(async () => {
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
     });
 
     expect(
@@ -268,17 +271,17 @@ describe('ChatGenerationSettingsSheet', () => {
       },
     });
 
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <ChatGenerationSettingsSheet {...defaultProps} />,
     );
 
     // Trigger an invalid update
     await act(async () => {
-      fireEvent.press(getByTestId('mock-settings-update')); // This sets temperature to '3.0'
+      await fireEvent.press(getByTestId('mock-settings-update')); // This sets temperature to '3.0'
     });
 
     await act(async () => {
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
     });
 
     // Should show alert for invalid value

@@ -18,8 +18,8 @@ import {mockLlamaContextParams} from '../../../../jest/fixtures/models';
 import {bodyExtras} from '../../../api/servers';
 import {ModelOrigin} from '../../../utils/types';
 
-const render = (ui: React.ReactElement, options: any = {}) =>
-  baseRender(ui, {withBottomSheetProvider: true, ...options});
+const render = async (ui: React.ReactElement, options: any = {}) =>
+  await baseRender(ui, {withBottomSheetProvider: true, ...options});
 
 // The pill renders the localized effort tier (e.g. 'Low'), not the raw carrier
 // token ('low'); map the token through the same table the component uses.
@@ -34,22 +34,22 @@ describe('ChatScreen', () => {
     llamaRN = require('llama.rn');
   });
 
-  it('renders correctly when model is not loaded', () => {
-    const {getByPlaceholderText} = render(<ChatScreen />, {
+  it('renders correctly when model is not loaded', async () => {
+    const {getByPlaceholderText} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     expect(getByPlaceholderText(l10n.en.chat.modelNotLoaded)).toBeTruthy();
   });
 
-  it('renders correctly when model is loading', () => {
+  it('renders correctly when model is loading', async () => {
     modelStore.isContextLoading = true;
-    const {getByPlaceholderText} = render(<ChatScreen />, {
+    const {getByPlaceholderText} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     expect(getByPlaceholderText(l10n.en.chat.loadingModel)).toBeTruthy();
   });
 
-  it('renders correctly when model is loaded', () => {
+  it('renders correctly when model is loaded', async () => {
     modelStore.context = new LlamaContext(mockLlamaContextParams);
     modelStore.engine = {
       completion: jest.fn((params, onData) =>
@@ -57,7 +57,7 @@ describe('ChatScreen', () => {
       ),
       stopCompletion: jest.fn(),
     };
-    const {getByPlaceholderText} = render(<ChatScreen />, {
+    const {getByPlaceholderText} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     expect(getByPlaceholderText(l10n.en.chat.typeYourMessage)).toBeTruthy();
@@ -79,17 +79,17 @@ describe('ChatScreen', () => {
       stopCompletion: jest.fn(),
     };
 
-    const {getByPlaceholderText, getByTestId} = render(<ChatScreen />, {
+    const {getByPlaceholderText, getByTestId} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     const input = getByPlaceholderText(l10n.en.chat.typeYourMessage);
 
     await act(async () => {
-      fireEvent.changeText(input, 'Hello, PocketPal AI!');
+      await fireEvent.changeText(input, 'Hello, PocketPal AI!');
     });
 
     const sendButton = getByTestId('send-button');
-    fireEvent.press(sendButton);
+    await fireEvent.press(sendButton);
 
     await waitFor(() => {
       expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
@@ -124,18 +124,18 @@ describe('ChatScreen', () => {
       stopCompletion: jest.fn(),
     };
 
-    const {getByPlaceholderText, getByTestId} = render(<ChatScreen />, {
+    const {getByPlaceholderText, getByTestId} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     const input = getByPlaceholderText(l10n.en.chat.typeYourMessage);
 
     await act(async () => {
-      fireEvent.changeText(input, 'Hello, PocketPal!');
+      await fireEvent.changeText(input, 'Hello, PocketPal!');
     });
 
     const sendButton = getByTestId('send-button');
     await act(async () => {
-      fireEvent.press(sendButton);
+      await fireEvent.press(sendButton);
     });
 
     expect(chatSessionStore.addMessageToCurrentSession).toHaveBeenCalledWith(
@@ -178,7 +178,7 @@ describe('ChatScreen', () => {
         },
       ]);
 
-    const {getByText} = render(<ChatScreen />, {
+    const {getByText} = await render(<ChatScreen />, {
       withNavigation: true,
     });
 
@@ -206,18 +206,18 @@ describe('ChatScreen', () => {
       stopCompletion: jest.fn(),
     };
 
-    const {getByPlaceholderText, getByTestId} = render(<ChatScreen />, {
+    const {getByPlaceholderText, getByTestId} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     const input = getByPlaceholderText(l10n.en.chat.typeYourMessage);
 
     await act(async () => {
-      fireEvent.changeText(input, 'Hello, AI!');
+      await fireEvent.changeText(input, 'Hello, AI!');
     });
 
     await act(async () => {
       const sendButton = getByTestId('send-button');
-      fireEvent.press(sendButton);
+      await fireEvent.press(sendButton);
       modelStore.setInferencing(true); // since mock doesn't really set inferencing
     });
 
@@ -232,7 +232,7 @@ describe('ChatScreen', () => {
 
     const stopButton = getByTestId('stop-button');
     await act(async () => {
-      fireEvent.press(stopButton);
+      await fireEvent.press(stopButton);
     });
 
     expect(modelStore.engine?.stopCompletion).toHaveBeenCalled();
@@ -299,7 +299,7 @@ describe('ChatScreen', () => {
         'setNewChatCompletionSettings',
       );
 
-      const {getByLabelText} = render(<ChatScreen />, {
+      const {getByLabelText} = await render(<ChatScreen />, {
         withNavigation: true,
       });
 
@@ -308,7 +308,7 @@ describe('ChatScreen', () => {
       // override field.
       const toggle = getByLabelText('Disable thinking mode');
       await act(async () => {
-        fireEvent.press(toggle);
+        await fireEvent.press(toggle);
       });
 
       // Primary signal: override is set to the new value.
@@ -370,7 +370,7 @@ describe('ChatScreen', () => {
       return ctx;
     };
 
-    const renderWithToolPal = (ctx: LlamaContext) => {
+    const renderWithToolPal = async (ctx: LlamaContext) => {
       runInAction(() => {
         modelStore.activeModelId = 'tool-model-id';
         modelStore.context = ctx;
@@ -379,7 +379,7 @@ describe('ChatScreen', () => {
       jest
         .spyOn(require('../../../store').chatSessionStore, 'activePalId', 'get')
         .mockReturnValue(palWithTalents.id);
-      return render(<ChatScreen />, {withNavigation: true});
+      return await render(<ChatScreen />, {withNavigation: true});
     };
 
     beforeEach(() => {
@@ -387,28 +387,28 @@ describe('ChatScreen', () => {
       uiStore.hasWarnedToolCompat.mockReturnValue(false);
     });
 
-    it('does NOT warn when defaultCaps.tools is true (Ministral-style)', () => {
-      renderWithToolPal(buildContextWithCaps({defaultTools: true}));
+    it('does NOT warn when defaultCaps.tools is true (Ministral-style)', async () => {
+      await renderWithToolPal(buildContextWithCaps({defaultTools: true}));
       expect(uiStore.setChatWarning).not.toHaveBeenCalled();
     });
 
-    it('does NOT warn when defaultCaps.toolCalls is true', () => {
-      renderWithToolPal(buildContextWithCaps({defaultToolCalls: true}));
+    it('does NOT warn when defaultCaps.toolCalls is true', async () => {
+      await renderWithToolPal(buildContextWithCaps({defaultToolCalls: true}));
       expect(uiStore.setChatWarning).not.toHaveBeenCalled();
     });
 
-    it('does NOT warn when toolUse is true (Qwen3-style)', () => {
-      renderWithToolPal(buildContextWithCaps({toolUse: true}));
+    it('does NOT warn when toolUse is true (Qwen3-style)', async () => {
+      await renderWithToolPal(buildContextWithCaps({toolUse: true}));
       expect(uiStore.setChatWarning).not.toHaveBeenCalled();
     });
 
-    it('does NOT warn when toolUseCaps object is present', () => {
-      renderWithToolPal(buildContextWithCaps({toolUseCaps: true}));
+    it('does NOT warn when toolUseCaps object is present', async () => {
+      await renderWithToolPal(buildContextWithCaps({toolUseCaps: true}));
       expect(uiStore.setChatWarning).not.toHaveBeenCalled();
     });
 
-    it('warns once when all four capability slots are absent', () => {
-      renderWithToolPal(buildContextWithCaps({}));
+    it('warns once when all four capability slots are absent', async () => {
+      await renderWithToolPal(buildContextWithCaps({}));
       expect(uiStore.setChatWarning).toHaveBeenCalledTimes(1);
       expect(uiStore.markToolCompatWarned).toHaveBeenCalledWith(
         'tool-model-id',
@@ -446,13 +446,15 @@ describe('ChatScreen reasoning pill visibility', () => {
     });
   };
 
-  it("shows the pill when isReasoning is 'unknown' (fail-open)", () => {
+  it("shows the pill when isReasoning is 'unknown' (fail-open)", async () => {
     useModel({supportsThinking: undefined, reasoning: undefined});
-    const {queryByTestId} = render(<ChatScreen />, {withNavigation: true});
+    const {queryByTestId} = await render(<ChatScreen />, {
+      withNavigation: true,
+    });
     expect(queryByTestId('thinking-toggle')).toBeTruthy();
   });
 
-  it("hides the pill when isReasoning is 'no'", () => {
+  it("hides the pill when isReasoning is 'no'", async () => {
     useModel({
       reasoning: {
         isReasoning: 'no',
@@ -462,11 +464,13 @@ describe('ChatScreen reasoning pill visibility', () => {
         effortSource: 'user',
       },
     });
-    const {queryByTestId} = render(<ChatScreen />, {withNavigation: true});
+    const {queryByTestId} = await render(<ChatScreen />, {
+      withNavigation: true,
+    });
     expect(queryByTestId('thinking-toggle')).toBeNull();
   });
 
-  it('shows the pill for a graded effort model', () => {
+  it('shows the pill for a graded effort model', async () => {
     useModel({
       reasoning: {
         isReasoning: 'yes',
@@ -476,7 +480,9 @@ describe('ChatScreen reasoning pill visibility', () => {
         effortSource: 'user',
       },
     });
-    const {queryByTestId} = render(<ChatScreen />, {withNavigation: true});
+    const {queryByTestId} = await render(<ChatScreen />, {
+      withNavigation: true,
+    });
     expect(queryByTestId('thinking-toggle')).toBeTruthy();
   });
 });
@@ -553,7 +559,7 @@ describe('ChatScreen reasoning override reaches the pill (live, no remount)', ()
       modelStore.activeModelId = 'override-model';
     });
 
-    const {getByTestId} = render(<ChatScreen />, {
+    const {getByTestId} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     const pill = () => within(getByTestId('thinking-toggle'));
@@ -579,7 +585,7 @@ describe('ChatScreen reasoning override reaches the pill (live, no remount)', ()
     // tap awaits the async persist + state flush before the label settles.
     for (const expected of ['low', 'medium', 'high'] as const) {
       await act(async () => {
-        fireEvent.press(getByTestId('thinking-toggle'));
+        await fireEvent.press(getByTestId('thinking-toggle'));
       });
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 30));
@@ -631,7 +637,7 @@ describe('ChatScreen reasoning override reaches the pill (live, no remount)', ()
       modelStore.activeModelId = 'fresh-chat-model';
     });
 
-    const {getByTestId} = render(<ChatScreen />, {withNavigation: true});
+    const {getByTestId} = await render(<ChatScreen />, {withNavigation: true});
     const pill = () => within(getByTestId('thinking-toggle'));
     const thinkText = l10n.en.components.chatInput.thinkingToggle.thinkText;
 
@@ -639,7 +645,7 @@ describe('ChatScreen reasoning override reaches the pill (live, no remount)', ()
 
     for (const expected of ['low', 'medium', 'high'] as const) {
       await act(async () => {
-        fireEvent.press(getByTestId('thinking-toggle'));
+        await fireEvent.press(getByTestId('thinking-toggle'));
       });
       await act(async () => {
         await new Promise(resolve => setTimeout(resolve, 30));
@@ -727,6 +733,7 @@ describe('ChatScreen graded effort pill cycle', () => {
         ...modelStore.models.filter(m => m.id !== id),
         model,
       ];
+
       modelStore.activeModelId = id;
     });
   };
@@ -736,7 +743,7 @@ describe('ChatScreen graded effort pill cycle', () => {
   it('cycles off → low → medium → high → off in value-set order', async () => {
     const thinkText = l10n.en.components.chatInput.thinkingToggle.thinkText;
     useGradedModel();
-    const {getByTestId} = render(<ChatScreen />, {withNavigation: true});
+    const {getByTestId} = await render(<ChatScreen />, {withNavigation: true});
     const pill = () => within(getByTestId('thinking-toggle'));
 
     // The init effect resolves enable_thinking:false → pill settles to OFF.
@@ -744,7 +751,7 @@ describe('ChatScreen graded effort pill cycle', () => {
 
     for (const expected of ['low', 'medium', 'high'] as const) {
       await act(async () => {
-        fireEvent.press(getByTestId('thinking-toggle'));
+        await fireEvent.press(getByTestId('thinking-toggle'));
       });
       await waitFor(() =>
         expect(pill().getByText(effortLabel(expected))).toBeTruthy(),
@@ -758,7 +765,7 @@ describe('ChatScreen graded effort pill cycle', () => {
 
     // One more tap past the last value wraps back to off.
     await act(async () => {
-      fireEvent.press(getByTestId('thinking-toggle'));
+      await fireEvent.press(getByTestId('thinking-toggle'));
     });
     await waitFor(() => expect(pill().getByText(thinkText)).toBeTruthy());
     expect(persisted).toMatchObject({
@@ -770,7 +777,7 @@ describe('ChatScreen graded effort pill cycle', () => {
   it('shows a stored unsupported effort as the nearest lower one', async () => {
     persisted = {enable_thinking: true, reasoning: {effort: 'xhigh'}};
     useGradedModel();
-    const {getByTestId} = render(<ChatScreen />, {withNavigation: true});
+    const {getByTestId} = await render(<ChatScreen />, {withNavigation: true});
     const pill = () => within(getByTestId('thinking-toggle'));
 
     await waitFor(() =>
@@ -778,7 +785,7 @@ describe('ChatScreen graded effort pill cycle', () => {
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('thinking-toggle'));
+      await fireEvent.press(getByTestId('thinking-toggle'));
     });
     expect(persisted).toMatchObject({
       enable_thinking: false,
@@ -788,7 +795,7 @@ describe('ChatScreen graded effort pill cycle', () => {
 
   it('keeps a supported stored effort when the model becomes active after mount', async () => {
     persisted = {enable_thinking: true, reasoning: {effort: 'high'}};
-    const {getByTestId, queryByTestId} = render(<ChatScreen />, {
+    const {getByTestId, queryByTestId} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     await act(async () => {});
@@ -816,7 +823,7 @@ describe('ChatScreen graded effort pill cycle', () => {
       stopCompletion: jest.fn(),
     } as any;
     useGradedModel('wide-model', ['low', 'medium', 'high', 'xhigh']);
-    const {getByTestId, getByPlaceholderText} = render(<ChatScreen />, {
+    const {getByTestId, getByPlaceholderText} = await render(<ChatScreen />, {
       withNavigation: true,
     });
     const pill = () => within(getByTestId('thinking-toggle'));
@@ -832,13 +839,13 @@ describe('ChatScreen graded effort pill cycle', () => {
     );
 
     await act(async () => {
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByPlaceholderText(l10n.en.chat.typeYourMessage),
         'Hello',
       );
     });
     await act(async () => {
-      fireEvent.press(getByTestId('send-button'));
+      await fireEvent.press(getByTestId('send-button'));
     });
     await waitFor(() =>
       expect(modelStore.context!.completion).toHaveBeenCalled(),
@@ -851,7 +858,7 @@ describe('ChatScreen graded effort pill cycle', () => {
   it('re-clamps when the active model drops the stored grade', async () => {
     persisted = {enable_thinking: true, reasoning: {effort: 'xhigh'}};
     useGradedModel('wide-model', ['low', 'medium', 'high', 'xhigh']);
-    const {getByTestId} = render(<ChatScreen />, {withNavigation: true});
+    const {getByTestId} = await render(<ChatScreen />, {withNavigation: true});
     const pill = () => within(getByTestId('thinking-toggle'));
     await waitFor(() =>
       expect(pill().getByText(effortLabel('xhigh'))).toBeTruthy(),
@@ -946,12 +953,14 @@ describe('ChatScreen on/off toggle → reasoning carrier (remote)', () => {
   // per-type OFF wire shape.
   it('off toggle yields reasoning.enabled false reaching the server profile', async () => {
     useRemoteEffortUnknownModel();
-    const {getByLabelText} = render(<ChatScreen />, {withNavigation: true});
+    const {getByLabelText} = await render(<ChatScreen />, {
+      withNavigation: true,
+    });
 
     // Default thinkingEnabled true → label is "Disable thinking mode".
     const toggle = getByLabelText('Disable thinking mode');
     await act(async () => {
-      fireEvent.press(toggle);
+      await fireEvent.press(toggle);
     });
 
     await waitFor(() =>
@@ -1000,6 +1009,7 @@ describe('ChatScreen remote vision reactivity', () => {
         remoteModelId: 'gemma-4-e2b',
       },
     ];
+
     runInAction(() => {
       modelStore.context = undefined;
       modelStore.activeModelId = modelId;
@@ -1011,6 +1021,7 @@ describe('ChatScreen remote vision reactivity', () => {
           serverType: 'llama.cpp',
         } as any,
       ];
+
       serverStore.remoteCaps = {};
     });
     modelStore.engine = {
@@ -1028,14 +1039,16 @@ describe('ChatScreen remote vision reactivity', () => {
     });
   });
 
-  it('enables attach when capabilities land, with no further user action', () => {
-    const {getByLabelText} = render(<ChatScreen />, {withNavigation: true});
+  it('enables attach when capabilities land, with no further user action', async () => {
+    const {getByLabelText} = await render(<ChatScreen />, {
+      withNavigation: true,
+    });
 
     expect(getByLabelText('Add image').props.accessibilityState.disabled).toBe(
       true,
     );
 
-    act(() => {
+    await act(() => {
       runInAction(() => {
         serverStore.remoteCaps[modelId] = {supportsVision: true};
       });
@@ -1046,7 +1059,7 @@ describe('ChatScreen remote vision reactivity', () => {
     );
   });
 
-  it('enables attach when a local model finishes loading its projection', () => {
+  it('enables attach when a local model finishes loading its projection', async () => {
     const localId = 'local-mm-1';
     runInAction(() => {
       modelStore.models = [
@@ -1058,18 +1071,21 @@ describe('ChatScreen remote vision reactivity', () => {
           supportsMultimodal: true,
         },
       ];
+
       modelStore.activeModelId = localId;
       modelStore.isMultimodalActive = false;
     });
 
-    const {getByLabelText} = render(<ChatScreen />, {withNavigation: true});
+    const {getByLabelText} = await render(<ChatScreen />, {
+      withNavigation: true,
+    });
 
     expect(getByLabelText('Add image').props.accessibilityState.disabled).toBe(
       true,
     );
 
     // What `proceedWithInitialization` writes once the native init verifies.
-    act(() => {
+    await act(() => {
       runInAction(() => {
         modelStore.isMultimodalActive = true;
       });
@@ -1084,14 +1100,16 @@ describe('ChatScreen remote vision reactivity', () => {
     });
   });
 
-  it('does not let the active model inherit a sibling model vision flag', () => {
-    act(() => {
+  it('does not let the active model inherit a sibling model vision flag', async () => {
+    await act(() => {
       runInAction(() => {
         serverStore.remoteCaps['srv-1/gemma-3-4b'] = {supportsVision: true};
       });
     });
 
-    const {getByLabelText} = render(<ChatScreen />, {withNavigation: true});
+    const {getByLabelText} = await render(<ChatScreen />, {
+      withNavigation: true,
+    });
 
     expect(getByLabelText('Add image').props.accessibilityState.disabled).toBe(
       true,

@@ -11,10 +11,10 @@ import {chatSessionStore, modelStore, serverStore} from '../../../store';
 
 import {BannerRow} from '../BannerRow';
 
-const renderBanner = (
+const renderBanner = async (
   props: Partial<React.ComponentProps<typeof BannerRow>> = {},
 ) =>
-  render(
+  await render(
     <L10nContext.Provider value={l10n.en}>
       <BannerRow
         messages={[]}
@@ -50,14 +50,14 @@ describe('BannerRow', () => {
     });
   });
 
-  it('renders nothing for the none variant', () => {
-    const {queryByTestId} = renderBanner();
+  it('renders nothing for the none variant', async () => {
+    const {queryByTestId} = await renderBanner();
     expect(queryByTestId('context-full-banner')).toBeNull();
     expect(queryByTestId('context-warning-banner')).toBeNull();
     expect(queryByTestId('soft-cap-warning')).toBeNull();
   });
 
-  it('renders the warning banner at the 0.80 ratio with a working dismiss', () => {
+  it('renders the warning banner at the 0.80 ratio with a working dismiss', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 3300,
@@ -65,17 +65,17 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId, getByText} = renderBanner();
+    const {getByTestId, getByText} = await renderBanner();
     expect(getByTestId('context-warning-banner')).toBeTruthy();
     expect(getByText(l10n.en.chat.contextWarning)).toBeTruthy();
 
-    fireEvent.press(getByTestId('context-banner-dismiss'));
+    await fireEvent.press(getByTestId('context-banner-dismiss'));
     expect(chatSessionStore.setBannerDismissed).toHaveBeenCalledWith(
       'context-warning',
     );
   });
 
-  it('renders the sticky full banner with the increase CTA when an upgrade fits', () => {
+  it('renders the sticky full banner with the increase CTA when an upgrade fits', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 4096,
@@ -83,7 +83,7 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId} = renderBanner({canIncrease: true});
+    const {getByTestId} = await renderBanner({canIncrease: true});
     expect(getByTestId('context-full-banner')).toBeTruthy();
     expect(getByTestId('context-full-new-chat')).toBeTruthy();
     expect(getByTestId('context-full-increase')).toBeTruthy();
@@ -97,7 +97,7 @@ describe('BannerRow', () => {
     expect(getByTestId('context-banner-dismiss')).toBeTruthy();
   });
 
-  it('hides the increase CTA when no larger context fits the device', () => {
+  it('hides the increase CTA when no larger context fits the device', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 4096,
@@ -105,13 +105,15 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId, queryByTestId} = renderBanner({canIncrease: false});
+    const {getByTestId, queryByTestId} = await renderBanner({
+      canIncrease: false,
+    });
     expect(getByTestId('context-full-banner')).toBeTruthy();
     expect(getByTestId('context-full-new-chat')).toBeTruthy();
     expect(queryByTestId('context-full-increase')).toBeNull();
   });
 
-  it('opens the sheet (no precomputed target) when the increase CTA is tapped', () => {
+  it('opens the sheet (no precomputed target) when the increase CTA is tapped', async () => {
     const onIncreaseContext = jest.fn();
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
@@ -120,13 +122,21 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId} = renderBanner({onIncreaseContext, canIncrease: true});
-    fireEvent.press(getByTestId('context-full-increase'));
+    const {getByTestId} = await renderBanner({
+      onIncreaseContext,
+      canIncrease: true,
+    });
+    await fireEvent.press(getByTestId('context-full-increase'));
     expect(onIncreaseContext).toHaveBeenCalledTimes(1);
-    expect(onIncreaseContext.mock.calls[0]).toHaveLength(0);
+    // v14: fireEvent.press always supplies a default synthetic event, so
+    // the handler no longer receives zero arguments. The single argument
+    // is RNTL's synthetic press event, not a target of BannerRow's own —
+    // the "no precomputed target" contract is that BannerRow passes
+    // nothing of its own (its prop type is `() => void`).
+    expect(onIncreaseContext.mock.calls[0]).toHaveLength(1);
   });
 
-  it('shows the meter and percent on the warning banner', () => {
+  it('shows the meter and percent on the warning banner', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 3300,
@@ -134,7 +144,7 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId} = renderBanner();
+    const {getByTestId} = await renderBanner();
     expect(
       getByTestId('banner-meter', {includeHiddenElements: true}),
     ).toBeTruthy();
@@ -142,7 +152,7 @@ describe('BannerRow', () => {
     expect(getByTestId('banner-percent')).toHaveTextContent('81%');
   });
 
-  it('stacks the warning banner in a column so the meter spans full width', () => {
+  it('stacks the warning banner in a column so the meter spans full width', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 3300,
@@ -150,7 +160,7 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId} = renderBanner();
+    const {getByTestId} = await renderBanner();
     // A row container would collapse the meter to ~0 width. The warning banner
     // must stack (default column) so the meter's percentage fill measures
     // against a full-width parent.
@@ -168,7 +178,7 @@ describe('BannerRow', () => {
     expect(meterFlat.width).toBe('100%');
   });
 
-  it('shows the escalated full copy after consecutive full failures', () => {
+  it('shows the escalated full copy after consecutive full failures', async () => {
     runInAction(() => {
       chatSessionStore.consecutiveFullFailures = 2;
       chatSessionStore.lastCompletionResult = {
@@ -177,16 +187,17 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByText} = renderBanner();
+    const {getByText} = await renderBanner();
     expect(getByText(l10n.en.chat.contextFullEscalated)).toBeTruthy();
   });
 
-  it('keeps the remote copy (no increase clause) for a remote model at the escalated failure count', () => {
+  it('keeps the remote copy (no increase clause) for a remote model at the escalated failure count', async () => {
     runInAction(() => {
       modelStore.activeModelId = 'remote-1';
       modelStore.models = [
         {id: 'remote-1', origin: ModelOrigin.REMOTE, serverId: 'srv-1'} as any,
       ];
+
       (modelStore as any).activeContextSettings = undefined;
       serverStore.servers = [
         {
@@ -196,6 +207,7 @@ describe('BannerRow', () => {
           serverType: 'llama.cpp',
         } as any,
       ];
+
       serverStore.remoteCaps = {'remote-1': {contextLength: 4096}};
       // A remote session can reach >=2 consecutive full turns (the counter is
       // remote-agnostic), but must not re-surface the escalated increase advice.
@@ -207,7 +219,7 @@ describe('BannerRow', () => {
         finishReason: 'length',
       };
     });
-    const {getByText, queryByText} = renderBanner({canIncrease: false});
+    const {getByText, queryByText} = await renderBanner({canIncrease: false});
     expect(getByText(l10n.en.chat.contextFullRemote)).toBeTruthy();
     expect(queryByText(l10n.en.chat.contextFullEscalated)).toBeNull();
 
@@ -218,7 +230,7 @@ describe('BannerRow', () => {
     });
   });
 
-  it('keeps the escalated copy for a local model at the escalated failure count', () => {
+  it('keeps the escalated copy for a local model at the escalated failure count', async () => {
     runInAction(() => {
       chatSessionStore.consecutiveFullFailures = 2;
       chatSessionStore.lastCompletionResult = {
@@ -227,12 +239,12 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByText, queryByText} = renderBanner();
+    const {getByText, queryByText} = await renderBanner();
     expect(getByText(l10n.en.chat.contextFullEscalated)).toBeTruthy();
     expect(queryByText(l10n.en.chat.contextFullRemote)).toBeNull();
   });
 
-  it('renders the remote hedged advisory for a remote model with no runtime n_ctx', () => {
+  it('renders the remote hedged advisory for a remote model with no runtime n_ctx', async () => {
     runInAction(() => {
       modelStore.activeModelId = 'remote-1';
       modelStore.models = [{id: 'remote-1', origin: ModelOrigin.REMOTE} as any];
@@ -246,7 +258,7 @@ describe('BannerRow', () => {
         content: 'this reply was cut off',
       };
     });
-    const {getByTestId, queryByTestId, getByText} = renderBanner();
+    const {getByTestId, queryByTestId, getByText} = await renderBanner();
     expect(getByTestId('context-remote-hedged-banner')).toBeTruthy();
     expect(getByText(l10n.en.chat.contextRemoteHedged)).toBeTruthy();
     // No fullness meter on the remote-hedged branch: the resolver emits no
@@ -254,7 +266,7 @@ describe('BannerRow', () => {
     // rule, not just relying on it).
     expect(queryByTestId('banner-meter')).toBeNull();
 
-    fireEvent.press(getByTestId('context-banner-dismiss'));
+    await fireEvent.press(getByTestId('context-banner-dismiss'));
     expect(chatSessionStore.setBannerDismissed).toHaveBeenCalledWith(
       'context-remote-hedged',
     );
@@ -264,12 +276,13 @@ describe('BannerRow', () => {
     });
   });
 
-  it('resolves context-full for a remote model from the server-reported contextLength', () => {
+  it('resolves context-full for a remote model from the server-reported contextLength', async () => {
     runInAction(() => {
       modelStore.activeModelId = 'remote-1';
       modelStore.models = [
         {id: 'remote-1', origin: ModelOrigin.REMOTE, serverId: 'srv-1'} as any,
       ];
+
       // Remote models never set activeContextSettings.n_ctx; the window must
       // come from the server's /props-reported contextLength (cross-store read).
       (modelStore as any).activeContextSettings = undefined;
@@ -281,6 +294,7 @@ describe('BannerRow', () => {
           serverType: 'llama.cpp',
         } as any,
       ];
+
       serverStore.remoteCaps = {'remote-1': {contextLength: 4096}};
       chatSessionStore.lastCompletionResult = {
         used: 4096,
@@ -289,7 +303,7 @@ describe('BannerRow', () => {
         finishReason: 'length',
       };
     });
-    const {getByTestId} = renderBanner();
+    const {getByTestId} = await renderBanner();
     // effectiveNCtx must be derived from serverStore.contextLength for the
     // context-full branch (and its meter) to render at all for a remote model.
     expect(getByTestId('context-full-banner')).toBeTruthy();
@@ -304,12 +318,13 @@ describe('BannerRow', () => {
     });
   });
 
-  it('ignores a window probed against another backend', () => {
+  it('ignores a window probed against another backend', async () => {
     runInAction(() => {
       modelStore.activeModelId = 'remote-1';
       modelStore.models = [
         {id: 'remote-1', origin: ModelOrigin.REMOTE, serverId: 'srv-1'} as any,
       ];
+
       (modelStore as any).activeContextSettings = undefined;
       serverStore.servers = [
         {
@@ -318,6 +333,7 @@ describe('BannerRow', () => {
           url: 'http://localhost:9090',
         } as any,
       ];
+
       // The session is still on :8080; the entry describes :9090, so there is
       // no window to measure against and the banners stay silent.
       modelStore.activeRemoteBinding = {
@@ -336,7 +352,7 @@ describe('BannerRow', () => {
         isRemote: true,
       };
     });
-    const {queryByTestId} = renderBanner();
+    const {queryByTestId} = await renderBanner();
     expect(queryByTestId('context-full-banner')).toBeNull();
     expect(queryByTestId('context-warning-banner')).toBeNull();
 
@@ -348,12 +364,13 @@ describe('BannerRow', () => {
     });
   });
 
-  it('does not treat a per-model window of 0 as a full context', () => {
+  it('does not treat a per-model window of 0 as a full context', async () => {
     runInAction(() => {
       modelStore.activeModelId = 'remote-1';
       modelStore.models = [
         {id: 'remote-1', origin: ModelOrigin.REMOTE, serverId: 'srv-1'} as any,
       ];
+
       (modelStore as any).activeContextSettings = undefined;
       serverStore.servers = [
         {
@@ -363,6 +380,7 @@ describe('BannerRow', () => {
           serverType: 'llama.cpp',
         } as any,
       ];
+
       // No writer produces this today; the gate is what keeps it that way.
       serverStore.remoteCaps = {'remote-1': {contextLength: 0}};
       chatSessionStore.lastCompletionResult = {
@@ -371,7 +389,7 @@ describe('BannerRow', () => {
         isRemote: true,
       };
     });
-    const {queryByTestId} = renderBanner();
+    const {queryByTestId} = await renderBanner();
     expect(queryByTestId('context-full-banner')).toBeNull();
     expect(queryByTestId('context-warning-banner')).toBeNull();
 
@@ -382,12 +400,13 @@ describe('BannerRow', () => {
     });
   });
 
-  it('uses the remote context-full copy (no increase clause) for a remote model', () => {
+  it('uses the remote context-full copy (no increase clause) for a remote model', async () => {
     runInAction(() => {
       modelStore.activeModelId = 'remote-1';
       modelStore.models = [
         {id: 'remote-1', origin: ModelOrigin.REMOTE, serverId: 'srv-1'} as any,
       ];
+
       (modelStore as any).activeContextSettings = undefined;
       serverStore.servers = [
         {
@@ -397,6 +416,7 @@ describe('BannerRow', () => {
           serverType: 'llama.cpp',
         } as any,
       ];
+
       serverStore.remoteCaps = {'remote-1': {contextLength: 4096}};
       chatSessionStore.lastCompletionResult = {
         used: 4096,
@@ -405,7 +425,7 @@ describe('BannerRow', () => {
         finishReason: 'length',
       };
     });
-    const {getByText, queryByText} = renderBanner({canIncrease: false});
+    const {getByText, queryByText} = await renderBanner({canIncrease: false});
     // Remote copy drops "or increase the context size" — the increase CTA is
     // hidden for remote (no client-side control).
     expect(getByText(l10n.en.chat.contextFullRemote)).toBeTruthy();
@@ -418,7 +438,7 @@ describe('BannerRow', () => {
     });
   });
 
-  it('keeps the device context-full copy for a local model', () => {
+  it('keeps the device context-full copy for a local model', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 4096,
@@ -426,12 +446,12 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByText, queryByText} = renderBanner({canIncrease: true});
+    const {getByText, queryByText} = await renderBanner({canIncrease: true});
     expect(getByText(l10n.en.chat.contextFull)).toBeTruthy();
     expect(queryByText(l10n.en.chat.contextFullRemote)).toBeNull();
   });
 
-  it('measures against the session window, not the window the model declares', () => {
+  it('measures against the session window, not the window the model declares', async () => {
     runInAction(() => {
       modelStore.models = [
         {
@@ -440,6 +460,7 @@ describe('BannerRow', () => {
           ggufMetadata: {context_length: 32768},
         } as any,
       ];
+
       (modelStore as any).activeContextSettings = {n_ctx: 4096};
       chatSessionStore.lastCompletionResult = {
         used: 3300,
@@ -447,19 +468,20 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId} = renderBanner();
+    const {getByTestId} = await renderBanner();
     // 3300 / 4096 ≈ 81%; against the declared 32768 it would be 10% and no
     // banner would render at all.
     expect(getByTestId('context-warning-banner')).toBeTruthy();
     expect(getByTestId('banner-percent')).toHaveTextContent('81%');
   });
 
-  it('resolves the near-limit warning + meter percent for a remote model', () => {
+  it('resolves the near-limit warning + meter percent for a remote model', async () => {
     runInAction(() => {
       modelStore.activeModelId = 'remote-1';
       modelStore.models = [
         {id: 'remote-1', origin: ModelOrigin.REMOTE, serverId: 'srv-1'} as any,
       ];
+
       (modelStore as any).activeContextSettings = undefined;
       serverStore.servers = [
         {
@@ -469,6 +491,7 @@ describe('BannerRow', () => {
           serverType: 'llama.cpp',
         } as any,
       ];
+
       serverStore.remoteCaps = {'remote-1': {contextLength: 4096}};
       chatSessionStore.lastCompletionResult = {
         used: 3300,
@@ -476,7 +499,7 @@ describe('BannerRow', () => {
         isRemote: true,
       };
     });
-    const {getByTestId} = renderBanner();
+    const {getByTestId} = await renderBanner();
     expect(getByTestId('context-warning-banner')).toBeTruthy();
     // 3300 / 4096 ≈ 80.6% → the meter percent proves the ratio measured
     // against the server window, not the weak remote heuristic.
@@ -489,7 +512,7 @@ describe('BannerRow', () => {
     });
   });
 
-  it('suppresses context-* banners when no model is loaded', () => {
+  it('suppresses context-* banners when no model is loaded', async () => {
     runInAction(() => {
       modelStore.activeModelId = undefined;
       chatSessionStore.lastCompletionResult = {
@@ -498,20 +521,20 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {queryByTestId} = renderBanner();
+    const {queryByTestId} = await renderBanner();
     expect(queryByTestId('context-full-banner')).toBeNull();
   });
 
-  it('still shows the html-soft-cap sub-case independent of model state', () => {
+  it('still shows the html-soft-cap sub-case independent of model state', async () => {
     runInAction(() => {
       modelStore.activeModelId = undefined;
     });
-    const {getByTestId, getByText} = renderBanner({htmlPreviewCount: 4});
+    const {getByTestId, getByText} = await renderBanner({htmlPreviewCount: 4});
     expect(getByTestId('soft-cap-warning')).toBeTruthy();
     expect(getByText(l10n.en.chat.softCapWarning)).toBeTruthy();
   });
 
-  it('lets context-full win over html-soft-cap (precedence)', () => {
+  it('lets context-full win over html-soft-cap (precedence)', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 4096,
@@ -519,12 +542,14 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId, queryByTestId} = renderBanner({htmlPreviewCount: 4});
+    const {getByTestId, queryByTestId} = await renderBanner({
+      htmlPreviewCount: 4,
+    });
     expect(getByTestId('context-full-banner')).toBeTruthy();
     expect(queryByTestId('soft-cap-warning')).toBeNull();
   });
 
-  it('shows the fullness percentage beside the full banner meter', () => {
+  it('shows the fullness percentage beside the full banner meter', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: 3900,
@@ -532,7 +557,7 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {getByTestId} = renderBanner();
+    const {getByTestId} = await renderBanner();
     expect(getByTestId('context-full-banner')).toBeTruthy();
     // 3900 / 4096 ≈ 95%, the same ratio the meter is drawn from.
     expect(getByTestId('banner-percent')).toHaveTextContent('95%');
@@ -541,7 +566,7 @@ describe('BannerRow', () => {
     ).toBeTruthy();
   });
 
-  it('renders no banner at all when the turn reported no token count', () => {
+  it('renders no banner at all when the turn reported no token count', async () => {
     runInAction(() => {
       chatSessionStore.lastCompletionResult = {
         used: undefined,
@@ -549,7 +574,7 @@ describe('BannerRow', () => {
         isRemote: false,
       };
     });
-    const {queryByTestId} = renderBanner();
+    const {queryByTestId} = await renderBanner();
     expect(queryByTestId('context-full-banner')).toBeNull();
     expect(queryByTestId('banner-percent')).toBeNull();
   });

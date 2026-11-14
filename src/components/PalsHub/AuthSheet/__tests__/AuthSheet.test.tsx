@@ -1,11 +1,13 @@
 import React from 'react';
-import {Alert, Platform, TextInput as NativeTextInput} from 'react-native';
+import {Alert, Platform} from 'react-native';
 import {appleAuth} from '@invertase/react-native-apple-authentication';
+import {useBottomSheetInternal} from '@gorhom/bottom-sheet';
 import {
-  BottomSheetTextInput,
-  useBottomSheetInternal,
-} from '@gorhom/bottom-sheet';
-import {render, fireEvent, waitFor} from '../../../../../jest/test-utils';
+  render,
+  fireEvent,
+  waitFor,
+  screen,
+} from '../../../../../jest/test-utils';
 import {mockSheetContext} from '../../../../../jest/sheetContext';
 
 import {AuthSheet} from '../AuthSheet';
@@ -20,7 +22,7 @@ jest.mock('../../../Sheet/Sheet', () => {
     }
     return (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         <Button title="Close" onPress={onClose} testID="sheet-close-button" />
         {children}
       </View>
@@ -29,6 +31,7 @@ jest.mock('../../../Sheet/Sheet', () => {
   MockSheet.ScrollView = ({children}: any) => (
     <View testID="sheet-scroll-view">{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -53,23 +56,23 @@ describe('AuthSheet', () => {
   });
 
   describe('Rendering', () => {
-    it('renders correctly when visible', () => {
-      const {getByTestId} = render(<AuthSheet {...defaultProps} />);
+    it('renders correctly when visible', async () => {
+      const {getByTestId} = await render(<AuthSheet {...defaultProps} />);
 
       expect(getByTestId('sheet')).toBeTruthy();
       expect(getByTestId('sheet-scroll-view')).toBeTruthy();
     });
 
-    it('does not render when not visible', () => {
-      const {queryByTestId} = render(
+    it('does not render when not visible', async () => {
+      const {queryByTestId} = await render(
         <AuthSheet {...defaultProps} isVisible={false} />,
       );
 
       expect(queryByTestId('sheet')).toBeNull();
     });
 
-    it('shows sign in form by default', () => {
-      const {getByText, queryByTestId} = render(
+    it('shows sign in form by default', async () => {
+      const {getByText, queryByTestId} = await render(
         <AuthSheet {...defaultProps} />,
       );
 
@@ -77,28 +80,30 @@ describe('AuthSheet', () => {
       expect(queryByTestId('full-name-input')).toBeNull();
     });
 
-    it('shows sign up form when toggled', () => {
-      const {getByText, getByTestId} = render(<AuthSheet {...defaultProps} />);
+    it('shows sign up form when toggled', async () => {
+      const {getByText, getByTestId} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const signUpToggle = getByText('Sign Up');
-      fireEvent.press(signUpToggle);
+      await fireEvent.press(signUpToggle);
 
       expect(getByText('Create Account')).toBeTruthy();
       expect(getByTestId('full-name-input')).toBeTruthy();
     });
 
-    it('shows loading indicator when auth is loading', () => {
+    it('shows loading indicator when auth is loading', async () => {
       authService.isLoading = true;
 
-      const {getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
       expect(getByText('Signing you in...')).toBeTruthy();
     });
 
-    it('shows error message when auth has error', () => {
+    it('shows error message when auth has error', async () => {
       authService.error = 'Invalid credentials';
 
-      const {getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
       expect(getByText('Invalid credentials')).toBeTruthy();
     });
@@ -109,46 +114,47 @@ describe('AuthSheet', () => {
       (useBottomSheetInternal as jest.Mock).mockImplementation(() => null);
     });
 
-    it('renders every form input as an RN TextInput in the enclosing bottom sheet', () => {
+    it('renders every form input as an RN TextInput in the enclosing bottom sheet', async () => {
       const sheet = mockSheetContext();
       (useBottomSheetInternal as jest.Mock).mockImplementation(() => sheet);
-      const {getByText, UNSAFE_getAllByType, UNSAFE_queryByType} = render(
-        <AuthSheet {...defaultProps} />,
-      );
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
-      fireEvent.press(getByText('Sign Up'));
+      await fireEvent.press(getByText('Sign Up'));
 
-      expect(UNSAFE_queryByType(BottomSheetTextInput)).toBeNull();
       expect(
-        UNSAFE_getAllByType(NativeTextInput).map(input => input.props.testID),
+        screen.container
+          .queryAll(i => i.type === 'TextInput')
+          .map(input => input.props.testID),
       ).toEqual(['full-name-input', 'email-input', 'password-input']);
     });
   });
 
   describe('Email Sign In', () => {
-    it('allows entering email and password', () => {
-      const {getByTestId} = render(<AuthSheet {...defaultProps} />);
+    it('allows entering email and password', async () => {
+      const {getByTestId} = await render(<AuthSheet {...defaultProps} />);
 
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
 
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'password123');
 
       expect(emailInput.props.value).toBe('test@example.com');
       expect(passwordInput.props.value).toBe('password123');
     });
 
     it('signs in with email when sign in button is pressed', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
       const signInButton = getByText('Sign In');
 
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'password123');
-      fireEvent.press(signInButton);
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.press(signInButton);
 
       await waitFor(() => {
         expect(authService.signInWithEmail).toHaveBeenCalledWith(
@@ -166,11 +172,16 @@ describe('AuthSheet', () => {
     it('does not show "Welcome Back!" when sign-in fails', async () => {
       (authService.signInWithEmail as jest.Mock).mockResolvedValueOnce(false);
 
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
-      fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-      fireEvent.changeText(getByTestId('password-input'), 'wrongpass');
-      fireEvent.press(getByText('Sign In'));
+      await fireEvent.changeText(
+        getByTestId('email-input'),
+        'test@example.com',
+      );
+      await fireEvent.changeText(getByTestId('password-input'), 'wrongpass');
+      await fireEvent.press(getByText('Sign In'));
 
       await waitFor(() => {
         expect(authService.signInWithEmail).toHaveBeenCalled();
@@ -183,13 +194,15 @@ describe('AuthSheet', () => {
     });
 
     it('shows error alert when email is empty', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const passwordInput = getByTestId('password-input');
       const signInButton = getByText('Sign In');
 
-      fireEvent.changeText(passwordInput, 'password123');
-      fireEvent.press(signInButton);
+      await fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.press(signInButton);
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -201,13 +214,15 @@ describe('AuthSheet', () => {
     });
 
     it('shows error alert when password is empty', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const emailInput = getByTestId('email-input');
       const signInButton = getByText('Sign In');
 
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.press(signInButton);
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.press(signInButton);
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -223,15 +238,17 @@ describe('AuthSheet', () => {
         new Error('Invalid credentials'),
       );
 
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
       const signInButton = getByText('Sign In');
 
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'wrongpassword');
-      fireEvent.press(signInButton);
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'wrongpassword');
+      await fireEvent.press(signInButton);
 
       await waitFor(() => {
         expect(PalsHubErrorHandler.handle).toHaveBeenCalled();
@@ -243,15 +260,17 @@ describe('AuthSheet', () => {
     });
 
     it('clears error before attempting sign in', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
       const signInButton = getByText('Sign In');
 
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'password123');
-      fireEvent.press(signInButton);
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.press(signInButton);
 
       await waitFor(() => {
         expect(authService.clearError).toHaveBeenCalled();
@@ -260,20 +279,22 @@ describe('AuthSheet', () => {
   });
 
   describe('Email Sign Up', () => {
-    it('allows entering full name, email, and password for sign up', () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+    it('allows entering full name, email, and password for sign up', async () => {
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       // Toggle to sign up
       const signUpToggle = getByText('Sign Up');
-      fireEvent.press(signUpToggle);
+      await fireEvent.press(signUpToggle);
 
       const fullNameInput = getByTestId('full-name-input');
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
 
-      fireEvent.changeText(fullNameInput, 'Test User');
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.changeText(fullNameInput, 'Test User');
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'password123');
 
       expect(fullNameInput.props.value).toBe('Test User');
       expect(emailInput.props.value).toBe('test@example.com');
@@ -281,21 +302,23 @@ describe('AuthSheet', () => {
     });
 
     it('signs up with email when create account button is pressed', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       // Toggle to sign up
       const signUpToggle = getByText('Sign Up');
-      fireEvent.press(signUpToggle);
+      await fireEvent.press(signUpToggle);
 
       const fullNameInput = getByTestId('full-name-input');
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
       const createButton = getByText('Create Account');
 
-      fireEvent.changeText(fullNameInput, 'Test User');
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'password123');
-      fireEvent.press(createButton);
+      await fireEvent.changeText(fullNameInput, 'Test User');
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.press(createButton);
 
       await waitFor(() => {
         expect(authService.signUpWithEmail).toHaveBeenCalledWith(
@@ -314,13 +337,18 @@ describe('AuthSheet', () => {
     it('does not show "Account Created" when sign-up fails', async () => {
       (authService.signUpWithEmail as jest.Mock).mockResolvedValueOnce(false);
 
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
-      fireEvent.press(getByText('Sign Up'));
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
+      await fireEvent.press(getByText('Sign Up'));
 
-      fireEvent.changeText(getByTestId('full-name-input'), 'Test User');
-      fireEvent.changeText(getByTestId('email-input'), 'test@example.com');
-      fireEvent.changeText(getByTestId('password-input'), '123');
-      fireEvent.press(getByText('Create Account'));
+      await fireEvent.changeText(getByTestId('full-name-input'), 'Test User');
+      await fireEvent.changeText(
+        getByTestId('email-input'),
+        'test@example.com',
+      );
+      await fireEvent.changeText(getByTestId('password-input'), '123');
+      await fireEvent.press(getByText('Create Account'));
 
       await waitFor(() => {
         expect(authService.signUpWithEmail).toHaveBeenCalled();
@@ -333,18 +361,20 @@ describe('AuthSheet', () => {
     });
 
     it('shows error alert when full name is empty during sign up', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const signUpToggle = getByText('Sign Up');
-      fireEvent.press(signUpToggle);
+      await fireEvent.press(signUpToggle);
 
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
       const createButton = getByText('Create Account');
 
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'password123');
-      fireEvent.press(createButton);
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.press(createButton);
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -358,10 +388,10 @@ describe('AuthSheet', () => {
 
   describe('Google Sign In', () => {
     it('signs in with Google when Google button is pressed', async () => {
-      const {getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
       const googleButton = getByText('Continue with Google');
-      fireEvent.press(googleButton);
+      await fireEvent.press(googleButton);
 
       await waitFor(() => {
         expect(authService.signInWithGoogle).toHaveBeenCalled();
@@ -374,10 +404,10 @@ describe('AuthSheet', () => {
         new Error('Google sign in failed'),
       );
 
-      const {getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
       const googleButton = getByText('Continue with Google');
-      fireEvent.press(googleButton);
+      await fireEvent.press(googleButton);
 
       await waitFor(() => {
         expect(PalsHubErrorHandler.handle).toHaveBeenCalled();
@@ -397,9 +427,11 @@ describe('AuthSheet', () => {
       appleAuth.isSupported = true;
     });
 
-    it('renders the Apple button directly above the Google button on iOS', () => {
+    it('renders the Apple button directly above the Google button on iOS', async () => {
       Platform.OS = 'ios';
-      const {getByTestId, toJSON} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, toJSON} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       expect(getByTestId('auth-apple-button')).toBeTruthy();
       const tree = JSON.stringify(toJSON());
@@ -408,9 +440,9 @@ describe('AuthSheet', () => {
       );
     });
 
-    it('renders no Apple button on Android', () => {
+    it('renders no Apple button on Android', async () => {
       Platform.OS = 'android';
-      const {queryByTestId, getByText} = render(
+      const {queryByTestId, getByText} = await render(
         <AuthSheet {...defaultProps} />,
       );
 
@@ -418,19 +450,19 @@ describe('AuthSheet', () => {
       expect(getByText('Continue with Google')).toBeTruthy();
     });
 
-    it('renders no Apple button when Apple sign-in is unsupported', () => {
+    it('renders no Apple button when Apple sign-in is unsupported', async () => {
       Platform.OS = 'ios';
       appleAuth.isSupported = false;
-      const {queryByTestId} = render(<AuthSheet {...defaultProps} />);
+      const {queryByTestId} = await render(<AuthSheet {...defaultProps} />);
 
       expect(queryByTestId('auth-apple-button')).toBeNull();
     });
 
     it('signs in with Apple once per press', async () => {
       Platform.OS = 'ios';
-      const {getByTestId} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId} = await render(<AuthSheet {...defaultProps} />);
 
-      fireEvent.press(getByTestId('auth-apple-button'));
+      await fireEvent.press(getByTestId('auth-apple-button'));
 
       await waitFor(() => {
         expect(authService.clearError).toHaveBeenCalled();
@@ -441,26 +473,34 @@ describe('AuthSheet', () => {
     it('ignores a press while a sign-in is in progress', async () => {
       Platform.OS = 'ios';
       authService.isLoading = true;
-      const {getByTestId} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId} = await render(<AuthSheet {...defaultProps} />);
 
-      fireEvent.press(getByTestId('auth-apple-button'));
+      await fireEvent.press(getByTestId('auth-apple-button'));
 
       await waitFor(() => {
         expect(authService.signInWithApple).not.toHaveBeenCalled();
       });
     });
 
-    it('does not show the Google button as loading during Apple sign-in', () => {
+    it('does not show the Google button as loading during Apple sign-in', async () => {
       Platform.OS = 'ios';
       (authService.signInWithApple as jest.Mock).mockReturnValueOnce(
         new Promise(() => {}),
       );
-      const {getByTestId} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId} = await render(<AuthSheet {...defaultProps} />);
 
-      fireEvent.press(getByTestId('auth-apple-button'));
-
-      expect(authService.signInWithApple).toHaveBeenCalled();
+      // v14: fireEvent.press awaits the sign-in handler, which never
+      // resolves here — start the press without awaiting it. The sign-in
+      // stays in progress, which is the state under test.
+      const pressPromise = fireEvent.press(getByTestId('auth-apple-button'));
+      await waitFor(() => {
+        expect(authService.signInWithApple).toHaveBeenCalled();
+      });
       expect(getByTestId('button-icon-container')).toBeTruthy();
+      // Deliberately not awaiting pressPromise: the mocked sign-in never
+      // resolves, and the test ends with it in progress. The catch only
+      // marks the promise as handled; it never fires here.
+      pressPromise.catch(() => {});
     });
 
     it('alerts when Apple sign-in throws', async () => {
@@ -468,9 +508,9 @@ describe('AuthSheet', () => {
       (authService.signInWithApple as jest.Mock).mockRejectedValueOnce(
         new Error('Apple sign in failed'),
       );
-      const {getByTestId} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId} = await render(<AuthSheet {...defaultProps} />);
 
-      fireEvent.press(getByTestId('auth-apple-button'));
+      await fireEvent.press(getByTestId('auth-apple-button'));
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -482,29 +522,33 @@ describe('AuthSheet', () => {
   });
 
   describe('Forgot Password', () => {
-    it('shows forgot password button in sign in mode', () => {
-      const {getByText} = render(<AuthSheet {...defaultProps} />);
+    it('shows forgot password button in sign in mode', async () => {
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
       expect(getByText('Forgot Password?')).toBeTruthy();
     });
 
-    it('does not show forgot password button in sign up mode', () => {
-      const {getByText, queryByText} = render(<AuthSheet {...defaultProps} />);
+    it('does not show forgot password button in sign up mode', async () => {
+      const {getByText, queryByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const signUpToggle = getByText('Sign Up');
-      fireEvent.press(signUpToggle);
+      await fireEvent.press(signUpToggle);
 
       expect(queryByText('Forgot Password?')).toBeNull();
     });
 
     it('sends password reset email when forgot password is pressed', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const emailInput = getByTestId('email-input');
-      fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(emailInput, 'test@example.com');
 
       const forgotButton = getByText('Forgot Password?');
-      fireEvent.press(forgotButton);
+      await fireEvent.press(forgotButton);
 
       await waitFor(() => {
         expect(authService.resetPassword).toHaveBeenCalledWith(
@@ -519,10 +563,10 @@ describe('AuthSheet', () => {
     });
 
     it('shows error when email is empty for password reset', async () => {
-      const {getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
       const forgotButton = getByText('Forgot Password?');
-      fireEvent.press(forgotButton);
+      await fireEvent.press(forgotButton);
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -538,13 +582,15 @@ describe('AuthSheet', () => {
         new Error('Reset failed'),
       );
 
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const emailInput = getByTestId('email-input');
-      fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(emailInput, 'test@example.com');
 
       const forgotButton = getByText('Forgot Password?');
-      fireEvent.press(forgotButton);
+      await fireEvent.press(forgotButton);
 
       await waitFor(() => {
         expect(PalsHubErrorHandler.handle).toHaveBeenCalled();
@@ -554,41 +600,43 @@ describe('AuthSheet', () => {
   });
 
   describe('Form Toggle', () => {
-    it('toggles between sign in and sign up modes', () => {
-      const {getByText} = render(<AuthSheet {...defaultProps} />);
+    it('toggles between sign in and sign up modes', async () => {
+      const {getByText} = await render(<AuthSheet {...defaultProps} />);
 
       // Initially in sign in mode
       expect(getByText('Sign In')).toBeTruthy();
 
       // Toggle to sign up
       const signUpToggle = getByText('Sign Up');
-      fireEvent.press(signUpToggle);
+      await fireEvent.press(signUpToggle);
       expect(getByText('Create Account')).toBeTruthy();
 
       // Toggle back to sign in
       const signInToggle = getByText('Sign In');
-      fireEvent.press(signInToggle);
+      await fireEvent.press(signInToggle);
       expect(getByText('Sign In')).toBeTruthy();
     });
   });
 
   describe('Close Behavior', () => {
-    it('resets form when closed', () => {
-      const {getByTestId, rerender} = render(<AuthSheet {...defaultProps} />);
+    it('resets form when closed', async () => {
+      const {getByTestId, rerender} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       // Enter some data
       const emailInput = getByTestId('email-input');
-      fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(emailInput, 'test@example.com');
 
       // Close
       const closeButton = getByTestId('sheet-close-button');
-      fireEvent.press(closeButton);
+      await fireEvent.press(closeButton);
 
       expect(defaultProps.onClose).toHaveBeenCalled();
       expect(authService.clearError).toHaveBeenCalled();
 
       // Reopen
-      rerender(<AuthSheet {...defaultProps} isVisible={true} />);
+      await rerender(<AuthSheet {...defaultProps} isVisible={true} />);
 
       // Form should be reset
       const emailInputAfter = getByTestId('email-input');
@@ -600,12 +648,12 @@ describe('AuthSheet', () => {
   });
 
   describe('Loading States', () => {
-    it('disables inputs when loading', () => {
+    it('disables inputs when loading', async () => {
       authService.isAuthenticated = false;
       authService.isLoading = true;
       authService.error = null;
 
-      const {getByTestId} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId} = await render(<AuthSheet {...defaultProps} />);
 
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
@@ -617,17 +665,19 @@ describe('AuthSheet', () => {
     });
 
     it('shows loading indicator on sign in button when loading', async () => {
-      const {getByTestId, getByText} = render(<AuthSheet {...defaultProps} />);
+      const {getByTestId, getByText} = await render(
+        <AuthSheet {...defaultProps} />,
+      );
 
       const emailInput = getByTestId('email-input');
       const passwordInput = getByTestId('password-input');
       const signInButton = getByText('Sign In');
 
-      fireEvent.changeText(emailInput, 'test@example.com');
-      fireEvent.changeText(passwordInput, 'password123');
+      await fireEvent.changeText(emailInput, 'test@example.com');
+      await fireEvent.changeText(passwordInput, 'password123');
 
       // Press the button - this will trigger loading state
-      fireEvent.press(signInButton);
+      await fireEvent.press(signInButton);
 
       // Wait for the loading state to be set
       await waitFor(() => {

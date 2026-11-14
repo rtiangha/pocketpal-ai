@@ -77,8 +77,8 @@ describe('BenchResultCard', () => {
     mockOnShare.mockResolvedValue(undefined);
   });
 
-  it('renders benchmark result data correctly', () => {
-    const {getByText} = render(
+  it('renders benchmark result data correctly', async () => {
+    const {getByText} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -104,10 +104,10 @@ describe('BenchResultCard', () => {
     expect(getByText(/4 GB \/ 8 GB/)).toBeTruthy();
   });
 
-  it('formats different durations correctly', () => {
+  it('formats different durations correctly', async () => {
     // Test with milliseconds
     const shortResult = {...mockResult, wallTimeMs: 500};
-    const {getByText, rerender} = render(
+    const {getByText, rerender} = await render(
       <BenchResultCard
         result={shortResult}
         onDelete={mockOnDelete}
@@ -118,7 +118,7 @@ describe('BenchResultCard', () => {
 
     // Test with seconds
     const secondsResult = {...mockResult, wallTimeMs: 3500};
-    rerender(
+    await rerender(
       <BenchResultCard
         result={secondsResult}
         onDelete={mockOnDelete}
@@ -129,7 +129,7 @@ describe('BenchResultCard', () => {
 
     // Test with minutes and seconds
     const minutesResult = {...mockResult, wallTimeMs: 125000}; // 2m 5s
-    rerender(
+    await rerender(
       <BenchResultCard
         result={minutesResult}
         onDelete={mockOnDelete}
@@ -139,8 +139,8 @@ describe('BenchResultCard', () => {
     expect(getByText('2m 5s')).toBeTruthy();
   });
 
-  it('handles delete button press', () => {
-    const {getByTestId} = render(
+  it('handles delete button press', async () => {
+    const {getByTestId} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -149,13 +149,13 @@ describe('BenchResultCard', () => {
     );
 
     const deleteButton = getByTestId('delete-result-button');
-    fireEvent.press(deleteButton);
+    await fireEvent.press(deleteButton);
 
     expect(mockOnDelete).toHaveBeenCalledWith(mockResult.timestamp);
   });
 
-  it('shows submitted state correctly', () => {
-    const {getByText} = render(
+  it('shows submitted state correctly', async () => {
+    const {getByText} = await render(
       <BenchResultCard
         result={mockSubmittedResult}
         onDelete={mockOnDelete}
@@ -167,8 +167,8 @@ describe('BenchResultCard', () => {
     expect(getByText(/AI Phone Leaderboard ↗/)).toBeTruthy();
   });
 
-  it('disables sharing for local models', () => {
-    const {getByText} = render(
+  it('disables sharing for local models', async () => {
+    const {getByText} = await render(
       <BenchResultCard
         result={mockLocalModelResult}
         onDelete={mockOnDelete}
@@ -179,8 +179,8 @@ describe('BenchResultCard', () => {
     expect(getByText('Cannot share')).toBeTruthy();
   });
 
-  it('opens leaderboard when link is clicked', () => {
-    const {getByText} = render(
+  it('opens leaderboard when link is clicked', async () => {
+    const {getByText} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -189,7 +189,7 @@ describe('BenchResultCard', () => {
     );
 
     const leaderboardLink = getByText('View leaderboard ↗');
-    fireEvent.press(leaderboardLink);
+    await fireEvent.press(leaderboardLink);
 
     expect(Linking.openURL).toHaveBeenCalledWith(
       'https://huggingface.co/spaces/a-ghorbani/ai-phone-leaderboard',
@@ -197,7 +197,7 @@ describe('BenchResultCard', () => {
   });
 
   it('submits benchmark data when submit button is pressed', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -207,7 +207,7 @@ describe('BenchResultCard', () => {
 
     const submitButton = getByTestId('submit-benchmark-button');
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     expect(mockOnShare).toHaveBeenCalledWith(mockResult);
@@ -218,7 +218,7 @@ describe('BenchResultCard', () => {
       new NetworkError('No internet connection. Please connect and try again.'),
     );
 
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -228,7 +228,7 @@ describe('BenchResultCard', () => {
 
     const submitButton = getByTestId('submit-benchmark-button');
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     await waitFor(() => {
@@ -242,7 +242,7 @@ describe('BenchResultCard', () => {
       new AppCheckError('App verification failed.'),
     );
 
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -252,7 +252,7 @@ describe('BenchResultCard', () => {
 
     const submitButton = getByTestId('submit-benchmark-button');
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     await waitFor(() => {
@@ -266,7 +266,7 @@ describe('BenchResultCard', () => {
       new ServerError('Our servers are experiencing issues.'),
     );
 
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -276,7 +276,7 @@ describe('BenchResultCard', () => {
 
     const submitButton = getByTestId('submit-benchmark-button');
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     await waitFor(() => {
@@ -288,7 +288,7 @@ describe('BenchResultCard', () => {
   it('handles unknown errors', async () => {
     mockOnShare.mockRejectedValueOnce(new Error('Unknown error occurred'));
 
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -298,7 +298,7 @@ describe('BenchResultCard', () => {
 
     const submitButton = getByTestId('submit-benchmark-button');
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     await waitFor(() => {
@@ -310,7 +310,7 @@ describe('BenchResultCard', () => {
   it('allows retrying after a network error', async () => {
     mockOnShare.mockRejectedValueOnce(new NetworkError('Network error'));
 
-    const {getByTestId, getByText} = render(
+    const {getByTestId, getByText} = await render(
       <BenchResultCard
         result={mockResult}
         onDelete={mockOnDelete}
@@ -321,7 +321,7 @@ describe('BenchResultCard', () => {
     // First attempt - triggers error
     const submitButton = getByTestId('submit-benchmark-button');
     await act(async () => {
-      fireEvent.press(submitButton);
+      await fireEvent.press(submitButton);
     });
 
     // Clear the mock so the retry will succeed
@@ -329,16 +329,16 @@ describe('BenchResultCard', () => {
     mockOnShare.mockResolvedValueOnce(undefined);
 
     // Retry
-    await waitFor(() => {
+    await waitFor(async () => {
       const retryButton = getByText('Check connection & retry');
-      fireEvent.press(retryButton);
+      await fireEvent.press(retryButton);
     });
 
     expect(mockOnShare).toHaveBeenCalledWith(mockResult);
   });
 
-  it('opens leaderboard when link is clicked on submitted results', () => {
-    const {getByText} = render(
+  it('opens leaderboard when link is clicked on submitted results', async () => {
+    const {getByText} = await render(
       <BenchResultCard
         result={mockSubmittedResult}
         onDelete={mockOnDelete}
@@ -347,14 +347,14 @@ describe('BenchResultCard', () => {
     );
 
     const leaderboardText = getByText(/AI Phone Leaderboard ↗/);
-    fireEvent.press(leaderboardText);
+    await fireEvent.press(leaderboardText);
 
     expect(Linking.openURL).toHaveBeenCalledWith(
       'https://huggingface.co/spaces/a-ghorbani/ai-phone-leaderboard',
     );
   });
 
-  it('renders without initSettings or peakMemoryUsage', () => {
+  it('renders without initSettings or peakMemoryUsage', async () => {
     const minimalResult = {
       ...mockResult,
       initSettings: undefined,
@@ -362,7 +362,7 @@ describe('BenchResultCard', () => {
       wallTimeMs: undefined,
     };
 
-    const {queryByText} = render(
+    const {queryByText} = await render(
       <BenchResultCard
         result={minimalResult}
         onDelete={mockOnDelete}
@@ -377,7 +377,7 @@ describe('BenchResultCard', () => {
   });
 
   describe('flash attention display', () => {
-    it('displays flash attention enabled for flash_attn_type="auto"', () => {
+    it('displays flash attention enabled for flash_attn_type="auto"', async () => {
       const resultWithAuto: BenchmarkResult = {
         ...mockResult,
         initSettings: {
@@ -395,7 +395,7 @@ describe('BenchResultCard', () => {
         },
       };
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <BenchResultCard
           result={resultWithAuto}
           onDelete={mockOnDelete}
@@ -407,7 +407,7 @@ describe('BenchResultCard', () => {
       expect(getByText(/Cache Types: f16\/f16/)).toBeTruthy();
     });
 
-    it('displays flash attention enabled for flash_attn_type="on"', () => {
+    it('displays flash attention enabled for flash_attn_type="on"', async () => {
       const resultWithOn: BenchmarkResult = {
         ...mockResult,
         initSettings: {
@@ -425,7 +425,7 @@ describe('BenchResultCard', () => {
         },
       };
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <BenchResultCard
           result={resultWithOn}
           onDelete={mockOnDelete}
@@ -437,7 +437,7 @@ describe('BenchResultCard', () => {
       expect(getByText(/Cache Types: f16\/f16/)).toBeTruthy();
     });
 
-    it('displays flash attention disabled for flash_attn_type="off"', () => {
+    it('displays flash attention disabled for flash_attn_type="off"', async () => {
       const resultWithOff: BenchmarkResult = {
         ...mockResult,
         initSettings: {
@@ -455,7 +455,7 @@ describe('BenchResultCard', () => {
         },
       };
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <BenchResultCard
           result={resultWithOff}
           onDelete={mockOnDelete}
@@ -467,7 +467,7 @@ describe('BenchResultCard', () => {
       expect(getByText(/Cache Types: f16\/f16/)).toBeTruthy();
     });
 
-    it('handles legacy flash_attn boolean (true)', () => {
+    it('handles legacy flash_attn boolean (true)', async () => {
       const legacyResult = {
         ...mockResult,
         initSettings: {
@@ -485,7 +485,7 @@ describe('BenchResultCard', () => {
         },
       };
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <BenchResultCard
           result={legacyResult}
           onDelete={mockOnDelete}
@@ -498,7 +498,7 @@ describe('BenchResultCard', () => {
       expect(getByText(/Cache Types: f16\/f16/)).toBeTruthy();
     });
 
-    it('handles legacy flash_attn boolean (false)', () => {
+    it('handles legacy flash_attn boolean (false)', async () => {
       const legacyResult = {
         ...mockResult,
         initSettings: {
@@ -516,7 +516,7 @@ describe('BenchResultCard', () => {
         },
       };
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <BenchResultCard
           result={legacyResult}
           onDelete={mockOnDelete}
@@ -529,7 +529,7 @@ describe('BenchResultCard', () => {
       expect(getByText(/Cache Types: f16\/f16/)).toBeTruthy();
     });
 
-    it('displays cache types for all flash attention states', () => {
+    it('displays cache types for all flash attention states', async () => {
       // Cache types should be displayed regardless of flash attention state
       const resultWithOff: BenchmarkResult = {
         ...mockResult,
@@ -548,7 +548,7 @@ describe('BenchResultCard', () => {
         },
       };
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <BenchResultCard
           result={resultWithOff}
           onDelete={mockOnDelete}

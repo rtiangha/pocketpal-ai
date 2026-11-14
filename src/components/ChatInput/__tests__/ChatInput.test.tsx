@@ -29,14 +29,14 @@ jest.spyOn(Alert, 'alert');
 const renderScrollable = () => <ScrollView />;
 
 describe('input', () => {
-  it('send button', () => {
+  it('send button', async () => {
     expect.assertions(2);
     // Set up an active model for the test
     runInAction(() => {
       modelStore.activeModelId = 'test-model-id';
     });
     const onSendPress = jest.fn();
-    const {getByPlaceholderText, getByLabelText} = render(
+    const {getByPlaceholderText, getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -50,23 +50,23 @@ describe('input', () => {
     const textInput = getByPlaceholderText(
       l10n.en.components.chatInput.inputPlaceholder,
     );
-    fireEvent.changeText(textInput, 'text');
+    await fireEvent.changeText(textInput, 'text');
     const button = getByLabelText(
       l10n.en.components.sendButton.accessibilityLabel,
     );
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onSendPress).toHaveBeenCalledWith({text: 'text', type: 'text'});
     expect(textInput.props).toHaveProperty('value', 'text');
   });
 
-  it('sends a text message', () => {
+  it('sends a text message', async () => {
     expect.assertions(2);
     // Set up an active model for the test
     runInAction(() => {
       modelStore.activeModelId = 'test-model-id';
     });
     const onSendPress = jest.fn();
-    const {getByPlaceholderText, getByLabelText} = render(
+    const {getByPlaceholderText, getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -80,11 +80,11 @@ describe('input', () => {
     const textInput = getByPlaceholderText(
       l10n.en.components.chatInput.inputPlaceholder,
     );
-    fireEvent.changeText(textInput, 'text');
+    await fireEvent.changeText(textInput, 'text');
     const button = getByLabelText(
       l10n.en.components.sendButton.accessibilityLabel,
     );
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onSendPress).toHaveBeenCalledWith({text: 'text', type: 'text'});
     expect(textInput.props).toHaveProperty('value', '');
   });
@@ -101,9 +101,9 @@ describe('input', () => {
       chatSessionStore.isStopping = false;
     });
 
-    it('disables Send, announced as disabled, and keeps the typed text', () => {
+    it('disables Send, announced as disabled, and keeps the typed text', async () => {
       const onSendPress = jest.fn();
-      const {getByPlaceholderText, getByLabelText} = render(
+      const {getByPlaceholderText, getByLabelText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -117,7 +117,7 @@ describe('input', () => {
       const textInput = getByPlaceholderText(
         l10n.en.components.chatInput.inputPlaceholder,
       );
-      fireEvent.changeText(textInput, 'second message');
+      await fireEvent.changeText(textInput, 'second message');
       const button = getByLabelText(
         l10n.en.components.sendButton.accessibilityLabel,
       );
@@ -125,13 +125,13 @@ describe('input', () => {
       expect(button.props.accessibilityState).toEqual(
         expect.objectContaining({disabled: true}),
       );
-      fireEvent.press(button);
+      await fireEvent.press(button);
       expect(onSendPress).not.toHaveBeenCalled();
       expect(textInput.props.value).toBe('second message');
     });
   });
 
-  it('sends a text message if onChangeText and value are provided', () => {
+  it('sends a text message if onChangeText and value are provided', async () => {
     expect.assertions(2);
     // Set up an active model for the test
     runInAction(() => {
@@ -139,8 +139,8 @@ describe('input', () => {
     });
     const onSendPress = jest.fn();
     const value = 'value';
-    const onChangeText = jest.fn(newValue => {
-      rerender(
+    const onChangeText = jest.fn(async newValue => {
+      await rerender(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -153,7 +153,7 @@ describe('input', () => {
         </UserContext.Provider>,
       );
     });
-    const {getByPlaceholderText, getByLabelText, rerender} = render(
+    const {getByPlaceholderText, getByLabelText, rerender} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -168,16 +168,16 @@ describe('input', () => {
     const textInput = getByPlaceholderText(
       l10n.en.components.chatInput.inputPlaceholder,
     );
-    fireEvent.changeText(textInput, 'text');
+    await fireEvent.changeText(textInput, 'text');
     const button = getByLabelText(
       l10n.en.components.sendButton.accessibilityLabel,
     );
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onSendPress).toHaveBeenCalledWith({text: 'text', type: 'text'});
     expect(textInput.props).toHaveProperty('value', 'text');
   });
 
-  it('sends a text message if onChangeText is provided', () => {
+  it('sends a text message if onChangeText is provided', async () => {
     expect.assertions(2);
     // Set up an active model for the test
     runInAction(() => {
@@ -185,7 +185,7 @@ describe('input', () => {
     });
     const onSendPress = jest.fn();
     const onChangeText = jest.fn();
-    const {getByPlaceholderText, getByLabelText} = render(
+    const {getByPlaceholderText, getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -200,11 +200,11 @@ describe('input', () => {
     const textInput = getByPlaceholderText(
       l10n.en.components.chatInput.inputPlaceholder,
     );
-    fireEvent.changeText(textInput, 'text');
+    await fireEvent.changeText(textInput, 'text');
     const button = getByLabelText(
       l10n.en.components.sendButton.accessibilityLabel,
     );
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onSendPress).toHaveBeenCalledWith({text: 'text', type: 'text'});
     expect(textInput.props).toHaveProperty('value', '');
   });
@@ -217,7 +217,7 @@ describe('input', () => {
     });
     const onSendPress = jest.fn();
     const value = 'value';
-    const {getByPlaceholderText, getByLabelText} = render(
+    const {getByPlaceholderText, getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -232,18 +232,18 @@ describe('input', () => {
     const textInput = getByPlaceholderText(
       l10n.en.components.chatInput.inputPlaceholder,
     );
-    await waitFor(() => fireEvent.changeText(textInput, 'text')); // Wait for the input to update
+    await waitFor(async () => await fireEvent.changeText(textInput, 'text')); // Wait for the input to update
 
     const button = getByLabelText(
       l10n.en.components.sendButton.accessibilityLabel,
     );
-    await waitFor(() => fireEvent.press(button)); // Wait for the press event to be processed
+    await waitFor(async () => await fireEvent.press(button)); // Wait for the press event to be processed
 
     expect(onSendPress).toHaveBeenCalledWith({text: value, type: 'text'});
     expect(textInput.props).toHaveProperty('value', value);
   });
 
-  it('sends a text message if defaultValue is provided', () => {
+  it('sends a text message if defaultValue is provided', async () => {
     expect.assertions(2);
     // Set up an active model for the test
     runInAction(() => {
@@ -251,7 +251,7 @@ describe('input', () => {
     });
     const onSendPress = jest.fn();
     const defaultValue = 'defaultValue';
-    const {getByPlaceholderText, getByLabelText} = render(
+    const {getByPlaceholderText, getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -269,7 +269,7 @@ describe('input', () => {
     const button = getByLabelText(
       l10n.en.components.sendButton.accessibilityLabel,
     );
-    fireEvent.press(button);
+    await fireEvent.press(button);
     expect(onSendPress).toHaveBeenCalledWith({
       text: defaultValue,
       type: 'text',
@@ -277,11 +277,11 @@ describe('input', () => {
     expect(textInput.props).toHaveProperty('value', '');
   });
 
-  it('shows stop button when isStopVisible is true', () => {
+  it('shows stop button when isStopVisible is true', async () => {
     expect.assertions(1);
     const onStopPress = jest.fn();
     const onSendPress = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -294,14 +294,14 @@ describe('input', () => {
       </UserContext.Provider>,
     );
     const stopButton = getByTestId('stop-button');
-    fireEvent.press(stopButton);
+    await fireEvent.press(stopButton);
     expect(onStopPress).toHaveBeenCalledTimes(1);
   });
 
-  it('shows plus button for image upload when showImageUpload is true', () => {
+  it('shows plus button for image upload when showImageUpload is true', async () => {
     expect.assertions(1);
     const onSendPress = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -317,10 +317,10 @@ describe('input', () => {
     expect(plusButton).toBeDefined();
   });
 
-  it('does not show plus button when showImageUpload is false', () => {
+  it('does not show plus button when showImageUpload is false', async () => {
     expect.assertions(1);
     const onSendPress = jest.fn();
-    const {queryByLabelText} = render(
+    const {queryByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -336,10 +336,10 @@ describe('input', () => {
     expect(plusButton).toBeNull();
   });
 
-  it('renders plus button correctly when vision is enabled', () => {
+  it('renders plus button correctly when vision is enabled', async () => {
     expect.assertions(2);
     const onSendPress = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -357,11 +357,11 @@ describe('input', () => {
     expect(plusButton.props.accessibilityState.disabled).toBe(false);
   });
 
-  it('shows pal selector button', () => {
+  it('shows pal selector button', async () => {
     expect.assertions(1);
     const onSendPress = jest.fn();
     const onPalBtnPress = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -374,7 +374,7 @@ describe('input', () => {
     );
 
     const palButton = getByLabelText('Select Pal');
-    fireEvent.press(palButton);
+    await fireEvent.press(palButton);
     expect(onPalBtnPress).toHaveBeenCalledTimes(1);
   });
 
@@ -404,7 +404,7 @@ describe('input', () => {
     });
 
     try {
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -467,6 +467,7 @@ describe('input', () => {
           required: true,
         },
       ],
+
       source: 'local',
       capabilities: {video: true},
     });
@@ -483,7 +484,7 @@ describe('input', () => {
 
     const onSendPress = jest.fn();
     const onStartCamera = jest.fn();
-    const {getByText, unmount} = render(
+    const {getByText, unmount} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -496,11 +497,11 @@ describe('input', () => {
     );
 
     const videoButton = getByText('Start Camera');
-    fireEvent.press(videoButton);
+    await fireEvent.press(videoButton);
     expect(onStartCamera).toHaveBeenCalledTimes(1);
 
     // Cleanup: restore original activePalId mock
-    unmount();
+    await unmount();
     if (originalActivePalId) {
       Object.defineProperty(
         chatSessionStore,
@@ -530,6 +531,7 @@ describe('input', () => {
           required: true,
         },
       ],
+
       source: 'local',
       capabilities: {video: true},
     });
@@ -546,7 +548,7 @@ describe('input', () => {
 
     const onSendPress = jest.fn();
     const onPromptTextChange = jest.fn();
-    const {getByPlaceholderText, unmount} = render(
+    const {getByPlaceholderText, unmount} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -560,11 +562,11 @@ describe('input', () => {
     );
 
     const textInput = getByPlaceholderText(l10n.en.video.promptPlaceholder);
-    fireEvent.changeText(textInput, 'new text');
+    await fireEvent.changeText(textInput, 'new text');
     expect(onPromptTextChange).toHaveBeenCalledWith('new text');
 
     // Cleanup: restore original activePalId mock
-    unmount();
+    await unmount();
     if (originalActivePalId) {
       Object.defineProperty(
         chatSessionStore,
@@ -574,10 +576,10 @@ describe('input', () => {
     }
   });
 
-  it('disables plus button when vision is not enabled', () => {
+  it('disables plus button when vision is not enabled', async () => {
     expect.assertions(1);
     const onSendPress = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -594,10 +596,10 @@ describe('input', () => {
     expect(plusButton.props.accessibilityState.disabled).toBe(true);
   });
 
-  it('enables plus button when vision is enabled', () => {
+  it('enables plus button when vision is enabled', async () => {
     expect.assertions(1);
     const onSendPress = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -614,10 +616,10 @@ describe('input', () => {
     expect(plusButton.props.accessibilityState.disabled).toBe(false);
   });
 
-  it('shows send button with always visibility mode', () => {
+  it('shows send button with always visibility mode', async () => {
     expect.assertions(1);
     const onSendPress = jest.fn();
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -634,14 +636,14 @@ describe('input', () => {
     expect(sendButton).toBeTruthy();
   });
 
-  it('sends message with images when images are selected', () => {
+  it('sends message with images when images are selected', async () => {
     expect.assertions(1);
     // Set up an active model for the test
     runInAction(() => {
       modelStore.activeModelId = 'test-model-id';
     });
     const onSendPress = jest.fn();
-    const {getByPlaceholderText, getByLabelText} = render(
+    const {getByPlaceholderText, getByLabelText} = await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -655,12 +657,12 @@ describe('input', () => {
     const textInput = getByPlaceholderText(
       l10n.en.components.chatInput.inputPlaceholder,
     );
-    fireEvent.changeText(textInput, 'test message');
+    await fireEvent.changeText(textInput, 'test message');
 
     const sendButton = getByLabelText(
       l10n.en.components.sendButton.accessibilityLabel,
     );
-    fireEvent.press(sendButton);
+    await fireEvent.press(sendButton);
 
     expect(onSendPress).toHaveBeenCalledWith({
       text: 'test message',
@@ -673,9 +675,9 @@ describe('input', () => {
       jest.clearAllMocks();
     });
 
-    it('opens image upload menu when plus button is pressed', () => {
+    it('opens image upload menu when plus button is pressed', async () => {
       const onSendPress = jest.fn();
-      const {getByLabelText} = render(
+      const {getByLabelText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -689,7 +691,7 @@ describe('input', () => {
       );
 
       const plusButton = getByLabelText('Add image');
-      fireEvent.press(plusButton);
+      await fireEvent.press(plusButton);
 
       // Menu should be visible after pressing plus button
       // This would need to be tested with the actual menu implementation
@@ -702,7 +704,7 @@ describe('input', () => {
       (launchCamera as jest.Mock).mockResolvedValue(mockResult);
 
       const onSendPress = jest.fn();
-      const {getByLabelText} = render(
+      const {getByLabelText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -716,7 +718,7 @@ describe('input', () => {
       );
 
       const plusButton = getByLabelText('Add image');
-      fireEvent.press(plusButton);
+      await fireEvent.press(plusButton);
 
       // Since testing the menu interaction is complex, let's test that the camera function works
       // by calling it directly (this tests the core functionality)
@@ -732,7 +734,7 @@ describe('input', () => {
       (launchCamera as jest.Mock).mockRejectedValue(mockError);
 
       const onSendPress = jest.fn();
-      const {getByLabelText} = render(
+      const {getByLabelText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -746,15 +748,15 @@ describe('input', () => {
       );
 
       const plusButton = getByLabelText('Add image');
-      fireEvent.press(plusButton);
+      await fireEvent.press(plusButton);
 
       // Test that the component renders correctly even when camera errors are configured
       expect(plusButton).toBeTruthy();
       expect(launchCamera).toHaveBeenCalledTimes(0); // Not called until menu interaction
     });
 
-    const renderWithImageUpload = () =>
-      render(
+    const renderWithImageUpload = async () =>
+      await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -768,10 +770,10 @@ describe('input', () => {
       );
 
     const pressCameraMenuItem = async (
-      screen: ReturnType<typeof renderWithImageUpload>,
+      screen: Awaited<ReturnType<typeof renderWithImageUpload>>,
     ) => {
-      fireEvent.press(screen.getByLabelText('Add image'));
-      fireEvent.press(await screen.findByText(l10n.en.camera.takePhoto));
+      await fireEvent.press(screen.getByLabelText('Add image'));
+      await fireEvent.press(await screen.findByText(l10n.en.camera.takePhoto));
     };
 
     it('adds the captured photo to the selection', async () => {
@@ -779,7 +781,7 @@ describe('input', () => {
         assets: [{uri: 'file://test-photo.jpg'}],
       });
 
-      const screen = renderWithImageUpload();
+      const screen = await renderWithImageUpload();
       await pressCameraMenuItem(screen);
 
       expect(await screen.findByLabelText('Remove image 1')).toBeTruthy();
@@ -791,7 +793,7 @@ describe('input', () => {
         errorCode: 'camera_unavailable',
       });
 
-      const screen = renderWithImageUpload();
+      const screen = await renderWithImageUpload();
       await pressCameraMenuItem(screen);
 
       await waitFor(() => {
@@ -810,7 +812,7 @@ describe('input', () => {
         errorMessage: 'x',
       });
 
-      const screen = renderWithImageUpload();
+      const screen = await renderWithImageUpload();
       await pressCameraMenuItem(screen);
 
       await waitFor(() => {
@@ -824,7 +826,7 @@ describe('input', () => {
     it('stays silent when the camera is cancelled', async () => {
       (launchCamera as jest.Mock).mockResolvedValue({didCancel: true});
 
-      const screen = renderWithImageUpload();
+      const screen = await renderWithImageUpload();
       await pressCameraMenuItem(screen);
 
       await waitFor(() => {
@@ -838,7 +840,7 @@ describe('input', () => {
         errorCode: 'camera_unavailable',
       });
 
-      const screen = renderWithImageUpload();
+      const screen = await renderWithImageUpload();
       await pressCameraMenuItem(screen);
 
       await waitFor(() => {
@@ -864,7 +866,7 @@ describe('input', () => {
       (launchImageLibrary as jest.Mock).mockResolvedValue(mockResult);
 
       const onSendPress = jest.fn();
-      const {getByLabelText} = render(
+      const {getByLabelText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -878,21 +880,21 @@ describe('input', () => {
       );
 
       const plusButton = getByLabelText('Add image');
-      fireEvent.press(plusButton);
+      await fireEvent.press(plusButton);
 
       // Test that the component renders correctly with image library functionality
       expect(plusButton).toBeTruthy();
       expect(launchImageLibrary).toHaveBeenCalledTimes(0); // Not called until menu interaction
     });
 
-    it('sends message with selected images', () => {
+    it('sends message with selected images', async () => {
       // Set up an active model for the test
       runInAction(() => {
         modelStore.activeModelId = 'test-model-id';
       });
       const onSendPress = jest.fn();
       const defaultImages = ['file://image1.jpg', 'file://image2.jpg'];
-      const {getByPlaceholderText, getByLabelText} = render(
+      const {getByPlaceholderText, getByLabelText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -909,12 +911,12 @@ describe('input', () => {
       const textInput = getByPlaceholderText(
         l10n.en.components.chatInput.inputPlaceholder,
       );
-      fireEvent.changeText(textInput, 'test with images');
+      await fireEvent.changeText(textInput, 'test with images');
 
       const sendButton = getByLabelText(
         l10n.en.components.sendButton.accessibilityLabel,
       );
-      fireEvent.press(sendButton);
+      await fireEvent.press(sendButton);
 
       expect(onSendPress).toHaveBeenCalledWith({
         text: 'test with images',
@@ -929,14 +931,14 @@ describe('input', () => {
       jest.clearAllMocks();
     });
 
-    it('shows edit bar when in edit mode', () => {
+    it('shows edit bar when in edit mode', async () => {
       runInAction(() => {
         chatSessionStore.isEditMode = true;
       });
       const onSendPress = jest.fn();
       const onCancelEdit = jest.fn();
 
-      render(
+      await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -951,7 +953,7 @@ describe('input', () => {
       expect(onCancelEdit).not.toHaveBeenCalled(); // Should not be called on render
     });
 
-    it('calls onCancelEdit when cancel button is pressed', () => {
+    it('calls onCancelEdit when cancel button is pressed', async () => {
       const onSendPress = jest.fn();
       const onCancelEdit = jest.fn();
 
@@ -960,7 +962,7 @@ describe('input', () => {
         chatSessionStore.isEditMode = true;
       });
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -974,7 +976,7 @@ describe('input', () => {
 
       // Find and press the cancel button in the edit bar
       const cancelButton = getByTestId('icon-button');
-      fireEvent.press(cancelButton);
+      await fireEvent.press(cancelButton);
 
       expect(onCancelEdit).toHaveBeenCalledTimes(1);
     });
@@ -993,7 +995,7 @@ describe('input', () => {
 
       const onSendPress = jest.fn();
 
-      const {getByPlaceholderText, getByLabelText, getByText} = render(
+      const {getByPlaceholderText, getByLabelText, getByText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -1008,12 +1010,12 @@ describe('input', () => {
       const input = getByPlaceholderText(
         l10n.en.components.chatInput.inputPlaceholder,
       );
-      fireEvent.changeText(input, 'Test message');
+      await fireEvent.changeText(input, 'Test message');
 
       const sendButton = getByLabelText(
         l10n.en.components.sendButton.accessibilityLabel,
       );
-      fireEvent.press(sendButton);
+      await fireEvent.press(sendButton);
 
       // Verify haptic feedback was triggered
       expect(hapticTriggerSpy).toHaveBeenCalledWith('notificationWarning', {
@@ -1039,7 +1041,7 @@ describe('input', () => {
         modelStore.context = {id: 'test-context'} as any;
       });
 
-      const {getByPlaceholderText, getByLabelText} = render(
+      const {getByPlaceholderText, getByLabelText} = await render(
         <UserContext.Provider value={user}>
           <ChatInput
             {...{
@@ -1054,12 +1056,12 @@ describe('input', () => {
       const input = getByPlaceholderText(
         l10n.en.components.chatInput.inputPlaceholder,
       );
-      fireEvent.changeText(input, 'Test message');
+      await fireEvent.changeText(input, 'Test message');
 
       const sendButton = getByLabelText(
         l10n.en.components.sendButton.accessibilityLabel,
       );
-      fireEvent.press(sendButton);
+      await fireEvent.press(sendButton);
 
       // Verify onSendPress WAS called
       expect(onSendPress).toHaveBeenCalledWith({
@@ -1073,8 +1075,8 @@ describe('input', () => {
 
 describe('voice mode button', () => {
   const onVoicePress = jest.fn();
-  const renderInput = (props: Record<string, unknown> = {}) =>
-    render(
+  const renderInput = async (props: Record<string, unknown> = {}) =>
+    await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -1100,26 +1102,27 @@ describe('voice mode button', () => {
     });
   });
 
-  it('shows the voice button while empty and Send once the user types', () => {
-    const {getByTestId, queryByTestId, getByPlaceholderText} = renderInput();
+  it('shows the voice button while empty and Send once the user types', async () => {
+    const {getByTestId, queryByTestId, getByPlaceholderText} =
+      await renderInput();
     expect(getByTestId('voice-mode-button')).toBeTruthy();
     expect(queryByTestId('send-button')).toBeNull();
 
     const input = getByPlaceholderText(
       l10n.en.components.chatInput.inputPlaceholder,
     );
-    fireEvent.changeText(input, 'h');
+    await fireEvent.changeText(input, 'h');
     expect(queryByTestId('voice-mode-button')).toBeNull();
     expect(getByTestId('send-button')).toBeTruthy();
 
-    fireEvent.changeText(input, '');
+    await fireEvent.changeText(input, '');
     expect(getByTestId('voice-mode-button')).toBeTruthy();
   });
 
-  it('opens voice mode on press, with a way to focus this composer', () => {
+  it('opens voice mode on press, with a way to focus this composer', async () => {
     const focus = TextInput.prototype.focus as jest.Mock;
-    const {getByTestId} = renderInput();
-    fireEvent.press(getByTestId('voice-mode-button'));
+    const {getByTestId} = await renderInput();
+    await fireEvent.press(getByTestId('voice-mode-button'));
     expect(onVoicePress).toHaveBeenCalledTimes(1);
 
     focus.mockClear();
@@ -1127,9 +1130,9 @@ describe('voice mode button', () => {
     expect(focus).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the lock badge when voice mode is locked', () => {
+  it('shows the lock badge when voice mode is locked', async () => {
     voiceModeStore.setUnlockOverride(false);
-    const {getByTestId} = renderInput();
+    const {getByTestId} = await renderInput();
     expect(getByTestId('voice-mode-lock')).toBeTruthy();
   });
 
@@ -1140,42 +1143,47 @@ describe('voice mode button', () => {
         modelStore.deviceTier = 'low';
       },
     ],
+
     [
       'dictation is recording',
       () => {
         asrStore.captureState = 'recording';
       },
     ],
+
     [
       'dictation is transcribing',
       () => {
         asrStore.captureState = 'transcribing';
       },
     ],
+
     [
       'a message is being edited',
       () => {
         chatSessionStore.isEditMode = true;
       },
     ],
-  ])('shows no voice button when %s', (_case, arrange) => {
+  ])('shows no voice button when %s', async (_case, arrange) => {
     runInAction(arrange);
-    const {queryByTestId} = renderInput();
+    const {queryByTestId} = await renderInput();
     expect(queryByTestId('voice-mode-button')).toBeNull();
   });
 
-  it('shows no voice button while a reply runs', () => {
-    const {queryByTestId} = renderInput({isStopVisible: true});
+  it('shows no voice button while a reply runs', async () => {
+    const {queryByTestId} = await renderInput({isStopVisible: true});
     expect(queryByTestId('voice-mode-button')).toBeNull();
   });
 
-  it('shows no voice button with an image attached', () => {
-    const {queryByTestId} = renderInput({defaultImages: ['file://a.jpg']});
+  it('shows no voice button with an image attached', async () => {
+    const {queryByTestId} = await renderInput({
+      defaultImages: ['file://a.jpg'],
+    });
     expect(queryByTestId('voice-mode-button')).toBeNull();
   });
 
-  it('shows no voice button without a voice-mode handler', () => {
-    const {queryByTestId} = renderInput({onVoicePress: undefined});
+  it('shows no voice button without a voice-mode handler', async () => {
+    const {queryByTestId} = await renderInput({onVoicePress: undefined});
     expect(queryByTestId('voice-mode-button')).toBeNull();
   });
 });
@@ -1183,8 +1191,8 @@ describe('voice mode button', () => {
 describe('native text clear', () => {
   const clear = TextInput.prototype.clear as jest.Mock;
 
-  const renderInput = (props = {}) =>
-    render(
+  const renderInput = async (props = {}) =>
+    await render(
       <UserContext.Provider value={user}>
         <ChatInput
           {...{
@@ -1197,12 +1205,12 @@ describe('native text clear', () => {
       </UserContext.Provider>,
     );
 
-  const typeAndSend = ({getByPlaceholderText, getByLabelText}: any) => {
-    fireEvent.changeText(
+  const typeAndSend = async ({getByPlaceholderText, getByLabelText}: any) => {
+    await fireEvent.changeText(
       getByPlaceholderText(l10n.en.components.chatInput.inputPlaceholder),
       'line one\nline two\nline three',
     );
-    fireEvent.press(
+    await fireEvent.press(
       getByLabelText(l10n.en.components.sendButton.accessibilityLabel),
     );
   };
@@ -1215,30 +1223,30 @@ describe('native text clear', () => {
     });
   });
 
-  it('clears the native text when a message is sent', () => {
+  it('clears the native text when a message is sent', async () => {
     const onSendPress = jest.fn();
-    typeAndSend(renderInput({onSendPress}));
+    await typeAndSend(await renderInput({onSendPress}));
     expect(onSendPress).toHaveBeenCalledTimes(1);
     expect(clear).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the native text when the send is blocked without a model', () => {
+  it('keeps the native text when the send is blocked without a model', async () => {
     runInAction(() => {
       modelStore.activeModelId = undefined;
     });
     const onSendPress = jest.fn();
-    typeAndSend(renderInput({onSendPress}));
+    await typeAndSend(await renderInput({onSendPress}));
     expect(onSendPress).not.toHaveBeenCalled();
     expect(clear).not.toHaveBeenCalled();
   });
 
-  it('clears the native text when an edit is cancelled', () => {
+  it('clears the native text when an edit is cancelled', async () => {
     runInAction(() => {
       chatSessionStore.isEditMode = true;
     });
     const onCancelEdit = jest.fn();
-    const {getByTestId} = renderInput({onCancelEdit});
-    fireEvent.press(getByTestId('icon-button'));
+    const {getByTestId} = await renderInput({onCancelEdit});
+    await fireEvent.press(getByTestId('icon-button'));
     expect(onCancelEdit).toHaveBeenCalledTimes(1);
     expect(clear).toHaveBeenCalledTimes(1);
   });

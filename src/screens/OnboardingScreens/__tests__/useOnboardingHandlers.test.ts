@@ -1,4 +1,4 @@
-import {renderHook, act} from '@testing-library/react-hooks';
+import {renderHook, act} from '@testing-library/react-native';
 
 import {uiStore, palStore, modelStore} from '../../../store';
 import {TOPIC_TO_PAL, entryId} from '../../../store/onboarding/onboardingPals';
@@ -45,67 +45,67 @@ describe('useOnboardingHandlers', () => {
     (modelStore.checkSpaceAndDownload as jest.Mock).mockClear();
   });
 
-  it('marks the current step on mount via the single-writer method', () => {
-    renderHook(() => useOnboardingHandlers(3));
+  it('marks the current step on mount via the single-writer method', async () => {
+    await renderHook(() => useOnboardingHandlers(3));
     expect(uiStore.setOnboardingStep).toHaveBeenCalledWith(3);
   });
 
   describe('next', () => {
-    it('navigates 1 -> Onboarding2, 5 -> Onboarding6', () => {
-      const {result: r1} = renderHook(() => useOnboardingHandlers(1));
-      act(() => r1.current.next());
+    it('navigates 1 -> Onboarding2, 5 -> Onboarding6', async () => {
+      const {result: r1} = await renderHook(() => useOnboardingHandlers(1));
+      await act(() => r1.current.next());
       expect(mockNavigate).toHaveBeenLastCalledWith(ROUTES.ONBOARDING.STEP_2);
 
-      const {result: r5} = renderHook(() => useOnboardingHandlers(5));
-      act(() => r5.current.next());
+      const {result: r5} = await renderHook(() => useOnboardingHandlers(5));
+      await act(() => r5.current.next());
       expect(mockNavigate).toHaveBeenLastCalledWith(ROUTES.ONBOARDING.STEP_6);
     });
 
-    it('next on step 6 is a no-op (Finish path lives in `finish`)', () => {
-      const {result} = renderHook(() => useOnboardingHandlers(6));
-      act(() => result.current.next());
+    it('next on step 6 is a no-op (Finish path lives in `finish`)', async () => {
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
+      await act(() => result.current.next());
       expect(mockNavigate).not.toHaveBeenCalled();
     });
   });
 
   describe('goBack', () => {
-    it('delegates to navigation.goBack when canGoBack is true', () => {
+    it('delegates to navigation.goBack when canGoBack is true', async () => {
       mockCanGoBack.mockReturnValueOnce(true);
-      const {result} = renderHook(() => useOnboardingHandlers(2));
-      act(() => result.current.goBack());
+      const {result} = await renderHook(() => useOnboardingHandlers(2));
+      await act(() => result.current.goBack());
       expect(mockGoBack).toHaveBeenCalledTimes(1);
     });
 
-    it('is a no-op when canGoBack is false (covers screen 1 / Splash guard)', () => {
+    it('is a no-op when canGoBack is false (covers screen 1 / Splash guard)', async () => {
       mockCanGoBack.mockReturnValueOnce(false);
-      const {result} = renderHook(() => useOnboardingHandlers(1));
-      act(() => result.current.goBack());
+      const {result} = await renderHook(() => useOnboardingHandlers(1));
+      await act(() => result.current.goBack());
       expect(mockGoBack).not.toHaveBeenCalled();
     });
   });
 
   describe('selectTopic (screen 5 — single forward control)', () => {
-    it('writes the picked topic and navigates to Onboarding6 in one handler', () => {
-      const {result} = renderHook(() => useOnboardingHandlers(5));
-      act(() => result.current.selectTopic('smartchat'));
+    it('writes the picked topic and navigates to Onboarding6 in one handler', async () => {
+      const {result} = await renderHook(() => useOnboardingHandlers(5));
+      await act(() => result.current.selectTopic('smartchat'));
       expect(uiStore.setOnboardingTopic).toHaveBeenCalledWith('smartchat');
       expect(mockNavigate).toHaveBeenCalledWith(ROUTES.ONBOARDING.STEP_6);
     });
 
-    it("the 'else' escape-hatch tap writes null but still navigates", () => {
-      const {result} = renderHook(() => useOnboardingHandlers(5));
-      act(() => result.current.selectTopic(null));
+    it("the 'else' escape-hatch tap writes null but still navigates", async () => {
+      const {result} = await renderHook(() => useOnboardingHandlers(5));
+      await act(() => result.current.selectTopic(null));
       expect(uiStore.setOnboardingTopic).toHaveBeenCalledWith(null);
       expect(mockNavigate).toHaveBeenCalledWith(ROUTES.ONBOARDING.STEP_6);
     });
   });
 
   describe('skip', () => {
-    it('completeOnboarding with current topic + modelId=null; no pal/model writes', () => {
+    it('completeOnboarding with current topic + modelId=null; no pal/model writes', async () => {
       uiStore.onboardingState.selectedTopic = 'smartchat';
       uiStore.onboardingState.selectedModelId = PIP_BALANCED_ID;
-      const {result} = renderHook(() => useOnboardingHandlers(4));
-      act(() => result.current.skip());
+      const {result} = await renderHook(() => useOnboardingHandlers(4));
+      await act(() => result.current.skip());
 
       expect(uiStore.completeOnboarding).toHaveBeenCalledTimes(1);
       expect(uiStore.completeOnboarding).toHaveBeenCalledWith({
@@ -134,7 +134,7 @@ describe('useOnboardingHandlers', () => {
       uiStore.onboardingState.selectedModelId = PIP_BALANCED_ID;
       uiStore.onboardingState.selectedTopic = 'smartchat';
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
       await act(async () => {
         await result.current.finish();
       });
@@ -159,7 +159,7 @@ describe('useOnboardingHandlers', () => {
       uiStore.onboardingState.selectedModelId = CODIE_BALANCED_ID;
       uiStore.onboardingState.selectedTopic = 'coding';
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
       await act(async () => {
         await result.current.finish();
       });
@@ -186,7 +186,7 @@ describe('useOnboardingHandlers', () => {
       uiStore.onboardingState.selectedModelId = PIP_BALANCED_ID;
       uiStore.onboardingState.selectedTopic = null;
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
       await act(async () => {
         await result.current.finish();
       });
@@ -201,7 +201,7 @@ describe('useOnboardingHandlers', () => {
       uiStore.onboardingState.selectedModelId = null;
       uiStore.onboardingState.selectedTopic = 'smartchat';
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
       await act(async () => {
         await result.current.finish();
       });
@@ -222,7 +222,7 @@ describe('useOnboardingHandlers', () => {
       uiStore.onboardingState.selectedModelId = CODIE_BALANCED_ID;
       uiStore.onboardingState.selectedTopic = 'coding';
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
       await act(async () => {
         await result.current.finish();
       });
@@ -258,7 +258,7 @@ describe('useOnboardingHandlers', () => {
       uiStore.onboardingState.selectedModelId = sageBestId;
       uiStore.onboardingState.selectedTopic = 'education';
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
       await act(async () => {
         await result.current.finish();
       });
@@ -288,7 +288,7 @@ describe('useOnboardingHandlers', () => {
         new Error('cancelled'),
       );
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
       let threw: unknown = null;
       await act(async () => {
         try {
@@ -316,8 +316,8 @@ describe('useOnboardingHandlers', () => {
       uiStore.onboardingState.selectedModelId = CODIE_BALANCED_ID;
       uiStore.onboardingState.selectedTopic = 'coding';
 
-      const {result} = renderHook(() => useOnboardingHandlers(6));
-      act(() => result.current.skip());
+      const {result} = await renderHook(() => useOnboardingHandlers(6));
+      await act(() => result.current.skip());
 
       expect(modelStore.registerOnboardingPalModel).not.toHaveBeenCalled();
       expect(palStore.createPal).not.toHaveBeenCalled();

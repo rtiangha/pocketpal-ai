@@ -5,14 +5,14 @@ import {renderHook, act} from '@testing-library/react-native';
 import {useComponentSize} from '../useComponentSize';
 
 describe('useComponentSize', () => {
-  it('should return initial size of {height: 0, width: 0}', () => {
-    const {result} = renderHook(() => useComponentSize());
+  it('should return initial size of {height: 0, width: 0}', async () => {
+    const {result} = await renderHook(() => useComponentSize());
 
     expect(result.current.size).toEqual({height: 0, width: 0});
   });
 
-  it('should update size when onLayout is triggered', () => {
-    const {result} = renderHook(() => useComponentSize());
+  it('should update size when onLayout is triggered', async () => {
+    const {result} = await renderHook(() => useComponentSize());
 
     const mockEvent: LayoutChangeEvent = {
       nativeEvent: {
@@ -41,7 +41,7 @@ describe('useComponentSize', () => {
     };
 
     // Trigger the onLayout callback with the event
-    act(() => {
+    await act(() => {
       result.current.onLayout(mockEvent);
     });
 

@@ -16,30 +16,30 @@ describe('useNavigationBarAppearance', () => {
     uiStore.colorScheme = 'light';
   });
 
-  it('requests light icons when the app is dark', () => {
+  it('requests light icons when the app is dark', async () => {
     uiStore.colorScheme = 'dark';
 
-    renderHook(() => useNavigationBarAppearance());
+    await renderHook(() => useNavigationBarAppearance());
 
     expect(setNavigationBarDark).toHaveBeenCalledTimes(1);
     expect(setNavigationBarDark).toHaveBeenCalledWith(true);
   });
 
-  it('requests dark icons when the scheme changes to light', () => {
+  it('requests dark icons when the scheme changes to light', async () => {
     uiStore.colorScheme = 'dark';
-    const {rerender} = renderHook(() => useNavigationBarAppearance());
+    const {rerender} = await renderHook(() => useNavigationBarAppearance());
 
     uiStore.colorScheme = 'light';
-    rerender({});
+    await rerender({});
 
     expect(setNavigationBarDark).toHaveBeenCalledTimes(2);
     expect(setNavigationBarDark).toHaveBeenLastCalledWith(false);
   });
 
-  it('does not call again when the scheme is unchanged', () => {
-    const {rerender} = renderHook(() => useNavigationBarAppearance());
+  it('does not call again when the scheme is unchanged', async () => {
+    const {rerender} = await renderHook(() => useNavigationBarAppearance());
 
-    rerender({});
+    await rerender({});
 
     expect(setNavigationBarDark).toHaveBeenCalledTimes(1);
   });
@@ -55,10 +55,10 @@ describe('useNavigationBarAppearance', () => {
     });
   });
 
-  it('renders without calling native when the module is absent', () => {
+  it('renders without calling native when the module is absent', async () => {
     jest.replaceProperty(specModule, 'default', null);
 
-    expect(() => renderHook(() => useNavigationBarAppearance())).not.toThrow();
+    await renderHook(() => useNavigationBarAppearance());
     expect(setNavigationBarDark).not.toHaveBeenCalled();
   });
 });

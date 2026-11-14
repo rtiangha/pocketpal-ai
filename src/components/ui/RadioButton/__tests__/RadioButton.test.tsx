@@ -6,8 +6,8 @@ import {RadioSection} from '../RadioSection';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('RadioButton', () => {
-  it('templates testID per value', () => {
-    const {getByTestId} = render(
+  it('templates testID per value', async () => {
+    const {getByTestId} = await render(
       <RadioButton
         value="a"
         groupValue="a"
@@ -20,8 +20,8 @@ describe('RadioButton', () => {
 });
 
 describe('RadioSection', () => {
-  it('renders a list of RadioButtons', () => {
-    const {getByTestId} = render(
+  it('renders a list of RadioButtons', async () => {
+    const {getByTestId} = await render(
       <RadioSection
         label="Pick one"
         helperText="hint"

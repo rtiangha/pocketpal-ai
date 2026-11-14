@@ -13,22 +13,22 @@ describe('ModelsHeaderRight', () => {
     jest.clearAllMocks();
   });
 
-  it('renders correctly', () => {
-    const {getByTestId} = render(<ModelsHeaderRight />);
+  it('renders correctly', async () => {
+    const {getByTestId} = await render(<ModelsHeaderRight />);
     expect(getByTestId('models-menu-button')).toBeTruthy();
   });
 
   it('toggles HF filter when pressed', async () => {
-    const {getByTestId, getByText} = render(<ModelsHeaderRight />);
+    const {getByTestId, getByText} = await render(<ModelsHeaderRight />);
 
     // Open menu
-    fireEvent.press(getByTestId('models-menu-button'));
+    await fireEvent.press(getByTestId('models-menu-button'));
 
     // Press HF filter option
     const hfOption = getByText(
       l10n.en.components.modelsHeaderRight.menuTitleHf,
     );
-    fireEvent.press(hfOption);
+    await fireEvent.press(hfOption);
 
     expect(uiStore.setValue).toHaveBeenCalledWith(
       'modelsScreen',
@@ -38,16 +38,16 @@ describe('ModelsHeaderRight', () => {
   });
 
   it('toggles downloaded filter when pressed', async () => {
-    const {getByTestId, getByText} = render(<ModelsHeaderRight />);
+    const {getByTestId, getByText} = await render(<ModelsHeaderRight />);
 
     // Open menu
-    fireEvent.press(getByTestId('models-menu-button'));
+    await fireEvent.press(getByTestId('models-menu-button'));
 
     // Press downloaded filter option
     const downloadedOption = getByText(
       l10n.en.components.modelsHeaderRight.menuTitleDownloaded,
     );
-    fireEvent.press(downloadedOption);
+    await fireEvent.press(downloadedOption);
 
     expect(uiStore.setValue).toHaveBeenCalledWith(
       'modelsScreen',
@@ -57,16 +57,16 @@ describe('ModelsHeaderRight', () => {
   });
 
   it('toggles grouped view when pressed', async () => {
-    const {getByTestId, getByText} = render(<ModelsHeaderRight />);
+    const {getByTestId, getByText} = await render(<ModelsHeaderRight />);
 
     // Open menu
-    fireEvent.press(getByTestId('models-menu-button'));
+    await fireEvent.press(getByTestId('models-menu-button'));
 
     // Press group option
     const groupOption = getByText(
       l10n.en.components.modelsHeaderRight.menuTitleGrouped,
     );
-    fireEvent.press(groupOption);
+    await fireEvent.press(groupOption);
 
     expect(uiStore.setValue).toHaveBeenCalledWith(
       'modelsScreen',
@@ -76,18 +76,18 @@ describe('ModelsHeaderRight', () => {
   });
 
   it('shows reset dialog when reset option is pressed', async () => {
-    const {getByTestId, getByText, queryByTestId} = render(
+    const {getByTestId, getByText, queryByTestId} = await render(
       <ModelsHeaderRight />,
     );
 
     // Open menu
-    fireEvent.press(getByTestId('models-menu-button'));
+    await fireEvent.press(getByTestId('models-menu-button'));
 
     // Press reset option
     const resetOption = getByText(
       l10n.en.components.modelsHeaderRight.menuTitleReset,
     );
-    fireEvent.press(resetOption);
+    await fireEvent.press(resetOption);
 
     await waitFor(() => {
       expect(queryByTestId('reset-dialog')).toBeTruthy();

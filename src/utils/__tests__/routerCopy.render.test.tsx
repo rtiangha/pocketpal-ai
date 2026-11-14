@@ -10,8 +10,8 @@ import {routerFailureMessage} from '../routerCopy';
 const en = l10n.en;
 
 describe('a router failure message in the chat', () => {
-  it("renders the server's words as their own paragraph", () => {
-    render(
+  it("renders the server's words as their own paragraph", async () => {
+    await render(
       <MarkdownView
         markdownText={routerFailureMessage('load-failed', 'out of memory', en)}
         maxMessageWidth={300}

@@ -66,11 +66,11 @@ const localPal = {
   palshub_id: 'pal-1',
 } as Pal;
 
-const setup = (
+const setup = async (
   props: Partial<React.ComponentProps<typeof PalPurchaseFooter>> = {},
 ) => {
   const onClose = jest.fn();
-  const utils = render(
+  const utils = await render(
     <PalPurchaseFooter pal={pal} onClose={onClose} {...props} />,
     {withNavigation: true},
   );
@@ -108,9 +108,9 @@ describe('PalPurchaseFooter', () => {
     (Platform as any).OS = originalOS;
   });
 
-  it('renders the name above the store-priced Buy button', () => {
+  it('renders the name above the store-priced Buy button', async () => {
     purchasable();
-    const {getByTestId, getByText, toJSON} = setup();
+    const {getByTestId, getByText, toJSON} = await setup();
 
     expect(getByTestId('buy-button')).toBeTruthy();
     expect(getByText('4,99 €')).toBeTruthy();
@@ -118,24 +118,24 @@ describe('PalPurchaseFooter', () => {
     expect(text.indexOf('Story Pal')).toBeLessThan(text.indexOf('4,99 €'));
   });
 
-  it('takes the price only from the store product', () => {
+  it('takes the price only from the store product', async () => {
     purchasable();
-    const {queryByText} = setup({pal: {...pal, price_cents: 1234}});
+    const {queryByText} = await setup({pal: {...pal, price_cents: 1234}});
     expect(queryByText(/12[.,]34/)).toBeNull();
   });
 
-  it('renders nothing at all when the Pal is not purchasable', () => {
-    const {queryByTestId} = setup();
+  it('renders nothing at all when the Pal is not purchasable', async () => {
+    const {queryByTestId} = await setup();
     expect(queryByTestId('buy-button')).toBeNull();
     expect(queryByTestId('pal-purchase-footer')).toBeNull();
   });
 
-  it('shows paying while the store sheet is up', () => {
+  it('shows paying while the store sheet is up', async () => {
     purchasable();
     runInAction(() => {
       setPhase('pal-1', 'paying');
     });
-    const {getByTestId, queryByTestId} = setup();
+    const {getByTestId, queryByTestId} = await setup();
     expect(getByTestId('purchase-paying')).toHaveProp(
       'accessibilityLabel',
       'Unlocking',
@@ -146,9 +146,9 @@ describe('PalPurchaseFooter', () => {
   it('buys and closes the sheet on a cancel or error', async () => {
     purchasable();
     (purchaseStore.buy as jest.Mock).mockResolvedValueOnce('close');
-    const {getByTestId, onClose} = setup();
+    const {getByTestId, onClose} = await setup();
 
-    fireEvent.press(getByTestId('buy-button'));
+    await fireEvent.press(getByTestId('buy-button'));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(purchaseStore.buy).toHaveBeenCalledWith(pal);
@@ -156,52 +156,52 @@ describe('PalPurchaseFooter', () => {
 
   it('keeps the sheet open while the purchase continues', async () => {
     purchasable();
-    const {getByTestId, onClose} = setup();
-    fireEvent.press(getByTestId('buy-button'));
+    const {getByTestId, onClose} = await setup();
+    await fireEvent.press(getByTestId('buy-button'));
     await waitFor(() => expect(purchaseStore.buy).toHaveBeenCalled());
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('shows the pending message', () => {
+  it('shows the pending message', async () => {
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('pending_payment');
     });
-    const {getByText, queryByTestId} = setup();
+    const {getByText, queryByTestId} = await setup();
     expect(getByText('Pending')).toBeTruthy();
     expect(queryByTestId('buy-button')).toBeNull();
   });
 
-  it('shows unlocking with a Retry that retries at once', () => {
+  it('shows unlocking with a Retry that retries at once', async () => {
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('unlocking');
     });
-    const {getByTestId} = setup();
+    const {getByTestId} = await setup();
     expect(getByTestId('purchase-unlocking')).toHaveProp(
       'accessibilityLabel',
       'Unlocking',
     );
-    fireEvent.press(getByTestId('purchase-retry-button'));
+    await fireEvent.press(getByTestId('purchase-retry-button'));
     expect(purchaseStore.retry).toHaveBeenCalledWith('pal-1');
   });
 
-  it('shows progress while installing a grant', () => {
+  it('shows progress while installing a grant', async () => {
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('granted');
     });
-    const {getByTestId} = setup();
+    const {getByTestId} = await setup();
     expect(getByTestId('purchase-installing')).toHaveProp(
       'accessibilityLabel',
       'Unlocking',
     );
   });
 
-  it('shows the iOS no-longer-available copy with a refund link and the support code', () => {
+  it('shows the iOS no-longer-available copy with a refund link and the support code', async () => {
     (Platform as any).OS = 'ios';
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('unfulfillable');
     });
-    const {getByTestId} = setup();
+    const {getByTestId} = await setup();
     expect(getByTestId('purchase-unfulfillable')).toHaveTextContent(
       'This Pal is no longer available. You can ask Apple for a refund.',
     );
@@ -209,7 +209,7 @@ describe('PalPurchaseFooter', () => {
       'Support code: SUP-7',
     );
 
-    fireEvent.press(getByTestId('purchase-refund-link'));
+    await fireEvent.press(getByTestId('purchase-refund-link'));
 
     expect(openURL).toHaveBeenCalledWith('https://reportaproblem.apple.com');
     openURL.mockRestore();
@@ -220,7 +220,7 @@ describe('PalPurchaseFooter', () => {
     [true, 'This Pal was withdrawn. Contact support for a refund.'],
   ])(
     'shows the Android copy for withdrawn after delivery %p with the support code',
-    (delivered, text) => {
+    async (delivered, text) => {
       (Platform as any).OS = 'android';
       runInAction(() => {
         purchaseStore.records['pal-1'] = record(
@@ -228,7 +228,7 @@ describe('PalPurchaseFooter', () => {
           delivered ? {withdrawnAfterDelivery: true} : {},
         );
       });
-      const {getByTestId, queryByTestId} = setup();
+      const {getByTestId, queryByTestId} = await setup();
       expect(getByTestId('purchase-unfulfillable')).toHaveTextContent(text);
       expect(queryByTestId('purchase-refund-link')).toBeNull();
       expect(getByTestId('purchase-support-code')).toHaveTextContent(
@@ -237,22 +237,22 @@ describe('PalPurchaseFooter', () => {
     },
   );
 
-  it('shows no Buy for an undeliverable purchase', () => {
+  it('shows no Buy for an undeliverable purchase', async () => {
     (Platform as any).OS = 'ios';
     purchasable();
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('unfulfillable');
     });
-    const {queryByTestId} = setup();
+    const {queryByTestId} = await setup();
     expect(queryByTestId('buy-button')).toBeNull();
   });
 
-  it('shows Buy with the store price again after a refund', () => {
+  it('shows Buy with the store price again after a refund', async () => {
     purchasable();
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('removed');
     });
-    const {getByTestId, getByText, queryByTestId} = setup();
+    const {getByTestId, getByText, queryByTestId} = await setup();
     expect(getByTestId('buy-button')).toBeTruthy();
     expect(getByText('4,99 €')).toBeTruthy();
     expect(queryByTestId('owned-button')).toBeNull();
@@ -278,30 +278,30 @@ describe('PalPurchaseFooter', () => {
         'Fixes a typo',
         'A new version from the creator is available: Fixes a typo.',
       ],
-    ])('prompts with note %p beside Owned', (note, text) => {
+    ])('prompts with note %p beside Owned', async (note, text) => {
       withUpdate(note);
-      const {getByTestId} = setup();
+      const {getByTestId} = await setup();
       expect(getByTestId('owned-button')).toBeTruthy();
       expect(getByTestId('pal-update-prompt')).toHaveTextContent(text);
       expect(getByTestId('pal-update-button')).toHaveTextContent('Update');
     });
 
-    it('shows no prompt without a pending update', () => {
+    it('shows no prompt without a pending update', async () => {
       runInAction(() => {
         purchaseStore.records['pal-1'] = record('active');
         palStore.pals = [localPal];
       });
-      const {queryByTestId} = setup();
+      const {queryByTestId} = await setup();
       expect(queryByTestId('pal-update-prompt')).toBeNull();
       expect(queryByTestId('pal-update-button')).toBeNull();
     });
 
-    it('confirms inline and cancels back to the prompt', () => {
+    it('confirms inline and cancels back to the prompt', async () => {
       const alert = jest.spyOn(Alert, 'alert');
       withUpdate();
-      const {getByTestId, getByText, queryByTestId} = setup();
+      const {getByTestId, getByText, queryByTestId} = await setup();
 
-      fireEvent.press(getByTestId('pal-update-button'));
+      await fireEvent.press(getByTestId('pal-update-button'));
 
       expect(
         getByText('This replaces your edits to the parts the creator changed.')
@@ -311,19 +311,19 @@ describe('PalPurchaseFooter', () => {
       expect(getByTestId('pal-update-cancel')).toHaveTextContent('Cancel');
       expect(queryByTestId('pal-update-prompt')).toBeNull();
 
-      fireEvent.press(getByTestId('pal-update-cancel'));
+      await fireEvent.press(getByTestId('pal-update-cancel'));
 
       expect(getByTestId('pal-update-prompt')).toBeTruthy();
       expect(purchaseStore.applyUpdate).not.toHaveBeenCalled();
       expect(alert).not.toHaveBeenCalled();
     });
 
-    it('never confirms a newer version than the prompt the user saw', () => {
+    it('never confirms a newer version than the prompt the user saw', async () => {
       withUpdate('First fix');
-      const {getByTestId, queryByTestId} = setup();
-      fireEvent.press(getByTestId('pal-update-button'));
+      const {getByTestId, queryByTestId} = await setup();
+      await fireEvent.press(getByTestId('pal-update-button'));
 
-      act(() =>
+      await act(() =>
         runInAction(() => {
           purchaseStore.records['pal-1'] = record('active', {
             pendingUpdate: {
@@ -337,7 +337,7 @@ describe('PalPurchaseFooter', () => {
       );
       const confirm = queryByTestId('pal-update-confirm');
       if (confirm) {
-        fireEvent.press(confirm);
+        await fireEvent.press(confirm);
       }
 
       expect(purchaseStore.applyUpdate).not.toHaveBeenCalledWith('pal-1', 5);
@@ -349,10 +349,10 @@ describe('PalPurchaseFooter', () => {
         new Error('Disk full'),
       );
       withUpdate();
-      const {getByTestId, queryByTestId} = setup();
-      fireEvent.press(getByTestId('pal-update-button'));
+      const {getByTestId, queryByTestId} = await setup();
+      await fireEvent.press(getByTestId('pal-update-button'));
 
-      fireEvent.press(getByTestId('pal-update-confirm'));
+      await fireEvent.press(getByTestId('pal-update-confirm'));
 
       await waitFor(() =>
         expect(alert).toHaveBeenCalledWith('Error', 'Disk full'),
@@ -371,11 +371,30 @@ describe('PalPurchaseFooter', () => {
           }),
       );
       withUpdate();
-      const {getByTestId, queryByTestId} = setup();
-      fireEvent.press(getByTestId('pal-update-button'));
+      const {getByTestId, queryByTestId} = await setup();
+      await fireEvent.press(getByTestId('pal-update-button'));
 
-      fireEvent.press(getByTestId('pal-update-confirm'));
-      fireEvent.press(getByTestId('pal-update-confirm'));
+      // v14: the first press awaits applyUpdate, which only resolves when
+      // finish() runs below — awaiting it here deadlocks. Start it, then
+      // tap again while it is in flight. The second tap must NOT go through
+      // fireEvent.press: that would open a second act() while the first is
+      // still pending and pollute the next test's render. Invoke the
+      // handler directly instead — the applying guard makes it a no-op.
+      const confirmButton = getByTestId('pal-update-confirm');
+      const firstPress = fireEvent.press(confirmButton);
+      let fiber: any = (confirmButton as any).unstable_fiber;
+      let secondTap: Promise<unknown> | undefined;
+      while (fiber) {
+        if (typeof fiber.memoizedProps?.onPress === 'function') {
+          secondTap = fiber.memoizedProps.onPress();
+          break;
+        }
+        fiber = fiber.return;
+      }
+      if (!secondTap) {
+        throw new Error('confirm onPress not found in fiber chain');
+      }
+      await secondTap;
 
       expect(purchaseStore.applyUpdate).toHaveBeenCalledTimes(1);
       expect(purchaseStore.applyUpdate).toHaveBeenCalledWith(
@@ -386,6 +405,7 @@ describe('PalPurchaseFooter', () => {
         purchaseStore.records['pal-1'] = record('active');
       });
       finish();
+      await firstPress;
       await waitFor(() =>
         expect(queryByTestId('pal-update-confirm-text')).toBeNull(),
       );
@@ -393,12 +413,12 @@ describe('PalPurchaseFooter', () => {
     });
   });
 
-  it('holds an unverifiable purchase with its code, Restore and no Buy', () => {
+  it('holds an unverifiable purchase with its code, Restore and no Buy', async () => {
     purchasable();
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('held_invalid');
     });
-    const {getByTestId, queryByTestId} = setup();
+    const {getByTestId, queryByTestId} = await setup();
     expect(getByTestId('purchase-held-invalid')).toHaveTextContent(
       "We couldn't unlock this purchase. Contact support with this code.",
     );
@@ -406,27 +426,27 @@ describe('PalPurchaseFooter', () => {
       'Support code: SUP-7',
     );
     expect(queryByTestId('buy-button')).toBeNull();
-    fireEvent.press(getByTestId('purchase-restore-button'));
+    await fireEvent.press(getByTestId('purchase-restore-button'));
     expect(purchaseStore.restore).toHaveBeenCalled();
   });
 
-  it('shows the invalid-proof message with Buy back', () => {
+  it('shows the invalid-proof message with Buy back', async () => {
     purchasable();
     runInAction(() => {
       setPhase('pal-1', 'invalid');
     });
-    const {getByText, getByTestId} = setup();
+    const {getByText, getByTestId} = await setup();
     expect(getByText("We couldn't verify this purchase.")).toBeTruthy();
     expect(getByTestId('buy-button')).toBeTruthy();
   });
 
-  it('shows only the model step once the purchase is ready', () => {
+  it('shows only the model step once the purchase is ready', async () => {
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('active');
       setPhase('pal-1', 'ready');
       palStore.pals = [localPal];
     });
-    const {getByTestId, queryByTestId} = setup();
+    const {getByTestId, queryByTestId} = await setup();
     expect(getByTestId('purchase-ready')).toBeTruthy();
     expect(getByTestId('model-step-mock')).toBeTruthy();
     expect(queryByTestId('purchase-support-code')).toBeNull();
@@ -441,21 +461,22 @@ describe('PalPurchaseFooter', () => {
         },
         pal,
       ],
+
       ['the listing', () => {}, {...pal, is_owned: true}],
-    ])('shows Owned, never Buy, for %s', (_label, mutate, shown) => {
+    ])('shows Owned, never Buy, for %s', async (_label, mutate, shown) => {
       purchasable();
       runInAction(mutate);
-      const {getByTestId, queryByTestId} = setup({pal: shown});
+      const {getByTestId, queryByTestId} = await setup({pal: shown});
       expect(getByTestId('owned-button')).toHaveTextContent('Install');
       expect(queryByTestId('buy-button')).toBeNull();
     });
 
-    it('labels the owned button Open when the Pal is installed', () => {
+    it('labels the owned button Open when the Pal is installed', async () => {
       runInAction(() => {
         purchaseStore.records['pal-1'] = record('active');
         palStore.pals = [localPal];
       });
-      const {getByTestId} = setup();
+      const {getByTestId} = await setup();
       expect(getByTestId('owned-button')).toHaveTextContent('Open');
     });
 
@@ -464,8 +485,8 @@ describe('PalPurchaseFooter', () => {
         purchaseStore.records['pal-1'] = record('active');
         palStore.pals = [localPal];
       });
-      const {getByTestId, findByTestId} = setup();
-      fireEvent.press(getByTestId('owned-button'));
+      const {getByTestId, findByTestId} = await setup();
+      await fireEvent.press(getByTestId('owned-button'));
       expect(await findByTestId('model-step-mock')).toBeTruthy();
       expect(purchaseStore.installOwned).not.toHaveBeenCalled();
     });
@@ -482,8 +503,8 @@ describe('PalPurchaseFooter', () => {
           return true;
         },
       );
-      const {getByTestId, findByTestId} = setup();
-      fireEvent.press(getByTestId('owned-button'));
+      const {getByTestId, findByTestId} = await setup();
+      await fireEvent.press(getByTestId('owned-button'));
       expect(await findByTestId('model-step-mock')).toBeTruthy();
       expect(purchaseStore.installOwned).toHaveBeenCalledWith(pal);
       expect(palStore.downloadPalsHubPal).not.toHaveBeenCalled();
@@ -496,38 +517,38 @@ describe('PalPurchaseFooter', () => {
         },
       );
       const owned = {...pal, is_owned: true};
-      const {getByTestId, findByTestId} = setup({pal: owned});
-      fireEvent.press(getByTestId('owned-button'));
+      const {getByTestId, findByTestId} = await setup({pal: owned});
+      await fireEvent.press(getByTestId('owned-button'));
       expect(await findByTestId('model-step-mock')).toBeTruthy();
       expect(palStore.downloadPalsHubPal).toHaveBeenCalledWith(owned);
       expect(purchaseStore.installOwned).not.toHaveBeenCalled();
     });
   });
 
-  it('ends the sheet session on unmount without touching the record', () => {
+  it('ends the sheet session on unmount without touching the record', async () => {
     runInAction(() => {
       purchaseStore.records['pal-1'] = record('unlocking');
     });
-    const {unmount} = setup();
-    unmount();
+    const {unmount} = await setup();
+    await unmount();
     expect(purchaseStore.endSession).toHaveBeenCalledWith('pal-1');
     expect(purchaseStore.recordFor('pal-1')?.status).toBe('unlocking');
   });
 
   describe('account', () => {
-    it('offers an in-app sign-in when signed out and Buy shows', () => {
+    it('offers an in-app sign-in when signed out and Buy shows', async () => {
       purchasable();
       const onSignInPress = jest.fn();
-      const {getByTestId, getByText} = setup({onSignInPress});
+      const {getByTestId, getByText} = await setup({onSignInPress});
       expect(getByText('Already own it? Sign in')).toBeTruthy();
-      fireEvent.press(getByTestId('purchase-signin-link'));
+      await fireEvent.press(getByTestId('purchase-signin-link'));
       expect(onSignInPress).toHaveBeenCalled();
     });
 
-    it('hides the sign-in line when signed in', () => {
+    it('hides the sign-in line when signed in', async () => {
       purchasable();
       (authService as any).isAuthenticated = true;
-      const {queryByTestId} = setup({onSignInPress: jest.fn()});
+      const {queryByTestId} = await setup({onSignInPress: jest.fn()});
       expect(queryByTestId('purchase-signin-link')).toBeNull();
     });
 
@@ -537,67 +558,71 @@ describe('PalPurchaseFooter', () => {
         setPhase('pal-1', 'ready');
       });
 
-    it('prompts once after a signed-out purchase and links through sign-in', () => {
+    it('prompts once after a signed-out purchase and links through sign-in', async () => {
       ready();
       const onSignInPress = jest.fn();
-      const {getByTestId, getByText} = setup({onSignInPress});
+      const {getByTestId, getByText} = await setup({onSignInPress});
       expect(
         getByText('Sign in to use it on your other devices too'),
       ).toBeTruthy();
-      fireEvent.press(getByTestId('purchase-link-signin'));
+      await fireEvent.press(getByTestId('purchase-link-signin'));
       expect(purchaseStore.requestLink).toHaveBeenCalled();
       expect(onSignInPress).toHaveBeenCalled();
     });
 
-    it('can dismiss the prompt', () => {
+    it('can dismiss the prompt', async () => {
       ready();
-      const {getByTestId, queryByTestId} = setup({onSignInPress: jest.fn()});
-      fireEvent.press(getByTestId('purchase-link-dismiss'));
+      const {getByTestId, queryByTestId} = await setup({
+        onSignInPress: jest.fn(),
+      });
+      await fireEvent.press(getByTestId('purchase-link-dismiss'));
       expect(queryByTestId('purchase-link-prompt')).toBeNull();
       expect(purchaseStore.requestLink).not.toHaveBeenCalled();
     });
 
-    it('never prompts a signed-in user', () => {
+    it('never prompts a signed-in user', async () => {
       ready();
       (authService as any).isAuthenticated = true;
-      const {queryByTestId} = setup({onSignInPress: jest.fn()});
+      const {queryByTestId} = await setup({onSignInPress: jest.fn()});
       expect(queryByTestId('purchase-link-prompt')).toBeNull();
     });
 
-    it('does not prompt after a signed-out purchase while account linking is off', () => {
+    it('does not prompt after a signed-out purchase while account linking is off', async () => {
       mockAccountLinkEnabled = false;
       ready();
-      const {getByTestId, queryByTestId} = setup({onSignInPress: jest.fn()});
+      const {getByTestId, queryByTestId} = await setup({
+        onSignInPress: jest.fn(),
+      });
       expect(getByTestId('purchase-ready')).toBeTruthy();
       expect(queryByTestId('purchase-link-prompt')).toBeNull();
     });
 
-    it('keeps the in-app sign-in line while account linking is off', () => {
+    it('keeps the in-app sign-in line while account linking is off', async () => {
       mockAccountLinkEnabled = false;
       purchasable();
-      const {getByTestId} = setup({onSignInPress: jest.fn()});
+      const {getByTestId} = await setup({onSignInPress: jest.fn()});
       expect(getByTestId('purchase-signin-link')).toBeTruthy();
     });
 
-    it('explains a purchase linked to another account', () => {
+    it('explains a purchase linked to another account', async () => {
       ready();
       runInAction(() => {
         purchaseStore.linkConflict = true;
       });
-      const {getByTestId} = setup();
+      const {getByTestId} = await setup();
       expect(getByTestId('purchase-link-conflict')).toBeTruthy();
     });
   });
 
-  it('offers Restore when the store account has no entitlement', () => {
+  it('offers Restore when the store account has no entitlement', async () => {
     runInAction(() => {
       setPhase('pal-1', 'restore_needed');
     });
-    const {getByTestId} = setup();
+    const {getByTestId} = await setup();
     expect(getByTestId('purchase-restore-needed')).not.toHaveTextContent(
       /store account/,
     );
-    fireEvent.press(getByTestId('purchase-restore-button'));
+    await fireEvent.press(getByTestId('purchase-restore-button'));
     expect(purchaseStore.restore).toHaveBeenCalled();
   });
 
@@ -607,13 +632,13 @@ describe('PalPurchaseFooter', () => {
         (purchaseStore as any).showsLicenseNotice = shown;
       });
 
-    it('states the licence with both terms links above Buy', () => {
+    it('states the licence with both terms links above Buy', async () => {
       purchasable();
       showNotice(true);
       const openURL = jest
         .spyOn(Linking, 'openURL')
         .mockResolvedValue(undefined);
-      const {getByTestId} = setup();
+      const {getByTestId} = await setup();
       const styles = createStyles(themeFixtures.lightTheme);
       const notice = getByTestId('purchase-license-notice');
 
@@ -632,8 +657,8 @@ describe('PalPurchaseFooter', () => {
           );
         },
       );
-      fireEvent.press(getByTestId('purchase-terms-of-sale-link'));
-      fireEvent.press(getByTestId('purchase-apple-terms-link'));
+      await fireEvent.press(getByTestId('purchase-terms-of-sale-link'));
+      await fireEvent.press(getByTestId('purchase-apple-terms-link'));
       expect(openURL.mock.calls).toEqual([
         ['https://palshub.ai/legal/terms-of-sale'],
         ['https://www.apple.com/legal/internet-services/itunes/us/terms.html'],
@@ -641,21 +666,21 @@ describe('PalPurchaseFooter', () => {
       openURL.mockRestore();
     });
 
-    it('shows nothing when the storefront needs no notice', () => {
+    it('shows nothing when the storefront needs no notice', async () => {
       purchasable();
       showNotice(false);
-      const {queryByTestId, getByTestId} = setup();
+      const {queryByTestId, getByTestId} = await setup();
       expect(getByTestId('buy-button')).toBeTruthy();
       expect(queryByTestId('purchase-license-notice')).toBeNull();
     });
 
-    it('is not shown once the Pal is owned', () => {
+    it('is not shown once the Pal is owned', async () => {
       purchasable();
       showNotice(true);
       runInAction(() => {
         purchaseStore.records['pal-1'] = record('active');
       });
-      const {queryByTestId} = setup();
+      const {queryByTestId} = await setup();
       expect(queryByTestId('purchase-license-notice')).toBeNull();
     });
   });

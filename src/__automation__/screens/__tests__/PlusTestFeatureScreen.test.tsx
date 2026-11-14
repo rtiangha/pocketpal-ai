@@ -25,21 +25,23 @@ describe('PlusTestFeatureScreen', () => {
     setShipOverride([]);
   });
 
-  it('carries the automation marker', () => {
-    const {getByLabelText} = render(<PlusTestFeatureScreen />);
+  it('carries the automation marker', async () => {
+    const {getByLabelText} = await render(<PlusTestFeatureScreen />);
 
     expect(getByLabelText('PLUS_GATE_PROBE')).toBeTruthy();
   });
 
-  it('opens Plus when locked and shows the feature after an unlock', () => {
-    const {getByTestId, queryByTestId} = render(<PlusTestFeatureScreen />);
+  it('opens Plus when locked and shows the feature after an unlock', async () => {
+    const {getByTestId, queryByTestId} = await render(
+      <PlusTestFeatureScreen />,
+    );
 
-    fireEvent.press(getByTestId('plus-test-feature-open'));
+    await fireEvent.press(getByTestId('plus-test-feature-open'));
 
     expect(plusGate.request?.onUnlocked).toEqual(expect.any(Function));
     expect(queryByTestId('plus-test-feature-unlocked')).toBeNull();
 
-    act(() => {
+    await act(() => {
       runInAction(() => {
         purchaseStore.plusUnlocked = true;
       });
@@ -49,32 +51,36 @@ describe('PlusTestFeatureScreen', () => {
     expect(getByTestId('plus-test-feature-unlocked')).toBeTruthy();
   });
 
-  it('stays locked when Plus is closed without buying', () => {
-    const {getByTestId, queryByTestId} = render(<PlusTestFeatureScreen />);
+  it('stays locked when Plus is closed without buying', async () => {
+    const {getByTestId, queryByTestId} = await render(
+      <PlusTestFeatureScreen />,
+    );
 
-    fireEvent.press(getByTestId('plus-test-feature-open'));
-    act(() => dismissPlus());
+    await fireEvent.press(getByTestId('plus-test-feature-open'));
+    await act(() => dismissPlus());
 
     expect(queryByTestId('plus-test-feature-unlocked')).toBeNull();
   });
 
-  it('opens directly when Plus is already unlocked', () => {
+  it('opens directly when Plus is already unlocked', async () => {
     runInAction(() => {
       purchaseStore.plusUnlocked = true;
     });
-    const {getByTestId} = render(<PlusTestFeatureScreen />);
+    const {getByTestId} = await render(<PlusTestFeatureScreen />);
 
-    fireEvent.press(getByTestId('plus-test-feature-open'));
+    await fireEvent.press(getByTestId('plus-test-feature-open'));
 
     expect(getByTestId('plus-test-feature-unlocked')).toBeTruthy();
     expect(plusGate.request).toBeNull();
   });
 
-  it('shows no Plus screen while no Plus feature has shipped', () => {
+  it('shows no Plus screen while no Plus feature has shipped', async () => {
     setShipOverride([]);
-    const {getByTestId, queryByTestId} = render(<PlusTestFeatureScreen />);
+    const {getByTestId, queryByTestId} = await render(
+      <PlusTestFeatureScreen />,
+    );
 
-    fireEvent.press(getByTestId('plus-test-feature-open'));
+    await fireEvent.press(getByTestId('plus-test-feature-open'));
 
     expect(plusGate.request).toBeNull();
     expect(queryByTestId('plus-test-feature-unlocked')).toBeNull();

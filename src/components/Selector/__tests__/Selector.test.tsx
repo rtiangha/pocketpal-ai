@@ -15,8 +15,8 @@ describe('Selector', () => {
     mockOnChange.mockClear();
   });
 
-  it('renders with placeholder when no value selected', () => {
-    const {getByTestId} = render(
+  it('renders with placeholder when no value selected', async () => {
+    const {getByTestId} = await render(
       <Selector
         options={mockOptions}
         onChange={mockOnChange}
@@ -28,8 +28,8 @@ describe('Selector', () => {
     expect(getByTestId('test-selector')).toBeTruthy();
   });
 
-  it('renders with selected value', () => {
-    const {getByTestId} = render(
+  it('renders with selected value', async () => {
+    const {getByTestId} = await render(
       <Selector
         options={mockOptions}
         value="option1"
@@ -42,8 +42,8 @@ describe('Selector', () => {
     expect(getByTestId('test-selector')).toBeTruthy();
   });
 
-  it('renders label and sublabel', () => {
-    const {getByTestId} = render(
+  it('renders label and sublabel', async () => {
+    const {getByTestId} = await render(
       <Selector
         options={mockOptions}
         onChange={mockOnChange}
@@ -57,8 +57,8 @@ describe('Selector', () => {
     expect(getByTestId('test-selector')).toBeTruthy();
   });
 
-  it('renders error state', () => {
-    const {getByTestId} = render(
+  it('renders error state', async () => {
+    const {getByTestId} = await render(
       <Selector
         options={mockOptions}
         onChange={mockOnChange}
@@ -71,8 +71,8 @@ describe('Selector', () => {
     expect(getByTestId('test-selector')).toBeTruthy();
   });
 
-  it('calls onChange when option is selected', () => {
-    const {getByTestId} = render(
+  it('calls onChange when option is selected', async () => {
+    const {getByTestId} = await render(
       <Selector
         options={mockOptions}
         onChange={mockOnChange}
@@ -85,8 +85,8 @@ describe('Selector', () => {
     expect(mockOnChange).not.toHaveBeenCalled();
   });
 
-  it('renders when disabled', () => {
-    const {getByTestId} = render(
+  it('renders when disabled', async () => {
+    const {getByTestId} = await render(
       <Selector
         options={mockOptions}
         onChange={mockOnChange}

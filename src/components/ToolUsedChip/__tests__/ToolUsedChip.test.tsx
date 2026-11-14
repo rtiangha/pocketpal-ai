@@ -10,8 +10,8 @@ jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => {
 });
 
 describe('ToolUsedChip', () => {
-  it('renders the chip with the tool name (en l10n template)', () => {
-    const {getByText, getByTestId} = render(
+  it('renders the chip with the tool name (en l10n template)', async () => {
+    const {getByText, getByTestId} = await render(
       <ToolUsedChip toolName="datetime" />,
     );
     expect(getByTestId('tool-used-chip')).toBeTruthy();
@@ -20,13 +20,13 @@ describe('ToolUsedChip', () => {
     expect(getByText('wrench-outline')).toBeTruthy();
   });
 
-  it('renders nothing when toolName is empty', () => {
-    const {queryByTestId} = render(<ToolUsedChip toolName="" />);
+  it('renders nothing when toolName is empty', async () => {
+    const {queryByTestId} = await render(<ToolUsedChip toolName="" />);
     expect(queryByTestId('tool-used-chip')).toBeNull();
   });
 
-  it('appends generation metrics when present', () => {
-    const {getByText} = render(
+  it('appends generation metrics when present', async () => {
+    const {getByText} = await render(
       <ToolUsedChip
         toolName="calculate"
         metrics={{tokens: 19, durationMs: 2300}}
@@ -36,8 +36,8 @@ describe('ToolUsedChip', () => {
     expect(getByText(/used calculate.+19 tokens.+2s/)).toBeTruthy();
   });
 
-  it('omits metrics when tokens is 0 (graceful degradation for older calls)', () => {
-    const {getByText, queryByText} = render(
+  it('omits metrics when tokens is 0 (graceful degradation for older calls)', async () => {
+    const {getByText, queryByText} = await render(
       <ToolUsedChip
         toolName="calculate"
         metrics={{tokens: 0, durationMs: 0}}
@@ -47,8 +47,8 @@ describe('ToolUsedChip', () => {
     expect(queryByText(/tokens/)).toBeNull();
   });
 
-  it('floors sub-1s durations to "1s" so the suffix never reads "0s"', () => {
-    const {getByText} = render(
+  it('floors sub-1s durations to "1s" so the suffix never reads "0s"', async () => {
+    const {getByText} = await render(
       <ToolUsedChip
         toolName="calculate"
         metrics={{tokens: 4, durationMs: 200}}

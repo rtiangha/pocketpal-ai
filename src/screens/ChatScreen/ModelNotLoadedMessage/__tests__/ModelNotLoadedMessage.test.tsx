@@ -26,8 +26,8 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
-const customRender = (ui: React.ReactElement, options: any = {}) =>
-  render(ui, {
+const customRender = async (ui: React.ReactElement, options: any = {}) =>
+  await render(ui, {
     withBottomSheetProvider: true,
     withNavigation: true,
     withSafeArea: true,
@@ -42,23 +42,23 @@ describe('ModelNotLoadedMessage', () => {
     (modelStore.selectModel as jest.Mock).mockReset();
   });
 
-  it('renders correctly when no last used model exists', () => {
-    const {getByText} = customRender(<ModelNotLoadedMessage />);
+  it('renders correctly when no last used model exists', async () => {
+    const {getByText} = await customRender(<ModelNotLoadedMessage />);
     expect(getByText(l10n.en.chat.pleaseLoadModel)).toBeTruthy();
   });
 
-  it('renders correctly when last used model exists', () => {
+  it('renders correctly when last used model exists', async () => {
     modelStore.lastUsedModelId = modelStore.models[0].id;
-    const {getByText} = customRender(<ModelNotLoadedMessage />);
+    const {getByText} = await customRender(<ModelNotLoadedMessage />);
 
     expect(getByText(l10n.en.chat.readyToChat)).toBeTruthy();
     expect(getByText(l10n.en.chat.load)).toBeTruthy();
   });
 
-  it('navigates to Models page when no last model exists', () => {
-    const {getByText} = customRender(<ModelNotLoadedMessage />);
+  it('navigates to Models page when no last model exists', async () => {
+    const {getByText} = await customRender(<ModelNotLoadedMessage />);
 
-    fireEvent.press(getByText(l10n.en.chat.goToModels));
+    await fireEvent.press(getByText(l10n.en.chat.goToModels));
 
     expect(mockNavigate).toHaveBeenCalledWith('Models');
   });
@@ -67,10 +67,10 @@ describe('ModelNotLoadedMessage', () => {
     modelStore.lastUsedModelId = basicModel.id;
     (modelStore.selectModel as jest.Mock).mockResolvedValue(undefined);
 
-    const {getByText} = customRender(<ModelNotLoadedMessage />);
+    const {getByText} = await customRender(<ModelNotLoadedMessage />);
 
-    act(() => {
-      fireEvent.press(getByText(l10n.en.chat.load));
+    await act(async () => {
+      await fireEvent.press(getByText(l10n.en.chat.load));
     });
 
     expect(modelStore.selectModel).toHaveBeenCalledWith(basicModel);
@@ -85,10 +85,10 @@ describe('ModelNotLoadedMessage', () => {
     // TODO: is there a better way to test this that relying on console.log?
     const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-    const {getByText} = customRender(<ModelNotLoadedMessage />);
+    const {getByText} = await customRender(<ModelNotLoadedMessage />);
 
-    act(() => {
-      fireEvent.press(getByText(l10n.en.chat.load));
+    await act(async () => {
+      await fireEvent.press(getByText(l10n.en.chat.load));
     });
 
     // Wait for the promise to resolve/reject
@@ -103,7 +103,7 @@ describe('ModelNotLoadedMessage', () => {
   it('updates last used model state on mount', async () => {
     modelStore.lastUsedModelId = basicModel.id;
 
-    const {getByText} = customRender(<ModelNotLoadedMessage />);
+    const {getByText} = await customRender(<ModelNotLoadedMessage />);
 
     // Wait for the useEffect to run
     await new Promise(resolve => setTimeout(resolve, 0));

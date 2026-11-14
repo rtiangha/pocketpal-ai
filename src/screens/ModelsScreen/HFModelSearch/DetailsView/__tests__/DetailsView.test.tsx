@@ -26,8 +26,8 @@ const mockProbe = probeRemoteMTPCapability as jest.MockedFunction<
   typeof probeRemoteMTPCapability
 >;
 
-const render = (ui: React.ReactElement, options: any = {}) =>
-  baseRender(ui, {withBottomSheetProvider: true, ...options});
+const render = async (ui: React.ReactElement, options: any = {}) =>
+  await baseRender(ui, {withBottomSheetProvider: true, ...options});
 
 describe('DetailsView', () => {
   beforeEach(() => {
@@ -35,16 +35,16 @@ describe('DetailsView', () => {
     mockProbe.mockResolvedValue('not-capable');
   });
 
-  it('renders basic model information', () => {
-    const {getByText} = render(<DetailsView hfModel={mockHFModel1} />);
+  it('renders basic model information', async () => {
+    const {getByText} = await render(<DetailsView hfModel={mockHFModel1} />);
 
     // Check author and model name are displayed
     expect(getByText(mockHFModel1.author)).toBeDefined();
     expect(getByText('hf-model-name-1')).toBeDefined();
   });
 
-  it('renders model statistics', () => {
-    const {getByText} = render(<DetailsView hfModel={mockHFModel1} />);
+  it('renders model statistics', async () => {
+    const {getByText} = await render(<DetailsView hfModel={mockHFModel1} />);
 
     // Check stats are displayed with correct formatting
     expect(
@@ -54,8 +54,8 @@ describe('DetailsView', () => {
     expect(getByText(formatNumber(mockHFModel1.likes, 0))).toBeDefined();
   });
 
-  it('shows trending indicator for high trending score', () => {
-    const {getByText} = render(
+  it('shows trending indicator for high trending score', async () => {
+    const {getByText} = await render(
       <DetailsView hfModel={{...mockHFModel2, trendingScore: 21}} />,
     );
 
@@ -63,8 +63,8 @@ describe('DetailsView', () => {
     expect(getByText('🔥')).toBeDefined();
   });
 
-  it('renders model files section', () => {
-    const {getByText, getByTestId} = render(
+  it('renders model files section', async () => {
+    const {getByText, getByTestId} = await render(
       <DetailsView hfModel={mockHFModel1} />,
     );
 
@@ -79,7 +79,9 @@ describe('DetailsView', () => {
   describe('MTP capability badge', () => {
     it('shows the badge when the remote probe resolves capable', async () => {
       mockProbe.mockResolvedValue('capable');
-      const {getByTestId} = render(<DetailsView hfModel={mockHFModel1} />);
+      const {getByTestId} = await render(
+        <DetailsView hfModel={mockHFModel1} />,
+      );
 
       await waitFor(() => {
         expect(getByTestId('mtp-capability-badge')).toBeDefined();
@@ -88,7 +90,9 @@ describe('DetailsView', () => {
 
     it('omits the badge when the remote probe resolves not capable', async () => {
       mockProbe.mockResolvedValue('not-capable');
-      const {queryByTestId} = render(<DetailsView hfModel={mockHFModel1} />);
+      const {queryByTestId} = await render(
+        <DetailsView hfModel={mockHFModel1} />,
+      );
 
       // Let the probe settle, then assert the badge stayed absent.
       await act(async () => {
@@ -110,19 +114,23 @@ describe('DetailsView', () => {
         }),
       );
 
-      const {unmount, toJSON} = render(<DetailsView hfModel={mockHFModel1} />);
+      const {unmount, toJSON} = await render(
+        <DetailsView hfModel={mockHFModel1} />,
+      );
       // Probe still pending → no badge yet.
       expect(JSON.stringify(toJSON())).not.toContain('mtp-capability-badge');
 
-      unmount();
+      await unmount();
       await act(async () => {
         resolveProbe('capable');
         await Promise.resolve();
       });
 
       // After unmount the tree is gone and the late 'capable' result was dropped
-      // by the cancelled flag rather than mounting a badge.
-      expect(toJSON()).toBeNull();
+      // by the cancelled flag rather than mounting a badge. In test-renderer
+      // 1.3 (v14) toJSON() throws once unmounted instead of returning null;
+      // the throw itself is the proof the tree is gone.
+      expect(() => toJSON()).toThrow(/unmounted/);
     });
 
     it('drops a stale probe when the model switches while it is in flight', async () => {
@@ -134,12 +142,12 @@ describe('DetailsView', () => {
           resolveA = res;
         }),
       );
-      const {rerender, queryByTestId} = render(
+      const {rerender, queryByTestId} = await render(
         <DetailsView hfModel={mockHFModel1} />,
       );
 
       mockProbe.mockResolvedValueOnce('not-capable');
-      rerender(<DetailsView hfModel={mockHFModel2} />);
+      await rerender(<DetailsView hfModel={mockHFModel2} />);
       await act(async () => {
         await Promise.resolve();
       });
@@ -156,7 +164,7 @@ describe('DetailsView', () => {
       // Model A resolved capable BEFORE the switch; model B's probe is still
       // pending. B must not wear A's badge in the interim.
       mockProbe.mockResolvedValueOnce('capable');
-      const {rerender, getByTestId, queryByTestId} = render(
+      const {rerender, getByTestId, queryByTestId} = await render(
         <DetailsView hfModel={mockHFModel1} />,
       );
       await waitFor(() => {
@@ -164,7 +172,7 @@ describe('DetailsView', () => {
       });
 
       mockProbe.mockReturnValueOnce(new Promise<MTPRemoteCapability>(() => {}));
-      rerender(<DetailsView hfModel={mockHFModel2} />);
+      await rerender(<DetailsView hfModel={mockHFModel2} />);
 
       expect(queryByTestId('mtp-capability-badge')).toBeNull();
     });
@@ -178,12 +186,14 @@ describe('DetailsView', () => {
           resolveFirst = res;
         }),
       );
-      const first = render(<DetailsView hfModel={mockHFModel1} />);
-      first.unmount();
+      const first = await render(<DetailsView hfModel={mockHFModel1} />);
+      await first.unmount();
 
       // Second mount: probe resolves not capable.
       mockProbe.mockResolvedValueOnce('not-capable');
-      const {queryByTestId} = render(<DetailsView hfModel={mockHFModel1} />);
+      const {queryByTestId} = await render(
+        <DetailsView hfModel={mockHFModel1} />,
+      );
 
       // Resolve the first (now-cancelled) probe capable; it must not surface.
       await act(async () => {

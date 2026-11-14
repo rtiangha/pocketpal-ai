@@ -17,8 +17,8 @@ describe('FABGroup', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the FAB group', () => {
-    const {getByTestId} = render(
+  it('renders the FAB group', async () => {
+    const {getByTestId} = await render(
       <FABGroup
         onAddHFModel={mockOnAddHFModel}
         onAddLocalModel={mockOnAddLocalModel}
@@ -30,8 +30,8 @@ describe('FABGroup', () => {
     expect(getByTestId('fab-group')).toBeTruthy();
   });
 
-  it('renders all three action buttons (HF, local, remote)', () => {
-    const {getByTestId} = render(
+  it('renders all three action buttons (HF, local, remote)', async () => {
+    const {getByTestId} = await render(
       <FABGroup
         onAddHFModel={mockOnAddHFModel}
         onAddLocalModel={mockOnAddLocalModel}
@@ -51,8 +51,8 @@ describe('FABGroup', () => {
     ).toBeTruthy();
   });
 
-  it('renders accessibility labels for all actions', () => {
-    const {getByLabelText} = render(
+  it('renders accessibility labels for all actions', async () => {
+    const {getByLabelText} = await render(
       <FABGroup
         onAddHFModel={mockOnAddHFModel}
         onAddLocalModel={mockOnAddLocalModel}

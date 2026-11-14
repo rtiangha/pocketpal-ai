@@ -62,7 +62,7 @@ jest.mock('../../Sheet', () => {
     }
     return (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         <Button title="Close" onPress={onClose} testID="sheet-close-button" />
         {children}
       </View>
@@ -71,9 +71,11 @@ jest.mock('../../Sheet', () => {
   MockSheet.ScrollView = ({children}: any) => (
     <View testID="sheet-scroll-view">{children}</View>
   );
+
   MockSheet.Actions = ({children}: any) => (
     <View testID="sheet-actions">{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -113,16 +115,16 @@ describe('RemoteModelSheet', () => {
     jest.clearAllMocks();
   });
 
-  it('renders nothing when not visible', () => {
-    const {queryByTestId} = render(
+  it('renders nothing when not visible', async () => {
+    const {queryByTestId} = await render(
       <RemoteModelSheet isVisible={false} onDismiss={jest.fn()} />,
     );
 
     expect(queryByTestId('sheet')).toBeNull();
   });
 
-  it('renders the sheet with URL input when visible', () => {
-    const {getByTestId} = render(
+  it('renders the sheet with URL input when visible', async () => {
+    const {getByTestId} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -130,18 +132,18 @@ describe('RemoteModelSheet', () => {
     expect(getByTestId('remote-url-input')).toBeTruthy();
   });
 
-  it('renders the Add Model button', () => {
-    const {getByTestId} = render(
+  it('renders the Add Model button', async () => {
+    const {getByTestId} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
     expect(getByTestId('add-model-button')).toBeTruthy();
   });
 
-  it('shows privacy notice when not acknowledged', () => {
+  it('shows privacy notice when not acknowledged', async () => {
     serverStore.privacyNoticeAcknowledged = false;
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -153,10 +155,10 @@ describe('RemoteModelSheet', () => {
     ).toBeTruthy();
   });
 
-  it('hides privacy notice when acknowledged', () => {
+  it('hides privacy notice when acknowledged', async () => {
     serverStore.privacyNoticeAcknowledged = true;
 
-    const {queryByText} = render(
+    const {queryByText} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -167,22 +169,22 @@ describe('RemoteModelSheet', () => {
     ).toBeNull();
   });
 
-  it('calls onDismiss when sheet close is triggered', () => {
+  it('calls onDismiss when sheet close is triggered', async () => {
     const mockDismiss = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={mockDismiss} />,
     );
 
-    fireEvent.press(getByTestId('sheet-close-button'));
+    await fireEvent.press(getByTestId('sheet-close-button'));
     expect(mockDismiss).toHaveBeenCalled();
   });
 
-  it('shows server chips when servers exist', () => {
+  it('shows server chips when servers exist', async () => {
     serverStore.servers = [
       {id: 'srv-1', name: 'LM Studio', url: 'http://localhost:1234'},
     ];
 
-    const {getByText, getByTestId} = render(
+    const {getByText, getByTestId} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -190,10 +192,10 @@ describe('RemoteModelSheet', () => {
     expect(getByTestId('server-chip-srv-1')).toBeTruthy();
   });
 
-  it('does not show server chips when no servers exist', () => {
+  it('does not show server chips when no servers exist', async () => {
     serverStore.servers = [];
 
-    const {queryByText} = render(
+    const {queryByText} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -201,8 +203,8 @@ describe('RemoteModelSheet', () => {
     expect(queryByText('Your Servers')).toBeNull();
   });
 
-  it('disables Add Model button when no model is selected', () => {
-    const {getByTestId} = render(
+  it('disables Add Model button when no model is selected', async () => {
+    const {getByTestId} = await render(
       <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
     );
 
@@ -221,12 +223,12 @@ describe('RemoteModelSheet', () => {
     it('renders the timeout input after a probe attempt surfaces server fields', async () => {
       mockedFetchModelsWithHeaders.mockResolvedValue({models: [], headers: {}});
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
       // First probe surfaces the server fields (showServerFields).
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('remote-url-input'),
         'http://localhost:1234',
       );
@@ -239,12 +241,12 @@ describe('RemoteModelSheet', () => {
     it('passes the in-edit timeout field to fetchModelsWithHeaders', async () => {
       mockedFetchModelsWithHeaders.mockResolvedValue({models: [], headers: {}});
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
       // First probe to surface the timeout field.
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('remote-url-input'),
         'http://localhost:1234',
       );
@@ -253,9 +255,9 @@ describe('RemoteModelSheet', () => {
       });
 
       // Enter the in-edit timeout, then re-probe via another URL change.
-      fireEvent.changeText(getByTestId('remote-timeout-input'), '600');
+      await fireEvent.changeText(getByTestId('remote-timeout-input'), '600');
       mockedFetchModelsWithHeaders.mockClear();
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('remote-url-input'),
         'http://localhost:5678',
       );
@@ -279,12 +281,12 @@ describe('RemoteModelSheet', () => {
         headers: {},
       });
 
-      const {getByTestId, getByText} = render(
+      const {getByTestId, getByText} = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
       // Probe surfaces the single model (auto-selected) and the timeout field.
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('remote-url-input'),
         'http://localhost:1234',
       );
@@ -293,8 +295,8 @@ describe('RemoteModelSheet', () => {
         expect(getByText('llama-7b')).toBeTruthy();
       });
 
-      fireEvent.changeText(getByTestId('remote-timeout-input'), '600');
-      fireEvent.press(getByTestId('add-model-button'));
+      await fireEvent.changeText(getByTestId('remote-timeout-input'), '600');
+      await fireEvent.press(getByTestId('add-model-button'));
 
       await waitFor(() => {
         expect(serverStore.addServer).toHaveBeenCalledWith(
@@ -316,11 +318,11 @@ describe('RemoteModelSheet', () => {
         headers: {},
       });
 
-      const {getByTestId, getByText} = render(
+      const {getByTestId, getByText} = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('remote-url-input'),
         'http://localhost:1234',
       );
@@ -330,9 +332,9 @@ describe('RemoteModelSheet', () => {
       });
 
       // Open the dropdown and override the seeded value.
-      fireEvent.press(getByTestId('server-type-dropdown'));
-      fireEvent.press(getByTestId('server-type-option-Ollama'));
-      fireEvent.press(getByTestId('add-model-button'));
+      await fireEvent.press(getByTestId('server-type-dropdown'));
+      await fireEvent.press(getByTestId('server-type-option-Ollama'));
+      await fireEvent.press(getByTestId('add-model-button'));
 
       await waitFor(() => {
         expect(serverStore.addServer).toHaveBeenCalledWith(
@@ -347,11 +349,11 @@ describe('RemoteModelSheet', () => {
         headers: {},
       });
 
-      const {getByTestId, getByText} = render(
+      const {getByTestId, getByText} = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('remote-url-input'),
         'http://localhost:1234',
       );
@@ -359,7 +361,7 @@ describe('RemoteModelSheet', () => {
         expect(getByText('llama-7b')).toBeTruthy();
       });
 
-      fireEvent.press(getByTestId('add-model-button'));
+      await fireEvent.press(getByTestId('add-model-button'));
 
       await waitFor(() => {
         expect(serverStore.addServer).toHaveBeenCalledWith(
@@ -381,14 +383,15 @@ describe('RemoteModelSheet', () => {
           requestTimeoutMs: 600000,
         },
       ];
+
       (serverStore.getApiKey as jest.Mock).mockResolvedValue(undefined);
       seedChipList([{id: 'llama-7b', object: 'model', owned_by: 'system'}]);
 
-      const {getByTestId, getByText} = render(
+      const {getByTestId, getByText} = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
-      fireEvent.press(getByTestId('server-chip-srv-1'));
+      await fireEvent.press(getByTestId('server-chip-srv-1'));
 
       await waitFor(() => {
         expect(getByText('llama-7b')).toBeTruthy();
@@ -402,17 +405,18 @@ describe('RemoteModelSheet', () => {
       serverStore.servers = [
         {id: 'srv-1', name: 'Default Server', url: 'http://localhost:1234'},
       ];
+
       (serverStore.getApiKey as jest.Mock).mockResolvedValue(undefined);
       (serverStore.fetchModelsForServer as jest.Mock).mockResolvedValueOnce({
         ok: false,
         error: 'Connection timed out',
       });
 
-      const {getByTestId, getByText} = render(
+      const {getByTestId, getByText} = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
-      fireEvent.press(getByTestId('server-chip-srv-1'));
+      await fireEvent.press(getByTestId('server-chip-srv-1'));
 
       await waitFor(() => {
         expect(getByText(/Connection timed out/)).toBeTruthy();
@@ -439,13 +443,14 @@ describe('RemoteModelSheet', () => {
           serverType: serverType as ServerType,
         },
       ];
+
       (serverStore.getApiKey as jest.Mock).mockResolvedValue(undefined);
       seedChipList(rows);
 
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
-      fireEvent.press(view.getByTestId('server-chip-srv-1'));
+      await fireEvent.press(view.getByTestId('server-chip-srv-1'));
       await waitFor(() => {
         expect(view.queryByText(VISION)).toBeTruthy();
       });
@@ -523,6 +528,35 @@ describe('RemoteModelSheet', () => {
   });
 
   describe('router rows', () => {
+    // Paper RadioButton's host: a touchable with accessibilityRole 'radio'
+    // whose accessibilityState carries checked/disabled, and whose outer
+    // circle's borderColor is the selection color (primary when checked,
+    // onSurfaceVariant when unchecked).
+    const radioOf = (select: any) => {
+      const radios = select.queryAll(
+        (n: any) => n.props.accessibilityRole === 'radio',
+      );
+      expect(radios).toHaveLength(1);
+      return radios[0];
+    };
+    const radioStatus = (select: any) =>
+      radioOf(select).props.accessibilityState.checked
+        ? 'checked'
+        : 'unchecked';
+    const radioColor = (select: any) => {
+      // v14 / Paper 5.15: RadioButton renders a MaterialCommunityIcons
+      // glyph (a Text) whose color is the selection color; there is no
+      // bordered outer-circle View carrying a borderColor.
+      const glyphs = radioOf(select).queryAll(
+        (n: any) =>
+          n.type === 'Text' &&
+          typeof StyleSheet.flatten(n.props.style)?.color === 'string',
+        {includeSelf: true},
+      );
+      expect(glyphs).toHaveLength(1);
+      return StyleSheet.flatten(glyphs[0].props.style).color;
+    };
+
     const ROUTER = 'srv-r';
     const KEY = (id: string) => `${ROUTER}/${id}`;
     const row = (id: string, value: string, extra = {}) => ({
@@ -534,10 +568,12 @@ describe('RemoteModelSheet', () => {
     const openRouter = async (
       rows: any[],
       serverType: ServerType = 'llama.cpp',
+      theme?: any,
     ) => {
       serverStore.servers = [
         {id: ROUTER, name: 'desk', url: 'http://desk:8080', serverType},
       ];
+
       (serverStore.getApiKey as jest.Mock).mockResolvedValue(undefined);
       (serverStore.fetchModelsForServer as jest.Mock).mockImplementationOnce(
         async (serverId: string) => {
@@ -550,10 +586,11 @@ describe('RemoteModelSheet', () => {
           return {ok: true};
         },
       );
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
+        theme ? {theme} : undefined,
       );
-      fireEvent.press(view.getByTestId(`server-chip-${ROUTER}`));
+      await fireEvent.press(view.getByTestId(`server-chip-${ROUTER}`));
       await waitFor(() => {
         expect(view.queryByText(rows[0].id)).toBeTruthy();
       });
@@ -587,6 +624,7 @@ describe('RemoteModelSheet', () => {
         'Loading, 40 percent',
         'Cancel loading m',
       ],
+
       [
         'an own load before any progress',
         'unloaded',
@@ -595,6 +633,7 @@ describe('RemoteModelSheet', () => {
         'Loading',
         'Cancel loading m',
       ],
+
       [
         'an own unload',
         'loaded',
@@ -603,6 +642,7 @@ describe('RemoteModelSheet', () => {
         'Unloading…',
         null,
       ],
+
       ['a loaded row', 'loaded', null, ['dot', 'power'], 'Loaded', 'Unload m'],
       [
         'a sleeping row',
@@ -612,6 +652,7 @@ describe('RemoteModelSheet', () => {
         'Loaded',
         'Unload m',
       ],
+
       [
         'a row another client loads',
         'loading',
@@ -620,6 +661,7 @@ describe('RemoteModelSheet', () => {
         'Loading',
         null,
       ],
+
       ['a downloading row', 'downloading', null, [], null, null],
       ['an unloaded row', 'unloaded', null, [], null, null],
       ['an unreadable row', 'hibernating', null, [], null, null],
@@ -688,7 +730,7 @@ describe('RemoteModelSheet', () => {
       seedRecord('m', {kind: 'load'});
       const view = await openRouter([row('m', 'unloaded')]);
 
-      fireEvent.press(view.getByTestId('router-power-m'));
+      await fireEvent.press(view.getByTestId('router-power-m'));
 
       expect(routerStore.cancel).toHaveBeenCalledWith(ROUTER, 'm');
       expect(routerStore.unload).not.toHaveBeenCalled();
@@ -705,7 +747,7 @@ describe('RemoteModelSheet', () => {
       };
       const view = await openRouter([row('bound', 'loaded')]);
 
-      fireEvent.press(view.getByTestId('router-power-bound'));
+      await fireEvent.press(view.getByTestId('router-power-bound'));
 
       expect(alert).toHaveBeenCalledTimes(1);
       expect(routerStore.unload).not.toHaveBeenCalled();
@@ -718,7 +760,7 @@ describe('RemoteModelSheet', () => {
       const alert = jest.spyOn(Alert, 'alert');
       const view = await openRouter([row('other', 'loaded')]);
 
-      fireEvent.press(view.getByTestId('router-power-other'));
+      await fireEvent.press(view.getByTestId('router-power-other'));
 
       expect(alert).not.toHaveBeenCalled();
       expect(routerStore.unload).toHaveBeenCalledWith(ROUTER, 'other');
@@ -743,14 +785,13 @@ describe('RemoteModelSheet', () => {
       serverStore.userSelectedModels = [
         {serverId: ROUTER, remoteModelId: 'added'},
       ];
+
       const view = await openRouter([row('added', 'loaded')]);
       const select = view.getByTestId('router-select-added');
 
       expect(opacityOf(select)).toBeLessThan(1);
       expect(view.queryByText(l10n.en.settings.alreadyAdded)).toBeNull();
-      expect(
-        within(select).UNSAFE_getByProps({value: 'added'}).props.status,
-      ).toBe('checked');
+      expect(radioStatus(select)).toBe('checked');
       expect(
         dimmedBetween(
           view.getByTestId('router-power-added'),
@@ -769,21 +810,19 @@ describe('RemoteModelSheet', () => {
         serverStore.userSelectedModels = [
           {serverId: ROUTER, remoteModelId: 'added'},
         ];
-        const view = await openRouter([
-          row('added', 'loaded'),
-          row('m', 'downloading'),
-        ]);
+
+        const view = await openRouter(
+          [row('added', 'loaded'), row('m', 'downloading')],
+          'llama.cpp',
+          theme,
+        );
 
         for (const id of ['added', 'm']) {
           const select = view.getByTestId(`router-select-${id}`);
-          const radio = within(select).UNSAFE_getByProps({value: id});
+          const radio = radioOf(select);
           const name = within(select).getByText(id);
-          const radioColor =
-            radio.props.status === 'checked'
-              ? theme.colors.primary
-              : radio.props.uncheckedColor;
           const ratios = [
-            radioColor,
+            radioColor(select),
             StyleSheet.flatten(name.props.style).color,
           ].map(fg =>
             contrast(
@@ -792,7 +831,7 @@ describe('RemoteModelSheet', () => {
             ),
           );
 
-          expect(radio.props.disabled).toBeFalsy();
+          expect(radio.props.accessibilityState.disabled).toBeFalsy();
           expect(Math.min(...ratios)).toBeGreaterThanOrEqual(3);
           expect(select.props.accessibilityState).toEqual({
             checked: id === 'added',
@@ -807,12 +846,10 @@ describe('RemoteModelSheet', () => {
       const view = await openRouter([row('m', 'downloading')]);
       const select = view.getByTestId('router-select-m');
 
-      fireEvent.press(select);
+      await fireEvent.press(select);
 
       expect(opacityOf(select)).toBeLessThan(1);
-      expect(within(select).UNSAFE_getByProps({value: 'm'}).props.status).toBe(
-        'unchecked',
-      );
+      expect(radioStatus(select)).toBe('unchecked');
     });
 
     it('shows the eye only on a vision row, and no other capability icon', async () => {
@@ -863,7 +900,7 @@ describe('RemoteModelSheet', () => {
       expect(reason).toHaveTextContent(
         'This model did not load. **bold** [x](http://e)',
       );
-      fireEvent.press(view.getByTestId('router-dismiss-m'));
+      await fireEvent.press(view.getByTestId('router-dismiss-m'));
       expect(routerStore.dismiss).toHaveBeenCalledWith(ROUTER, 'm');
     });
 
@@ -871,7 +908,7 @@ describe('RemoteModelSheet', () => {
       const view = await openRouter([row('m', 'loaded')]);
 
       expect(routerStore.setPickerServer).toHaveBeenLastCalledWith(ROUTER);
-      view.unmount();
+      await view.unmount();
       expect(routerStore.setPickerServer).toHaveBeenLastCalledWith(null);
     });
 
@@ -888,6 +925,7 @@ describe('RemoteModelSheet', () => {
         'llama.cpp',
         [{id: 'm', object: 'model'}],
       ],
+
       [
         'a router-shaped list on another server type',
         'Ollama',
@@ -918,8 +956,8 @@ describe('RemoteModelSheet', () => {
       });
     });
 
-    const openScanner = async (view: ReturnType<typeof render>) => {
-      fireEvent.press(view.getByTestId('remote-url-scan'));
+    const openScanner = async (view: Awaited<ReturnType<typeof render>>) => {
+      await fireEvent.press(view.getByTestId('remote-url-scan'));
       await waitFor(() => {
         expect(view.getByTestId('server-qr-scanner')).toBeTruthy();
       });
@@ -927,14 +965,14 @@ describe('RemoteModelSheet', () => {
 
     it('fills the url field from a scan and probes it', async () => {
       const dismissKeyboard = jest.spyOn(Keyboard, 'dismiss');
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
       await openScanner(view);
       expect(dismissKeyboard).toHaveBeenCalled();
       mockedFetchModelsWithHeaders.mockClear();
 
-      act(() => lastScannerProps().onScanned('http://192.168.1.5:9931/'));
+      await act(() => lastScannerProps().onScanned('http://192.168.1.5:9931/'));
 
       expect(view.getByTestId('remote-url-input').props.value).toBe(
         'http://192.168.1.5:9931/',
@@ -957,11 +995,11 @@ describe('RemoteModelSheet', () => {
       async (_label, requestPermission) => {
         const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
         denyCamera(requestPermission);
-        const view = render(
+        const view = await render(
           <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
         );
 
-        fireEvent.press(view.getByTestId('remote-url-scan'));
+        await fireEvent.press(view.getByTestId('remote-url-scan'));
 
         await waitFor(() => {
           expect(alert).toHaveBeenCalledWith(
@@ -970,7 +1008,10 @@ describe('RemoteModelSheet', () => {
           );
         });
         expect(view.queryByTestId('server-qr-scanner')).toBeNull();
-        fireEvent.changeText(view.getByTestId('remote-url-input'), 'http://h');
+        await fireEvent.changeText(
+          view.getByTestId('remote-url-input'),
+          'http://h',
+        );
         expect(view.getByTestId('remote-url-input').props.value).toBe(
           'http://h',
         );
@@ -980,7 +1021,7 @@ describe('RemoteModelSheet', () => {
 
     it('does not focus the url field when scan is pressed', async () => {
       const focus = jest.spyOn(TextInput.prototype, 'focus');
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
@@ -995,14 +1036,15 @@ describe('RemoteModelSheet', () => {
       serverStore.servers = [
         {id: 'srv-1', name: 'LM Studio', url: 'http://localhost:1234'},
       ];
+
       (serverStore.getApiKey as jest.Mock).mockResolvedValue(undefined);
       seedChipList([]);
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
       await openScanner(view);
 
-      fireEvent.press(view.getByTestId('server-chip-srv-1'));
+      await fireEvent.press(view.getByTestId('server-chip-srv-1'));
 
       await waitFor(() => {
         expect(view.queryByTestId('remote-url-input')).toBeNull();
@@ -1010,7 +1052,7 @@ describe('RemoteModelSheet', () => {
       expect(view.queryByTestId('remote-url-scan')).toBeNull();
       expect(view.queryByTestId('server-qr-scanner')).toBeNull();
 
-      fireEvent.press(view.getByTestId('server-chip-srv-1'));
+      await fireEvent.press(view.getByTestId('server-chip-srv-1'));
 
       await waitFor(() => {
         expect(view.getByTestId('remote-url-scan')).toBeTruthy();
@@ -1020,27 +1062,27 @@ describe('RemoteModelSheet', () => {
 
     it('unmounts the scanner when the sheet is closed', async () => {
       const onDismiss = jest.fn();
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={onDismiss} />,
       );
       await openScanner(view);
 
-      fireEvent.press(view.getByTestId('sheet-close-button'));
+      await fireEvent.press(view.getByTestId('sheet-close-button'));
 
       expect(onDismiss).toHaveBeenCalled();
       expect(view.queryByTestId('server-qr-scanner')).toBeNull();
     });
 
     it('reopens without the scanner when the sheet was hidden with it open', async () => {
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
       await openScanner(view);
 
-      view.rerender(
+      await view.rerender(
         <RemoteModelSheet isVisible={false} onDismiss={jest.fn()} />,
       );
-      view.rerender(
+      await view.rerender(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
@@ -1056,7 +1098,7 @@ describe('RemoteModelSheet', () => {
         hasPermission: true,
         requestPermission,
       });
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
@@ -1069,7 +1111,7 @@ describe('RemoteModelSheet', () => {
       const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
       const requestPermission = jest.fn().mockResolvedValue(true);
       denyCamera(requestPermission);
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
 
@@ -1081,32 +1123,41 @@ describe('RemoteModelSheet', () => {
     });
 
     it('closes the scanner and leaves the typed url editable', async () => {
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
-      fireEvent.changeText(view.getByTestId('remote-url-input'), 'http://a');
+      await fireEvent.changeText(
+        view.getByTestId('remote-url-input'),
+        'http://a',
+      );
       await openScanner(view);
       expect(view.getByTestId('remote-url-input')).toBeTruthy();
 
-      act(() => lastScannerProps().onClose());
+      await act(() => lastScannerProps().onClose());
 
       expect(view.queryByTestId('server-qr-scanner')).toBeNull();
       expect(view.getByTestId('remote-url-input').props.value).toBe('http://a');
-      fireEvent.changeText(view.getByTestId('remote-url-input'), 'http://b');
+      await fireEvent.changeText(
+        view.getByTestId('remote-url-input'),
+        'http://b',
+      );
       expect(view.getByTestId('remote-url-input').props.value).toBe('http://b');
     });
 
     it('replaces typed text, clears its error and probes the scanned url last', async () => {
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
-      fireEvent.changeText(view.getByTestId('remote-url-input'), 'not a url');
+      await fireEvent.changeText(
+        view.getByTestId('remote-url-input'),
+        'not a url',
+      );
       await waitFor(() => {
         expect(view.getByText(l10n.en.settings.serverUrlInvalid)).toBeTruthy();
       });
       await openScanner(view);
 
-      act(() => lastScannerProps().onScanned('http://192.168.1.5:9931/'));
+      await act(() => lastScannerProps().onScanned('http://192.168.1.5:9931/'));
 
       expect(view.getByTestId('remote-url-input').props.value).toBe(
         'http://192.168.1.5:9931/',
@@ -1124,19 +1175,19 @@ describe('RemoteModelSheet', () => {
         models: [{id: 'llama-7b', object: 'model', owned_by: 'system'}],
         headers: {},
       });
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
       await openScanner(view);
 
-      act(() => lastScannerProps().onScanned('http://192.168.1.5:9931/'));
+      await act(() => lastScannerProps().onScanned('http://192.168.1.5:9931/'));
       await waitFor(() => {
         expect(view.getByText('llama-7b')).toBeTruthy();
       });
       expect(serverStore.addServer).not.toHaveBeenCalled();
       expect(serverStore.updateServer).not.toHaveBeenCalled();
 
-      fireEvent.press(view.getByTestId('add-model-button'));
+      await fireEvent.press(view.getByTestId('add-model-button'));
 
       await waitFor(() => {
         expect(serverStore.addServer).toHaveBeenCalledWith(
@@ -1146,7 +1197,7 @@ describe('RemoteModelSheet', () => {
     });
 
     it('warns about plain http for a scanned non-local host', async () => {
-      const view = render(
+      const view = await render(
         <RemoteModelSheet isVisible={true} onDismiss={jest.fn()} />,
       );
       await openScanner(view);
@@ -1154,7 +1205,7 @@ describe('RemoteModelSheet', () => {
         view.queryByText(l10n.en.settings.serverUrlHttpWarning),
       ).toBeNull();
 
-      act(() => lastScannerProps().onScanned('http://example.com:8080/'));
+      await act(() => lastScannerProps().onScanned('http://example.com:8080/'));
 
       expect(
         view.getByText(l10n.en.settings.serverUrlHttpWarning),

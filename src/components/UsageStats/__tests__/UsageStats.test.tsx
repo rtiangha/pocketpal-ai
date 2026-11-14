@@ -22,7 +22,7 @@ describe('UsageStats Component', () => {
     (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValueOnce(totalMemory);
     (DeviceInfo.getUsedMemory as jest.Mock).mockResolvedValueOnce(usedMemory);
 
-    const {getByText, queryByText, getByTestId} = render(
+    const {getByText, queryByText, getByTestId} = await render(
       <UsageStats width={100} height={50} />,
     );
 
@@ -40,7 +40,7 @@ describe('UsageStats Component', () => {
     touchable.measure = mockMeasure;
 
     // Press the graph to display the tooltip
-    fireEvent.press(touchable, {
+    await fireEvent.press(touchable, {
       target: touchable,
       nativeEvent: {pageX: 10, pageY: 20},
     });
@@ -58,7 +58,7 @@ describe('UsageStats Component', () => {
     (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValueOnce(totalMemory);
     (DeviceInfo.getUsedMemory as jest.Mock).mockResolvedValueOnce(usedMemory);
 
-    const {getByTestId} = render(<UsageStats width={100} height={50} />);
+    const {getByTestId} = await render(<UsageStats width={100} height={50} />);
 
     await act(async () => {
       jest.advanceTimersByTime(3000);
@@ -76,7 +76,7 @@ describe('UsageStats Component', () => {
     (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValueOnce(totalMemory);
     (DeviceInfo.getUsedMemory as jest.Mock).mockResolvedValueOnce(usedMemory);
 
-    const {queryByTestId, getByTestId} = render(
+    const {queryByTestId, getByTestId} = await render(
       <UsageStats width={100} height={50} />,
     );
 
@@ -89,7 +89,7 @@ describe('UsageStats Component', () => {
     touchable.measure = mockMeasure;
 
     // Press the graph to display the tooltip
-    fireEvent.press(touchable, {
+    await fireEvent.press(touchable, {
       target: touchable,
       nativeEvent: {pageX: 10, pageY: 20},
     });
@@ -97,7 +97,7 @@ describe('UsageStats Component', () => {
     expect(getByTestId('memory-usage-tooltip')).toBeTruthy();
 
     // hide the tooltip
-    fireEvent.press(getByTestId('memory-usage-touchable'), {
+    await fireEvent.press(getByTestId('memory-usage-touchable'), {
       target: touchable,
       nativeEvent: {pageX: 10, pageY: 20},
     });

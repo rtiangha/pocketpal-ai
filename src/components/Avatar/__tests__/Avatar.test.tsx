@@ -6,9 +6,9 @@ import {Avatar} from '../Avatar';
 import {lightTheme} from '../../../utils/theme';
 
 describe('avatar', () => {
-  it(`should render container with a placeholder`, () => {
+  it(`should render container with a placeholder`, async () => {
     expect.assertions(1);
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <Avatar
         author={user}
         currentUserIsAuthor={false}
@@ -20,10 +20,10 @@ describe('avatar', () => {
     expect(getByTestId('AvatarContainer')).toBeDefined();
   });
 
-  it('should render background with a first letter', () => {
+  it('should render background with a first letter', async () => {
     expect.assertions(1);
     const authorWithName = {...user, firstName: 'John'};
-    const {getByText} = render(
+    const {getByText} = await render(
       <Avatar
         author={authorWithName}
         currentUserIsAuthor={false}
@@ -35,10 +35,10 @@ describe('avatar', () => {
     expect(getByText(authorWithName.firstName[0])).toBeDefined();
   });
 
-  it('should render image background', () => {
+  it('should render image background', async () => {
     expect.assertions(2);
     const imageUrl = 'https://avatars.githubusercontent.com/u/14123304?v=4';
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <Avatar
         author={{
           ...user,

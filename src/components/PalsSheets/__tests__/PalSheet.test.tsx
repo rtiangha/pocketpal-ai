@@ -8,6 +8,7 @@ import {modelsList} from '../../../../jest/fixtures/models';
 import type {ParameterDefinition} from '../../../types/pal';
 
 let mockSheetRendersClosed = false;
+const mockCancel = jest.fn();
 
 // Mock the Sheet component
 jest.mock('../../Sheet/Sheet', () => {
@@ -18,7 +19,7 @@ jest.mock('../../Sheet/Sheet', () => {
     }
     return (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         <Button title="Close" onPress={onClose} testID="sheet-close-button" />
         {children}
       </View>
@@ -27,9 +28,11 @@ jest.mock('../../Sheet/Sheet', () => {
   MockSheet.ScrollView = ({children}) => (
     <ScrollView testID="sheet-scroll-view">{children}</ScrollView>
   );
+
   MockSheet.Actions = ({children}) => (
     <View testID="sheet-actions">{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -59,7 +62,7 @@ jest.mock('../../../hooks/useStructuredOutput', () => ({
     isGenerating: false,
     isBusy: false,
     stop: jest.fn(),
-    cancel: jest.fn(),
+    cancel: mockCancel,
   })),
 }));
 
@@ -107,8 +110,8 @@ describe('PalSheet', () => {
   });
 
   // Helper function to render PalSheet with required providers
-  const renderPalSheet = (pal: Partial<Pal>, isVisible = true) => {
-    return render(
+  const renderPalSheet = async (pal: Partial<Pal>, isVisible = true) => {
+    return await render(
       <L10nContext.Provider value={l10n.en}>
         <PalSheet isVisible={isVisible} onClose={mockOnClose} pal={pal} />
       </L10nContext.Provider>,
@@ -121,100 +124,98 @@ describe('PalSheet', () => {
   });
 
   describe('Rendering', () => {
-    it('renders correctly when visible for new pal', () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+    it('renders correctly when visible for new pal', async () => {
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       expect(getByTestId('sheet')).toBeTruthy();
       // Title is rendered in the mocked Sheet component
       expect(getByTestId('sheet-title')).toBeTruthy();
     });
 
-    it('does not render when not visible', () => {
-      const {queryByTestId} = renderPalSheet(createBasicPal(), false);
+    it('does not render when not visible', async () => {
+      const {queryByTestId} = await renderPalSheet(createBasicPal(), false);
 
       expect(queryByTestId('sheet')).toBeNull();
     });
 
-    it('tells the system prompt section when the sheet closes', () => {
+    it('tells the system prompt section when the sheet closes', async () => {
+      // v14: composite components do not appear in the host tree, so the
+      // section's isVisible prop cannot be read off a node. Its only
+      // observable effect is calling cancel() when isVisible turns false.
       mockSheetRendersClosed = true;
       try {
         const pal = createBasicPal();
-        const {rerender, UNSAFE_root} = renderPalSheet(pal);
-        const sectionIsVisible = () =>
-          UNSAFE_root.findAll(
-            node =>
-              typeof node.type !== 'string' &&
-              node.props.closeSheet !== undefined &&
-              node.props.validateFields !== undefined,
-          )[0].props.isVisible;
-        expect(sectionIsVisible()).toBe(true);
+        const {rerender} = await renderPalSheet(pal);
+        expect(mockCancel).not.toHaveBeenCalled();
 
-        rerender(
+        await rerender(
           <L10nContext.Provider value={l10n.en}>
             <PalSheet isVisible={false} onClose={mockOnClose} pal={pal} />
           </L10nContext.Provider>,
         );
 
-        expect(sectionIsVisible()).toBe(false);
+        await waitFor(() => {
+          expect(mockCancel).toHaveBeenCalled();
+        });
       } finally {
         mockSheetRendersClosed = false;
       }
     });
 
-    it('renders with correct title for editing existing pal', () => {
-      const {getByTestId} = renderPalSheet(createExistingPal());
+    it('renders with correct title for editing existing pal', async () => {
+      const {getByTestId} = await renderPalSheet(createExistingPal());
 
       expect(getByTestId('sheet-title')).toBeTruthy();
     });
 
-    it('renders with correct title for new video pal', () => {
-      const {getByTestId} = renderPalSheet(
+    it('renders with correct title for new video pal', async () => {
+      const {getByTestId} = await renderPalSheet(
         createBasicPal({capabilities: {video: true}}),
       );
 
       expect(getByTestId('sheet-title')).toBeTruthy();
     });
 
-    it('renders all basic form fields', () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+    it('renders all basic form fields', async () => {
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       expect(getByTestId('form-field-name')).toBeTruthy();
       expect(getByTestId('form-field-description')).toBeTruthy();
     });
 
-    it('renders model selector', () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+    it('renders model selector', async () => {
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       expect(getByTestId('pal-default-model-selector')).toBeTruthy();
     });
 
-    it('renders action buttons', () => {
-      const {getByText} = renderPalSheet(createBasicPal());
+    it('renders action buttons', async () => {
+      const {getByText} = await renderPalSheet(createBasicPal());
 
       expect(getByText('Cancel')).toBeTruthy();
       expect(getByText('Create')).toBeTruthy();
     });
 
-    it('shows Save button for editing existing pal', () => {
-      const {getByText} = renderPalSheet(createExistingPal());
+    it('shows Save button for editing existing pal', async () => {
+      const {getByText} = await renderPalSheet(createExistingPal());
 
       expect(getByText('Save')).toBeTruthy();
     });
 
-    it('renders generation settings section only for existing pals', () => {
-      const {getByText} = renderPalSheet(createExistingPal());
+    it('renders generation settings section only for existing pals', async () => {
+      const {getByText} = await renderPalSheet(createExistingPal());
 
       expect(getByText('Generation Settings')).toBeTruthy();
       expect(getByText('Configure Generation Settings')).toBeTruthy();
     });
 
-    it('does not render generation settings for new pals', () => {
-      const {queryByText} = renderPalSheet(createBasicPal());
+    it('does not render generation settings for new pals', async () => {
+      const {queryByText} = await renderPalSheet(createBasicPal());
 
       expect(queryByText('Generation Settings')).toBeNull();
     });
 
-    it('renders dynamic parameters section when schema is provided', () => {
+    it('renders dynamic parameters section when schema is provided', async () => {
       const parameterSchema: ParameterDefinition[] = [
         {
           key: 'world',
@@ -224,13 +225,15 @@ describe('PalSheet', () => {
         },
       ];
 
-      const {getByText} = renderPalSheet(createBasicPal({parameterSchema}));
+      const {getByText} = await renderPalSheet(
+        createBasicPal({parameterSchema}),
+      );
 
       expect(getByText('Parameters')).toBeTruthy();
     });
 
-    it('does not render parameters section when schema is empty', () => {
-      const {queryByText} = renderPalSheet(
+    it('does not render parameters section when schema is empty', async () => {
+      const {queryByText} = await renderPalSheet(
         createBasicPal({parameterSchema: []}),
       );
 
@@ -239,8 +242,8 @@ describe('PalSheet', () => {
   });
 
   describe('Form Initialization', () => {
-    it('initializes form with empty values for new pal', () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+    it('initializes form with empty values for new pal', async () => {
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
       const descriptionInput = getByTestId('form-field-description');
@@ -249,8 +252,8 @@ describe('PalSheet', () => {
       expect(descriptionInput.props.value).toBe('');
     });
 
-    it('initializes form with existing pal data', () => {
-      const {getByTestId} = renderPalSheet(createExistingPal());
+    it('initializes form with existing pal data', async () => {
+      const {getByTestId} = await renderPalSheet(createExistingPal());
 
       const nameInput = getByTestId('form-field-name');
       const descriptionInput = getByTestId('form-field-description');
@@ -259,7 +262,7 @@ describe('PalSheet', () => {
       expect(descriptionInput.props.value).toBe('Test Description');
     });
 
-    it('initializes form with dynamic parameter values', () => {
+    it('initializes form with dynamic parameter values', async () => {
       const parameterSchema: ParameterDefinition[] = [
         {
           key: 'world',
@@ -269,7 +272,7 @@ describe('PalSheet', () => {
         },
       ];
 
-      const {getByTestId} = renderPalSheet(
+      const {getByTestId} = await renderPalSheet(
         createExistingPal({
           parameterSchema,
           parameters: {world: 'Fantasy Kingdom'},
@@ -282,49 +285,50 @@ describe('PalSheet', () => {
   });
 
   describe('User Interactions', () => {
-    it('calls onClose when Cancel button is pressed', () => {
-      const {getByText} = renderPalSheet(createBasicPal());
+    it('calls onClose when Cancel button is pressed', async () => {
+      const {getByText} = await renderPalSheet(createBasicPal());
 
-      fireEvent.press(getByText('Cancel'));
+      await fireEvent.press(getByText('Cancel'));
       expect(mockOnClose).toHaveBeenCalledTimes(1);
     });
 
-    it('updates form values when user types', () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+    it('updates form values when user types', async () => {
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'My New Pal');
+      await fireEvent.changeText(nameInput, 'My New Pal');
 
       expect(nameInput.props.value).toBe('My New Pal');
     });
 
-    it('opens generation settings sheet when button is pressed', () => {
-      const {getByText, getByTestId} = renderPalSheet(createExistingPal());
+    it('opens generation settings sheet when button is pressed', async () => {
+      const {getByText, getByTestId} =
+        await renderPalSheet(createExistingPal());
 
-      fireEvent.press(getByText('Configure Generation Settings'));
+      await fireEvent.press(getByText('Configure Generation Settings'));
       expect(getByTestId('pal-generation-settings-sheet')).toBeTruthy();
     });
 
-    it('closes generation settings sheet when close button is pressed', () => {
+    it('closes generation settings sheet when close button is pressed', async () => {
       const {getByText, getByTestId, queryByTestId} =
-        renderPalSheet(createExistingPal());
+        await renderPalSheet(createExistingPal());
 
       // Open the settings sheet
-      fireEvent.press(getByText('Configure Generation Settings'));
+      await fireEvent.press(getByText('Configure Generation Settings'));
       expect(getByTestId('pal-generation-settings-sheet')).toBeTruthy();
 
       // Close the settings sheet
-      fireEvent.press(getByTestId('close-settings-button'));
+      await fireEvent.press(getByTestId('close-settings-button'));
       expect(queryByTestId('pal-generation-settings-sheet')).toBeNull();
     });
   });
 
   describe('Form Validation', () => {
     it('shows validation error when name is empty', async () => {
-      const {getByText} = renderPalSheet(createBasicPal());
+      const {getByText} = await renderPalSheet(createBasicPal());
 
       // Try to submit without entering a name
-      fireEvent.press(getByText('Create'));
+      await fireEvent.press(getByText('Create'));
 
       await waitFor(() => {
         expect(getByText('Name is required')).toBeTruthy();
@@ -333,12 +337,12 @@ describe('PalSheet', () => {
 
     it('does not show validation error when name is provided', async () => {
       const {getByText, getByTestId, queryByText} =
-        renderPalSheet(createBasicPal());
+        await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'My New Pal');
+      await fireEvent.changeText(nameInput, 'My New Pal');
 
-      fireEvent.press(getByText('Create'));
+      await fireEvent.press(getByText('Create'));
 
       await waitFor(() => {
         expect(queryByText('Name is required')).toBeNull();
@@ -348,7 +352,7 @@ describe('PalSheet', () => {
 
   describe('Form Submission - Create New Pal', () => {
     it('creates a new pal with basic information', async () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       // Wait for form to be initialized
       await waitFor(() => {
@@ -360,8 +364,8 @@ describe('PalSheet', () => {
       const descriptionInput = getByTestId('form-field-description');
 
       await act(async () => {
-        fireEvent.changeText(nameInput, 'My New Pal');
-        fireEvent.changeText(descriptionInput, 'A helpful assistant');
+        await fireEvent.changeText(nameInput, 'My New Pal');
+        await fireEvent.changeText(descriptionInput, 'A helpful assistant');
       });
 
       // Wait for form state to update
@@ -370,7 +374,7 @@ describe('PalSheet', () => {
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('submit-button'));
+        await fireEvent.press(getByTestId('submit-button'));
       });
 
       await waitFor(() => {
@@ -385,15 +389,18 @@ describe('PalSheet', () => {
     });
 
     it('creates a new pal with all fields filled', async () => {
-      const {getByText, getByTestId} = renderPalSheet(createBasicPal());
+      const {getByText, getByTestId} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
       const descriptionInput = getByTestId('form-field-description');
 
-      fireEvent.changeText(nameInput, 'Complete Pal');
-      fireEvent.changeText(descriptionInput, 'A complete pal with all fields');
+      await fireEvent.changeText(nameInput, 'Complete Pal');
+      await fireEvent.changeText(
+        descriptionInput,
+        'A complete pal with all fields',
+      );
 
-      fireEvent.press(getByText('Create'));
+      await fireEvent.press(getByText('Create'));
 
       await waitFor(() => {
         expect(palStore.createPal).toHaveBeenCalled();
@@ -411,17 +418,17 @@ describe('PalSheet', () => {
         },
       ];
 
-      const {getByText, getByTestId} = renderPalSheet(
+      const {getByText, getByTestId} = await renderPalSheet(
         createBasicPal({parameterSchema}),
       );
 
       const nameInput = getByTestId('form-field-name');
       const worldInput = getByTestId('dynamic-field-world');
 
-      fireEvent.changeText(nameInput, 'Story Pal');
-      fireEvent.changeText(worldInput, 'Fantasy Kingdom');
+      await fireEvent.changeText(nameInput, 'Story Pal');
+      await fireEvent.changeText(worldInput, 'Fantasy Kingdom');
 
-      fireEvent.press(getByText('Create'));
+      await fireEvent.press(getByText('Create'));
 
       await waitFor(() => {
         expect(palStore.createPal).toHaveBeenCalledWith(
@@ -436,12 +443,13 @@ describe('PalSheet', () => {
 
   describe('Form Submission - Update Existing Pal', () => {
     it('updates an existing pal with modified data', async () => {
-      const {getByText, getByTestId} = renderPalSheet(createExistingPal());
+      const {getByText, getByTestId} =
+        await renderPalSheet(createExistingPal());
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Updated Pal Name');
+      await fireEvent.changeText(nameInput, 'Updated Pal Name');
 
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
 
       await waitFor(() => {
         expect(palStore.updatePal).toHaveBeenCalledWith(
@@ -455,12 +463,13 @@ describe('PalSheet', () => {
     });
 
     it('preserves existing properties when updating', async () => {
-      const {getByText, getByTestId} = renderPalSheet(createExistingPal());
+      const {getByText, getByTestId} =
+        await renderPalSheet(createExistingPal());
 
       const descriptionInput = getByTestId('form-field-description');
-      fireEvent.changeText(descriptionInput, 'Updated Description');
+      await fireEvent.changeText(descriptionInput, 'Updated Description');
 
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
 
       await waitFor(() => {
         expect(palStore.updatePal).toHaveBeenCalledWith(
@@ -483,7 +492,7 @@ describe('PalSheet', () => {
         },
       ];
 
-      const {getByText, getByTestId} = renderPalSheet(
+      const {getByText, getByTestId} = await renderPalSheet(
         createExistingPal({
           parameterSchema,
           parameters: {world: 'Old World'},
@@ -491,9 +500,9 @@ describe('PalSheet', () => {
       );
 
       const worldInput = getByTestId('dynamic-field-world');
-      fireEvent.changeText(worldInput, 'New World');
+      await fireEvent.changeText(worldInput, 'New World');
 
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
 
       await waitFor(() => {
         expect(palStore.updatePal).toHaveBeenCalledWith(
@@ -515,13 +524,15 @@ describe('PalSheet', () => {
       });
       (palStore.createPal as jest.Mock).mockReturnValue(createPromise);
 
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Test Pal');
+      await fireEvent.changeText(nameInput, 'Test Pal');
 
       const createButton = getByTestId('submit-button');
-      fireEvent.press(createButton);
+      // v14: fireEvent.press awaits the save handler, which awaits
+      // createPal — start the press without awaiting it, then resolve.
+      const pressPromise = fireEvent.press(createButton);
 
       // Button should be disabled while saving
       await waitFor(() => {
@@ -530,6 +541,7 @@ describe('PalSheet', () => {
 
       // Resolve the promise
       resolveCreate!({id: 'new-pal-id'});
+      await pressPromise;
 
       // Button should be enabled again after saving
       await waitFor(() => {
@@ -547,12 +559,12 @@ describe('PalSheet', () => {
         new Error('Save failed'),
       );
 
-      const {getByText, getByTestId} = renderPalSheet(createBasicPal());
+      const {getByText, getByTestId} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Test Pal');
+      await fireEvent.changeText(nameInput, 'Test Pal');
 
-      fireEvent.press(getByText('Create'));
+      await fireEvent.press(getByText('Create'));
 
       await waitFor(() => {
         expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -572,12 +584,13 @@ describe('PalSheet', () => {
         new Error('Update failed'),
       );
 
-      const {getByText, getByTestId} = renderPalSheet(createExistingPal());
+      const {getByText, getByTestId} =
+        await renderPalSheet(createExistingPal());
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Updated Name');
+      await fireEvent.changeText(nameInput, 'Updated Name');
 
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
 
       await waitFor(() => {
         expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -591,16 +604,16 @@ describe('PalSheet', () => {
   });
 
   describe('Form Reset', () => {
-    it('resets form when sheet is closed and reopened', () => {
-      const {getByTestId, rerender} = renderPalSheet(createBasicPal());
+    it('resets form when sheet is closed and reopened', async () => {
+      const {getByTestId, rerender} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Temporary Name');
+      await fireEvent.changeText(nameInput, 'Temporary Name');
 
       expect(nameInput.props.value).toBe('Temporary Name');
 
       // Close the sheet
-      rerender(
+      await rerender(
         <L10nContext.Provider value={l10n.en}>
           <PalSheet
             isVisible={false}
@@ -611,7 +624,7 @@ describe('PalSheet', () => {
       );
 
       // Reopen the sheet
-      rerender(
+      await rerender(
         <L10nContext.Provider value={l10n.en}>
           <PalSheet
             isVisible={true}
@@ -628,14 +641,14 @@ describe('PalSheet', () => {
 
   describe('Different Pal Types', () => {
     it('handles video pal creation', async () => {
-      const {getByText, getByTestId} = renderPalSheet(
+      const {getByText, getByTestId} = await renderPalSheet(
         createBasicPal({capabilities: {video: true}}),
       );
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Video Pal');
+      await fireEvent.changeText(nameInput, 'Video Pal');
 
-      fireEvent.press(getByText('Create'));
+      await fireEvent.press(getByText('Create'));
 
       await waitFor(() => {
         expect(palStore.createPal).toHaveBeenCalledWith(
@@ -648,7 +661,7 @@ describe('PalSheet', () => {
     });
 
     it('handles palshub pal editing', async () => {
-      const {getByText, getByTestId} = renderPalSheet(
+      const {getByText, getByTestId} = await renderPalSheet(
         createExistingPal({
           source: 'palshub',
           palshub_id: 'palshub-123',
@@ -656,9 +669,9 @@ describe('PalSheet', () => {
       );
 
       const nameInput = getByTestId('form-field-name');
-      fireEvent.changeText(nameInput, 'Updated PalsHub Pal');
+      await fireEvent.changeText(nameInput, 'Updated PalsHub Pal');
 
-      fireEvent.press(getByText('Save'));
+      await fireEvent.press(getByText('Save'));
 
       await waitFor(() => {
         expect(palStore.updatePal).toHaveBeenCalledWith(
@@ -680,7 +693,7 @@ describe('PalSheet', () => {
         max_tokens: 1024,
       };
 
-      const {getByText, getByTestId} = renderPalSheet(
+      const {getByText, getByTestId} = await renderPalSheet(
         createExistingPal({completionSettings}),
       );
 
@@ -693,11 +706,11 @@ describe('PalSheet', () => {
       const nameInput = getByTestId('form-field-name');
 
       await act(async () => {
-        fireEvent.changeText(nameInput, 'Updated Pal');
+        await fireEvent.changeText(nameInput, 'Updated Pal');
       });
 
       await act(async () => {
-        fireEvent.press(getByText('Save'));
+        await fireEvent.press(getByText('Save'));
       });
 
       await waitFor(() => {
@@ -724,32 +737,40 @@ describe('PalSheet', () => {
       resetRegisteredFlag();
     });
 
-    it('renders talent section in PalSheet', () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+    it('renders talent section in PalSheet', async () => {
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       expect(getByTestId('talent-section')).toBeTruthy();
     });
 
     it('creates a pal with talents selected and correct pact', async () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       // Fill required name field
       const nameInput = getByTestId('form-field-name');
       await act(async () => {
-        fireEvent.changeText(nameInput, 'Pal With Talents');
+        await fireEvent.changeText(nameInput, 'Pal With Talents');
       });
 
       // Toggle calculate and datetime talents on
       await act(async () => {
-        fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', true);
+        await fireEvent(
+          getByTestId('talent-switch-calculate'),
+          'valueChange',
+          true,
+        );
       });
       await act(async () => {
-        fireEvent(getByTestId('talent-switch-datetime'), 'valueChange', true);
+        await fireEvent(
+          getByTestId('talent-switch-datetime'),
+          'valueChange',
+          true,
+        );
       });
 
       // Submit the form
       await act(async () => {
-        fireEvent.press(getByTestId('submit-button'));
+        await fireEvent.press(getByTestId('submit-button'));
       });
 
       await waitFor(() => {
@@ -767,8 +788,8 @@ describe('PalSheet', () => {
       });
     });
 
-    it('edits a pal with existing pact.talents and pre-selects switches', () => {
-      const {getByTestId} = renderPalSheet(
+    it('edits a pal with existing pact.talents and pre-selects switches', async () => {
+      const {getByTestId} = await renderPalSheet(
         createExistingPal({
           pact: {
             talents: [
@@ -788,7 +809,7 @@ describe('PalSheet', () => {
     });
 
     it('removing all talents results in pact with empty talents array', async () => {
-      const {getByTestId, getByText} = renderPalSheet(
+      const {getByTestId, getByText} = await renderPalSheet(
         createExistingPal({
           pact: {
             talents: [{name: 'calculate', necessity: 'required'}],
@@ -801,12 +822,16 @@ describe('PalSheet', () => {
 
       // Toggle calculate off
       await act(async () => {
-        fireEvent(getByTestId('talent-switch-calculate'), 'valueChange', false);
+        await fireEvent(
+          getByTestId('talent-switch-calculate'),
+          'valueChange',
+          false,
+        );
       });
 
       // Submit the form
       await act(async () => {
-        fireEvent.press(getByText('Save'));
+        await fireEvent.press(getByText('Save'));
       });
 
       await waitFor(() => {
@@ -820,15 +845,15 @@ describe('PalSheet', () => {
     });
 
     it('creates a pal with no talents selected and pact has empty talents', async () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
       await act(async () => {
-        fireEvent.changeText(nameInput, 'No Talents Pal');
+        await fireEvent.changeText(nameInput, 'No Talents Pal');
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('submit-button'));
+        await fireEvent.press(getByTestId('submit-button'));
       });
 
       await waitFor(() => {
@@ -844,40 +869,43 @@ describe('PalSheet', () => {
 
   describe('Greeting save predicate', () => {
     it('creates a pal with greeting text and two suggested prompts', async () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       const nameInput = getByTestId('form-field-name');
       await act(async () => {
-        fireEvent.changeText(nameInput, 'Friendly Greeter');
+        await fireEvent.changeText(nameInput, 'Friendly Greeter');
       });
 
       const greetingInput = getByTestId('form-field-greetingText');
       await act(async () => {
-        fireEvent.changeText(greetingInput, 'Hi! What can I help with today?');
+        await fireEvent.changeText(
+          greetingInput,
+          'Hi! What can I help with today?',
+        );
       });
 
       // Add two prompt rows and fill each.
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-add-button'));
+        await fireEvent.press(getByTestId('suggested-prompt-add-button'));
       });
       await act(async () => {
-        fireEvent.changeText(
+        await fireEvent.changeText(
           getByTestId('suggested-prompt-input-0'),
           'Summarize a webpage',
         );
       });
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-add-button'));
+        await fireEvent.press(getByTestId('suggested-prompt-add-button'));
       });
       await act(async () => {
-        fireEvent.changeText(
+        await fireEvent.changeText(
           getByTestId('suggested-prompt-input-1'),
           'Brainstorm a name',
         );
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('submit-button'));
+        await fireEvent.press(getByTestId('submit-button'));
       });
 
       await waitFor(() => {
@@ -894,7 +922,7 @@ describe('PalSheet', () => {
     });
 
     it('clears greeting on save by writing the empty-object sentinel', async () => {
-      const {getByTestId, getByText} = renderPalSheet(
+      const {getByTestId, getByText} = await renderPalSheet(
         createExistingPal({
           greeting: {
             text: 'Old greeting',
@@ -915,16 +943,16 @@ describe('PalSheet', () => {
 
       // Clear the greeting text.
       await act(async () => {
-        fireEvent.changeText(getByTestId('form-field-greetingText'), '');
+        await fireEvent.changeText(getByTestId('form-field-greetingText'), '');
       });
 
       // Remove the only prompt row.
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-remove-0'));
+        await fireEvent.press(getByTestId('suggested-prompt-remove-0'));
       });
 
       await act(async () => {
-        fireEvent.press(getByText('Save'));
+        await fireEvent.press(getByText('Save'));
       });
 
       await waitFor(() => {
@@ -941,28 +969,34 @@ describe('PalSheet', () => {
       // Whitespace-only text has length > 0, so the predicate is true and the
       // text is saved verbatim (no trim) — mirror of the PalsHub wire-side
       // predicate.
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       await act(async () => {
-        fireEvent.changeText(getByTestId('form-field-name'), 'Whitespace Pal');
+        await fireEvent.changeText(
+          getByTestId('form-field-name'),
+          'Whitespace Pal',
+        );
       });
 
       await act(async () => {
-        fireEvent.changeText(getByTestId('form-field-greetingText'), '   ');
+        await fireEvent.changeText(
+          getByTestId('form-field-greetingText'),
+          '   ',
+        );
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-add-button'));
+        await fireEvent.press(getByTestId('suggested-prompt-add-button'));
       });
       await act(async () => {
-        fireEvent.changeText(
+        await fireEvent.changeText(
           getByTestId('suggested-prompt-input-0'),
           'Tell me a joke',
         );
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('submit-button'));
+        await fireEvent.press(getByTestId('submit-button'));
       });
 
       await waitFor(() => {
@@ -978,21 +1012,27 @@ describe('PalSheet', () => {
     });
 
     it('emits greeting with empty text when only prompts are filled', async () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       await act(async () => {
-        fireEvent.changeText(getByTestId('form-field-name'), 'Prompts Only');
+        await fireEvent.changeText(
+          getByTestId('form-field-name'),
+          'Prompts Only',
+        );
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-add-button'));
+        await fireEvent.press(getByTestId('suggested-prompt-add-button'));
       });
       await act(async () => {
-        fireEvent.changeText(getByTestId('suggested-prompt-input-0'), 'Hello');
+        await fireEvent.changeText(
+          getByTestId('suggested-prompt-input-0'),
+          'Hello',
+        );
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('submit-button'));
+        await fireEvent.press(getByTestId('submit-button'));
       });
 
       await waitFor(() => {
@@ -1010,17 +1050,18 @@ describe('PalSheet', () => {
     it('writes the sentinel when editing a greetingless pal and leaving fields blank', async () => {
       // No-op symmetry case: a pal with no greeting today, no greeting edits
       // made, still saves with the sentinel. Observable behaviour: nothing.
-      const {getByTestId, getByText} = renderPalSheet(createExistingPal());
+      const {getByTestId, getByText} =
+        await renderPalSheet(createExistingPal());
 
       await act(async () => {
-        fireEvent.changeText(
+        await fireEvent.changeText(
           getByTestId('form-field-description'),
           'Updated description only',
         );
       });
 
       await act(async () => {
-        fireEvent.press(getByText('Save'));
+        await fireEvent.press(getByText('Save'));
       });
 
       await waitFor(() => {
@@ -1034,8 +1075,8 @@ describe('PalSheet', () => {
       });
     });
 
-    it('seeds editor fields from an existing pal greeting on open', () => {
-      const {getByTestId} = renderPalSheet(
+    it('seeds editor fields from an existing pal greeting on open', async () => {
+      const {getByTestId} = await renderPalSheet(
         createExistingPal({
           greeting: {
             text: 'Hello',
@@ -1050,39 +1091,48 @@ describe('PalSheet', () => {
     });
 
     it('trims each prompt and drops empty rows before saving', async () => {
-      const {getByTestId} = renderPalSheet(createBasicPal());
+      const {getByTestId} = await renderPalSheet(createBasicPal());
 
       await act(async () => {
-        fireEvent.changeText(getByTestId('form-field-name'), 'Trim Pal');
+        await fireEvent.changeText(getByTestId('form-field-name'), 'Trim Pal');
       });
 
       await act(async () => {
-        fireEvent.changeText(getByTestId('form-field-greetingText'), 'Hi');
+        await fireEvent.changeText(
+          getByTestId('form-field-greetingText'),
+          'Hi',
+        );
       });
 
       // Row 0: '  a  ' (whitespace around content — should be trimmed to 'a')
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-add-button'));
+        await fireEvent.press(getByTestId('suggested-prompt-add-button'));
       });
       await act(async () => {
-        fireEvent.changeText(getByTestId('suggested-prompt-input-0'), '  a  ');
+        await fireEvent.changeText(
+          getByTestId('suggested-prompt-input-0'),
+          '  a  ',
+        );
       });
 
       // Row 1: '' (empty — should be dropped)
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-add-button'));
+        await fireEvent.press(getByTestId('suggested-prompt-add-button'));
       });
 
       // Row 2: '   ' (whitespace-only — should be dropped)
       await act(async () => {
-        fireEvent.press(getByTestId('suggested-prompt-add-button'));
+        await fireEvent.press(getByTestId('suggested-prompt-add-button'));
       });
       await act(async () => {
-        fireEvent.changeText(getByTestId('suggested-prompt-input-2'), '   ');
+        await fireEvent.changeText(
+          getByTestId('suggested-prompt-input-2'),
+          '   ',
+        );
       });
 
       await act(async () => {
-        fireEvent.press(getByTestId('submit-button'));
+        await fireEvent.press(getByTestId('submit-button'));
       });
 
       await waitFor(() => {

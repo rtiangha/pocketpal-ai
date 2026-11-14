@@ -67,7 +67,7 @@ describe('useChatSession — AssistantTurn integration', () => {
           };
         });
     }
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -123,7 +123,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     }
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -153,7 +153,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const ref: {
       current: {createdAt: number; id: string; sessionId: string} | null;
     } = {current: null};
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession(ref, textMessage.author, mockAssistant),
     );
 
@@ -238,7 +238,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const ref: {
       current: {createdAt: number; id: string; sessionId: string} | null;
     } = {current: null};
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession(ref, textMessage.author, mockAssistant),
     );
 
@@ -304,7 +304,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const ref: {
       current: {createdAt: number; id: string; sessionId: string} | null;
     } = {current: null};
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession(ref, textMessage.author, mockAssistant),
     );
 
@@ -367,7 +367,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const ref: {
       current: {createdAt: number; id: string; sessionId: string} | null;
     } = {current: null};
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession(ref, textMessage.author, mockAssistant),
     );
 
@@ -474,7 +474,7 @@ describe('useChatSession — AssistantTurn integration', () => {
       });
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -565,7 +565,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const appendToolOutcomeSpy =
       chatSessionStore.appendToolOutcome as jest.Mock;
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -610,7 +610,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     }
     modelStore.setInferencing(true);
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     // Fire-and-forget the send so handleStopPress can interrupt it.
@@ -732,7 +732,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const appendToolOutcomeSpy =
       chatSessionStore.appendToolOutcome as jest.Mock;
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -869,7 +869,7 @@ describe('useChatSession — AssistantTurn integration', () => {
       });
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -979,7 +979,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const appendToolOutcomeSpy =
       chatSessionStore.appendToolOutcome as jest.Mock;
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -1081,7 +1081,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const appendToolOutcomeSpy =
       chatSessionStore.appendToolOutcome as jest.Mock;
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     const sendPromise = result.current.handleSendPress(textMessage);
@@ -1181,7 +1181,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     });
 
     try {
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
       (chatSessionStore.appendToolCall as jest.Mock).mockImplementationOnce(
@@ -1278,7 +1278,7 @@ describe('useChatSession — AssistantTurn integration', () => {
     const updateMessageSpy = chatSessionStore.updateMessage as jest.Mock;
     updateMessageSpy.mockClear();
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession(ref, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -1354,7 +1354,7 @@ describe('useChatSession — AssistantTurn integration', () => {
           stopped_limit: 1,
         });
       }
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1389,7 +1389,7 @@ describe('useChatSession — AssistantTurn integration', () => {
           content: 'hello',
         });
       }
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1409,7 +1409,7 @@ describe('useChatSession — AssistantTurn integration', () => {
           content: 'hello',
         });
       }
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1431,7 +1431,7 @@ describe('useChatSession — AssistantTurn integration', () => {
           tokens_predicted: 12,
         });
       }
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1462,7 +1462,7 @@ describe('useChatSession — AssistantTurn integration', () => {
           tokens_predicted: 600,
         });
       }
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1490,7 +1490,7 @@ describe('useChatSession — AssistantTurn integration', () => {
       const ref: {
         current: {createdAt: number; id: string; sessionId: string} | null;
       } = {current: null};
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession(ref, textMessage.author, mockAssistant),
       );
 
@@ -1579,7 +1579,7 @@ describe('useChatSession — AssistantTurn integration', () => {
       const ref: {
         current: {createdAt: number; id: string; sessionId: string} | null;
       } = {current: null};
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession(ref, textMessage.author, mockAssistant),
       );
       overflowSession('turn-remote-overflow', []);
@@ -1625,7 +1625,7 @@ describe('useChatSession — AssistantTurn integration', () => {
       const ref: {
         current: {createdAt: number; id: string; sessionId: string} | null;
       } = {current: null};
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession(ref, textMessage.author, mockAssistant),
       );
       overflowSession('turn-remote-overflow-partial', [{content: 'partial'}]);
@@ -1658,7 +1658,7 @@ describe('useChatSession — AssistantTurn integration', () => {
         tokens_predicted: 600,
       });
     }
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 

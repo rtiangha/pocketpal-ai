@@ -17,8 +17,8 @@ const setFrame = (width: number, height: number) => {
 };
 
 describe('useAppWindowFillsScreen', () => {
-  afterEach(() => {
-    act(() => {
+  afterEach(async () => {
+    await act(() => {
       Dimensions.set(initialDimensions);
     });
     (useSafeAreaFrame as jest.Mock).mockReset();
@@ -30,10 +30,10 @@ describe('useAppWindowFillsScreen', () => {
     ['equals the screen', screen.width, screen.height],
     ['is within 1 dp of the screen', screen.width - 0.4, screen.height - 0.4],
     ['is the screen transposed', screen.height, screen.width],
-  ])('is true when the frame %s', (_, width, height) => {
+  ])('is true when the frame %s', async (_, width, height) => {
     setFrame(width, height);
 
-    const {result} = renderHook(() => useAppWindowFillsScreen());
+    const {result} = await renderHook(() => useAppWindowFillsScreen());
 
     expect(result.current).toBe(true);
   });
@@ -41,19 +41,22 @@ describe('useAppWindowFillsScreen', () => {
   it.each([
     ['shorter', screen.width, screen.height - 100],
     ['narrower', screen.width - 100, screen.height],
-  ])('is false when the frame is %s than the screen', (_, width, height) => {
-    setFrame(width, height);
+  ])(
+    'is false when the frame is %s than the screen',
+    async (_, width, height) => {
+      setFrame(width, height);
 
-    const {result} = renderHook(() => useAppWindowFillsScreen());
+      const {result} = await renderHook(() => useAppWindowFillsScreen());
 
-    expect(result.current).toBe(false);
-  });
+      expect(result.current).toBe(false);
+    },
+  );
 
-  it('re-evaluates when the screen changes', () => {
+  it('re-evaluates when the screen changes', async () => {
     setFrame(screen.width, screen.height);
-    const {result} = renderHook(() => useAppWindowFillsScreen());
+    const {result} = await renderHook(() => useAppWindowFillsScreen());
 
-    act(() => {
+    await act(() => {
       Dimensions.set({
         ...initialDimensions,
         screen: {...screen, height: screen.height + 100},
@@ -69,29 +72,29 @@ describe('screen subscription', () => {
     jest.restoreAllMocks();
   });
 
-  it('shares one Dimensions listener across consumers', () => {
+  it('shares one Dimensions listener across consumers', async () => {
     const addEventListener = jest.spyOn(Dimensions, 'addEventListener');
 
-    const first = renderHook(() => useScreenHeight());
-    const second = renderHook(() => useAppWindowFillsScreen());
+    const first = await renderHook(() => useScreenHeight());
+    const second = await renderHook(() => useAppWindowFillsScreen());
 
     expect(addEventListener).toHaveBeenCalledTimes(1);
-    first.unmount();
-    second.unmount();
+    await first.unmount();
+    await second.unmount();
   });
 
-  it('removes the listener once the last consumer unmounts', () => {
+  it('removes the listener once the last consumer unmounts', async () => {
     const remove = jest.fn();
     jest
       .spyOn(Dimensions, 'addEventListener')
       .mockReturnValue({remove} as never);
 
-    const first = renderHook(() => useScreenHeight());
-    const second = renderHook(() => useScreenHeight());
-    first.unmount();
+    const first = await renderHook(() => useScreenHeight());
+    const second = await renderHook(() => useScreenHeight());
+    await first.unmount();
     expect(remove).not.toHaveBeenCalled();
 
-    second.unmount();
+    await second.unmount();
     expect(remove).toHaveBeenCalledTimes(1);
   });
 });

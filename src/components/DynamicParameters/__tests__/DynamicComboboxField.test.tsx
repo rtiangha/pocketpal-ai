@@ -24,8 +24,8 @@ describe('DynamicComboboxField', () => {
     description: 'Choose or type a language',
   };
 
-  it('should render with label and description', () => {
-    const {getByText} = render(
+  it('should render with label and description', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={mockParameter} />
       </TestWrapper>,
@@ -35,10 +35,10 @@ describe('DynamicComboboxField', () => {
     expect(getByText('Choose or type a language')).toBeTruthy();
   });
 
-  it('should show required indicator when required', () => {
+  it('should show required indicator when required', async () => {
     const requiredParameter = {...mockParameter, required: true};
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={requiredParameter} />
       </TestWrapper>,
@@ -47,8 +47,8 @@ describe('DynamicComboboxField', () => {
     expect(getByText('Test Combobox*')).toBeTruthy();
   });
 
-  it('should render input with placeholder', () => {
-    const {getByPlaceholderText} = render(
+  it('should render input with placeholder', async () => {
+    const {getByPlaceholderText} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={mockParameter} />
       </TestWrapper>,
@@ -57,28 +57,28 @@ describe('DynamicComboboxField', () => {
     expect(getByPlaceholderText('Type or select a language')).toBeTruthy();
   });
 
-  it('should handle text input changes (free text)', () => {
-    const {getByTestId} = render(
+  it('should handle text input changes (free text)', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={mockParameter} />
       </TestWrapper>,
     );
 
     const input = getByTestId('dynamic-combobox-input-testCombobox');
-    fireEvent.changeText(input, 'Custom Language');
+    await fireEvent.changeText(input, 'Custom Language');
 
     expect(input.props.value).toBe('Custom Language');
   });
 
-  it('should filter options by typed text (case-insensitive)', () => {
-    const {getByTestId, queryByTestId} = render(
+  it('should filter options by typed text (case-insensitive)', async () => {
+    const {getByTestId, queryByTestId} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={mockParameter} />
       </TestWrapper>,
     );
 
     const input = getByTestId('dynamic-combobox-input-testCombobox');
-    fireEvent.changeText(input, 'en');
+    await fireEvent.changeText(input, 'en');
 
     // "English" and "French" contain "en"
     expect(
@@ -98,8 +98,8 @@ describe('DynamicComboboxField', () => {
     ).toBeNull();
   });
 
-  it('should select a menu option and update the input value', () => {
-    const {getByTestId} = render(
+  it('should select a menu option and update the input value', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={mockParameter} />
       </TestWrapper>,
@@ -108,24 +108,24 @@ describe('DynamicComboboxField', () => {
     const input = getByTestId('dynamic-combobox-input-testCombobox');
 
     // Focus to show menu
-    fireEvent(input, 'focus');
+    await fireEvent(input, 'focus');
 
     // Select an option
     const option = getByTestId('dynamic-combobox-option-testCombobox-French');
-    fireEvent.press(option);
+    await fireEvent.press(option);
 
     expect(input.props.value).toBe('French');
   });
 
-  it('should show all options when input is empty and focused', () => {
-    const {getByTestId} = render(
+  it('should show all options when input is empty and focused', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={mockParameter} />
       </TestWrapper>,
     );
 
     const input = getByTestId('dynamic-combobox-input-testCombobox');
-    fireEvent(input, 'focus');
+    await fireEvent(input, 'focus');
 
     expect(
       getByTestId('dynamic-combobox-option-testCombobox-English'),
@@ -141,8 +141,8 @@ describe('DynamicComboboxField', () => {
     ).toBeTruthy();
   });
 
-  it('should display error message when provided', () => {
-    const {getByText} = render(
+  it('should display error message when provided', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicComboboxField
           parameter={mockParameter}
@@ -154,8 +154,8 @@ describe('DynamicComboboxField', () => {
     expect(getByText('This field is required')).toBeTruthy();
   });
 
-  it('should be disabled when disabled prop is true', () => {
-    const {getByTestId} = render(
+  it('should be disabled when disabled prop is true', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={mockParameter} disabled={true} />
       </TestWrapper>,
@@ -165,8 +165,8 @@ describe('DynamicComboboxField', () => {
     expect(input.props.editable).toBe(false);
   });
 
-  it('should use default value from form context', () => {
-    const {getByTestId} = render(
+  it('should use default value from form context', async () => {
+    const {getByTestId} = await render(
       <TestWrapper defaultValues={{testCombobox: 'German'}}>
         <DynamicComboboxField parameter={mockParameter} />
       </TestWrapper>,
@@ -176,10 +176,10 @@ describe('DynamicComboboxField', () => {
     expect(input.props.value).toBe('German');
   });
 
-  it('should handle empty options array', () => {
+  it('should handle empty options array', async () => {
     const parameterWithoutOptions = {...mockParameter, options: []};
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={parameterWithoutOptions} />
       </TestWrapper>,
@@ -189,10 +189,10 @@ describe('DynamicComboboxField', () => {
     expect(input).toBeTruthy();
   });
 
-  it('should handle undefined options', () => {
+  it('should handle undefined options', async () => {
     const parameterWithoutOptions = {...mockParameter, options: undefined};
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicComboboxField parameter={parameterWithoutOptions} />
       </TestWrapper>,

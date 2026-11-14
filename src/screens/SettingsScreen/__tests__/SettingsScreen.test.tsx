@@ -1,14 +1,14 @@
 import React from 'react';
 import {getBackendDevicesInfo} from 'llama.rn';
-import {Platform, Keyboard} from 'react-native';
+import {Platform, Keyboard, StyleSheet} from 'react-native';
 import {runInAction} from 'mobx';
-import {Divider} from 'react-native-paper';
 
 import {
   fireEvent,
   render as baseRender,
   waitFor,
   act,
+  screen,
 } from '../../../../jest/test-utils';
 
 import {SettingsScreen} from '../SettingsScreen';
@@ -21,7 +21,33 @@ import {
   asrStore,
   voiceModeStore,
 } from '../../../store';
-import {Menu} from '../../../components';
+
+// RNTL v14 no longer exposes the app Menu's props in the host tree, so
+// capture them via a thin mock. It renders children only when visible,
+// preserving the items-presence behaviour the tests rely on.
+const mockCapturedMenus: any[] = [];
+jest.mock('../../../components/Menu', () => {
+  const actual = jest.requireActual('../../../components/Menu');
+  const {createElement, Fragment, isValidElement} = require('react');
+  const MenuMock = (props: any) => {
+    mockCapturedMenus.push(props);
+    // Paper renders the anchor (the trigger element) whether the menu is
+    // open or closed; children only when visible. The anchor may be an
+    // element, a coordinate {x, y}, or a function returning an element.
+    const anchor =
+      typeof props.anchor === 'function' ? props.anchor() : props.anchor;
+    return createElement(
+      Fragment,
+      null,
+      isValidElement(anchor) ? anchor : null,
+      props.visible ? props.children : null,
+    );
+  };
+  MenuMock.Item = actual.Menu.Item;
+  MenuMock.Separator = actual.Menu.Separator;
+  MenuMock.GroupSeparator = actual.Menu.GroupSeparator;
+  return {...actual, Menu: MenuMock};
+});
 import {l10n, t} from '../../../locales';
 import {
   ASR_DISK_HEADROOM_FACTOR,
@@ -31,8 +57,8 @@ import {
 
 jest.useFakeTimers();
 
-const render = (ui: React.ReactElement, options: any = {}) =>
-  baseRender(ui, {withBottomSheetProvider: true, ...options});
+const render = async (ui: React.ReactElement, options: any = {}) =>
+  await baseRender(ui, {withBottomSheetProvider: true, ...options});
 
 describe('SettingsScreen', () => {
   beforeEach(() => {
@@ -63,7 +89,7 @@ describe('SettingsScreen', () => {
         modelStore.contextInitParams.flash_attn_type = 'off';
       });
       try {
-        const {getByTestId} = render(<SettingsScreen />, {
+        const {getByTestId} = await render(<SettingsScreen />, {
           withSafeArea: true,
           withNavigation: true,
         });
@@ -73,9 +99,9 @@ describe('SettingsScreen', () => {
               .checked,
           ).toBe(true);
         });
-        act(() => {
-          fireEvent.press(getByTestId('device-option-cpu'));
-          fireEvent.press(getByTestId('device-option-hexagon'));
+        await act(async () => {
+          await fireEvent.press(getByTestId('device-option-cpu'));
+          await fireEvent.press(getByTestId('device-option-hexagon'));
         });
         expect(modelStore.setDevices).toHaveBeenLastCalledWith(['HTP3']);
         expect(modelStore.setFlashAttnType).not.toHaveBeenCalled();
@@ -90,7 +116,7 @@ describe('SettingsScreen', () => {
   );
 
   it('renders settings screen correctly', async () => {
-    const {getByText, getByDisplayValue} = render(<SettingsScreen />, {
+    const {getByText, getByDisplayValue} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
@@ -103,21 +129,21 @@ describe('SettingsScreen', () => {
 
   it('updates context size correctly', async () => {
     jest.useFakeTimers();
-    const {getByDisplayValue} = render(<SettingsScreen />, {
+    const {getByDisplayValue} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     const contextSizeInput = getByDisplayValue('2048');
 
-    act(() => {
-      fireEvent.changeText(contextSizeInput, '512');
+    await act(async () => {
+      await fireEvent.changeText(contextSizeInput, '512');
     });
-    act(() => {
-      fireEvent(contextSizeInput, 'blur');
+    await act(async () => {
+      await fireEvent(contextSizeInput, 'blur');
     });
 
     // Advance timers within act to handle React state updates
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(501); // Wait for debounce
     });
 
@@ -127,28 +153,28 @@ describe('SettingsScreen', () => {
   });
 
   it('displays error for invalid context size input', async () => {
-    const {getByDisplayValue, getByText} = render(<SettingsScreen />, {
+    const {getByDisplayValue, getByText} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     const contextSizeInput = getByDisplayValue('2048');
 
     await act(async () => {
-      fireEvent.changeText(contextSizeInput, '100'); // Below minimum size
+      await fireEvent.changeText(contextSizeInput, '100'); // Below minimum size
     });
 
     expect(getByText('Please enter a valid number (minimum 200)')).toBeTruthy();
   });
 
   it('handles outside press correctly and resets input', async () => {
-    const {getByDisplayValue, getByText} = render(<SettingsScreen />, {
+    const {getByDisplayValue, getByText} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     const contextSizeInput = getByDisplayValue('2048');
 
-    fireEvent.changeText(contextSizeInput, '512');
-    fireEvent.press(getByText('Model Initialization Settings'));
+    await fireEvent.changeText(contextSizeInput, '512');
+    await fireEvent.press(getByText('Model Initialization Settings'));
 
     await waitFor(() => {
       expect(Keyboard.dismiss).toHaveBeenCalled();
@@ -157,7 +183,7 @@ describe('SettingsScreen', () => {
   });
 
   it('re-syncs the displayed context size when n_ctx changes externally', async () => {
-    const {getByDisplayValue, rerender} = render(<SettingsScreen />, {
+    const {getByDisplayValue, rerender} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
@@ -168,7 +194,7 @@ describe('SettingsScreen', () => {
     runInAction(() => {
       modelStore.contextInitParams.n_ctx = 8192;
     });
-    rerender(<SettingsScreen />);
+    await rerender(<SettingsScreen />);
 
     await waitFor(() => {
       expect(getByDisplayValue('8192')).toBeTruthy();
@@ -180,42 +206,42 @@ describe('SettingsScreen', () => {
   });
 
   it('toggles Auto Offload/Load switch', async () => {
-    const {getByTestId} = render(<SettingsScreen />, {
+    const {getByTestId} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     const autoOffloadSwitch = getByTestId('auto-offload-load-switch');
 
     await act(async () => {
-      fireEvent(autoOffloadSwitch, 'valueChange', false);
+      await fireEvent(autoOffloadSwitch, 'valueChange', false);
     });
 
     expect(modelStore.updateUseAutoRelease).toHaveBeenCalledWith(false);
   });
 
   it('toggles Auto-Navigate to Chat switch', async () => {
-    const {getByTestId} = render(<SettingsScreen />, {
+    const {getByTestId} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     const autoNavigateSwitch = getByTestId('auto-navigate-to-chat-switch');
 
     await act(async () => {
-      fireEvent(autoNavigateSwitch, 'valueChange', false);
+      await fireEvent(autoNavigateSwitch, 'valueChange', false);
     });
 
     expect(uiStore.setAutoNavigateToChat).toHaveBeenCalledWith(false);
   });
 
   it('toggles Dark Mode switch', async () => {
-    const {getByTestId} = render(<SettingsScreen />, {
+    const {getByTestId} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     const darkModeSwitch = getByTestId('dark-mode-switch');
 
     await act(async () => {
-      fireEvent(darkModeSwitch, 'valueChange', true);
+      await fireEvent(darkModeSwitch, 'valueChange', true);
     });
 
     expect(uiStore.setColorScheme).toHaveBeenCalledWith('dark');
@@ -225,7 +251,7 @@ describe('SettingsScreen', () => {
     Platform.OS = 'ios';
     jest.useFakeTimers();
 
-    const {getByTestId} = render(<SettingsScreen />, {
+    const {getByTestId} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
@@ -234,20 +260,20 @@ describe('SettingsScreen', () => {
     });
     const gpuBtn = getByTestId('device-option-gpu');
 
-    act(() => {
-      fireEvent(gpuBtn, 'press');
+    await act(async () => {
+      await fireEvent(gpuBtn, 'press');
     });
 
     expect(modelStore.setDevices).toHaveBeenCalledWith(['Metal']);
 
     const gpuSlider = getByTestId('gpu-layers-slider');
 
-    act(() => {
-      fireEvent(gpuSlider, 'valueChange', 60);
+    await act(async () => {
+      await fireEvent(gpuSlider, 'valueChange', 60);
     });
 
     // Fast-forward time by 300ms to trigger debounced callback within act
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(300); // Wait for debounce
     });
 
@@ -255,14 +281,14 @@ describe('SettingsScreen', () => {
   });
 
   it('toggles Display Memory Usage switch', async () => {
-    const {getByTestId} = render(<SettingsScreen />, {
+    const {getByTestId} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
     const memoryUsageSwitch = getByTestId('display-memory-usage-switch');
 
     await act(async () => {
-      fireEvent(memoryUsageSwitch, 'valueChange', true);
+      await fireEvent(memoryUsageSwitch, 'valueChange', true);
     });
 
     expect(uiStore.setDisplayMemUsage).toHaveBeenCalledWith(true);
@@ -270,14 +296,14 @@ describe('SettingsScreen', () => {
 
   it('renders image max tokens slider in advanced settings', async () => {
     jest.useFakeTimers();
-    const {getByTestId, getByText} = render(<SettingsScreen />, {
+    const {getByTestId, getByText} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
 
     // Expand advanced settings
     const advancedSettingsButton = getByText('Advanced Settings');
-    fireEvent.press(advancedSettingsButton);
+    await fireEvent.press(advancedSettingsButton);
 
     await waitFor(() => {
       expect(getByTestId('image-max-tokens-slider')).toBeTruthy();
@@ -286,13 +312,13 @@ describe('SettingsScreen', () => {
 
   it('updates image max tokens correctly', async () => {
     jest.useFakeTimers();
-    const {getByTestId, getByText} = render(<SettingsScreen />, {
+    const {getByTestId, getByText} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
 
     // Expand advanced settings
-    fireEvent.press(getByText('Advanced Settings'));
+    await fireEvent.press(getByText('Advanced Settings'));
 
     await waitFor(() => {
       expect(getByTestId('image-max-tokens-slider')).toBeTruthy();
@@ -300,12 +326,12 @@ describe('SettingsScreen', () => {
 
     const slider = getByTestId('image-max-tokens-slider');
 
-    act(() => {
-      fireEvent(slider, 'onValueChange', 768);
+    await act(async () => {
+      await fireEvent(slider, 'onValueChange', 768);
     });
 
     // Fast-forward time by 300ms to trigger debounced callback within act
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(300);
     });
 
@@ -314,20 +340,20 @@ describe('SettingsScreen', () => {
 
   it('toggles the speculative decoding switch in advanced settings', async () => {
     jest.useFakeTimers();
-    const {getByTestId, getByText} = render(<SettingsScreen />, {
+    const {getByTestId, getByText} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
 
     // Expand advanced settings to reveal the speculative section.
-    fireEvent.press(getByText('Advanced Settings'));
+    await fireEvent.press(getByText('Advanced Settings'));
 
     await waitFor(() => {
       expect(getByTestId('speculative-decoding-switch')).toBeTruthy();
     });
 
-    act(() => {
-      fireEvent(
+    await act(async () => {
+      await fireEvent(
         getByTestId('speculative-decoding-switch'),
         'valueChange',
         true,
@@ -342,12 +368,15 @@ describe('SettingsScreen', () => {
     runInAction(() => {
       modelStore.contextInitParams.speculativeEnabled = false;
     });
-    const {getByTestId, getByText, queryByText} = render(<SettingsScreen />, {
-      withSafeArea: true,
-      withNavigation: true,
-    });
+    const {getByTestId, getByText, queryByText} = await render(
+      <SettingsScreen />,
+      {
+        withSafeArea: true,
+        withNavigation: true,
+      },
+    );
 
-    fireEvent.press(getByText('Advanced Settings'));
+    await fireEvent.press(getByText('Advanced Settings'));
 
     await waitFor(() => {
       expect(getByTestId('speculative-decoding-switch')).toBeTruthy();
@@ -383,8 +412,8 @@ describe('SettingsScreen', () => {
       mockNativeMethods.measure.mockReset();
     });
 
-    const openMenu = (element: any) => {
-      fireEvent.press(element);
+    const openMenu = async (element: any) => {
+      await fireEvent.press(element);
     };
 
     const setupDraftModels = () => {
@@ -435,7 +464,7 @@ describe('SettingsScreen', () => {
     });
 
     const openSpeculative = async (getByTestId: any, getByText: any) => {
-      fireEvent.press(getByText('Advanced Settings'));
+      await fireEvent.press(getByText('Advanced Settings'));
       await waitFor(() => {
         expect(getByTestId('speculative-decoding-switch')).toBeTruthy();
       });
@@ -444,18 +473,18 @@ describe('SettingsScreen', () => {
     it('picking a draft model calls setSelectedDraftModel with its id', async () => {
       jest.useFakeTimers();
       setupDraftModels();
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
 
       await openSpeculative(getByTestId, getByText);
 
-      openMenu(getByTestId('speculative-draft-model-picker'));
+      await openMenu(getByTestId('speculative-draft-model-picker'));
       await waitFor(() => {
         expect(getByText('Tiny Draft')).toBeTruthy();
       });
-      fireEvent.press(getByText('Tiny Draft'));
+      await fireEvent.press(getByText('Tiny Draft'));
 
       expect(modelStore.setSelectedDraftModel).toHaveBeenCalledWith(
         'a/b/draft.gguf',
@@ -468,18 +497,18 @@ describe('SettingsScreen', () => {
       runInAction(() => {
         modelStore.contextInitParams.selectedDraftModelId = 'a/b/draft.gguf';
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
 
       await openSpeculative(getByTestId, getByText);
 
-      openMenu(getByTestId('speculative-draft-model-picker'));
+      await openMenu(getByTestId('speculative-draft-model-picker'));
       await waitFor(() => {
         expect(getByText('None (embedded MTP)')).toBeTruthy();
       });
-      fireEvent.press(getByText('None (embedded MTP)'));
+      await fireEvent.press(getByText('None (embedded MTP)'));
 
       expect(modelStore.setSelectedDraftModel).toHaveBeenCalledWith(undefined);
     });
@@ -487,7 +516,7 @@ describe('SettingsScreen', () => {
     it('the draft GPU-layers slider writes setSpecDraftNGpuLayers', async () => {
       jest.useFakeTimers();
       setupDraftModels();
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -495,11 +524,11 @@ describe('SettingsScreen', () => {
       await openSpeculative(getByTestId, getByText);
 
       const slider = getByTestId('speculative-draft-gpu-layers-slider');
-      act(() => {
-        fireEvent(slider, 'valueChange', 42);
+      await act(async () => {
+        await fireEvent(slider, 'valueChange', 42);
       });
       // InputSlider debounces onValueChange (default 300ms).
-      act(() => {
+      await act(() => {
         jest.advanceTimersByTime(300);
       });
 
@@ -509,7 +538,7 @@ describe('SettingsScreen', () => {
     it('names the switch, draft picker, and GPU-layers slider for screen readers', async () => {
       jest.useFakeTimers();
       setupDraftModels();
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -547,10 +576,13 @@ describe('SettingsScreen', () => {
       runInAction(() => {
         modelStore.contextInitParams.spec_draft_cache_type_k = undefined;
       });
-      const {getByTestId, getByText, queryByText} = render(<SettingsScreen />, {
-        withSafeArea: true,
-        withNavigation: true,
-      });
+      const {getByTestId, getByText, queryByText} = await render(
+        <SettingsScreen />,
+        {
+          withSafeArea: true,
+          withNavigation: true,
+        },
+      );
 
       await openSpeculative(getByTestId, getByText);
 
@@ -572,7 +604,7 @@ describe('SettingsScreen', () => {
         modelStore.contextInitParams.selectedDraftModelId = undefined;
         modelStore.models = [];
       });
-      const {getByTestId, getByText, getAllByText} = render(
+      const {getByTestId, getByText, getAllByText} = await render(
         <SettingsScreen />,
         {
           withSafeArea: true,
@@ -602,7 +634,7 @@ describe('SettingsScreen', () => {
         modelStore.contextInitParams.spec_draft_cache_type_k = undefined;
         modelStore.contextInitParams.spec_draft_cache_type_v = undefined;
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -644,7 +676,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -679,7 +711,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText, queryAllByText} = render(
+      const {getByTestId, getByText, queryAllByText} = await render(
         <SettingsScreen />,
         {
           withSafeArea: true,
@@ -714,7 +746,7 @@ describe('SettingsScreen', () => {
       runInAction(() => {
         modelStore.contextInitParams.spec_draft_cache_type_k = undefined;
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -760,7 +792,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText, getAllByText} = render(
+      const {getByTestId, getByText, getAllByText} = await render(
         <SettingsScreen />,
         {withSafeArea: true, withNavigation: true},
       );
@@ -803,7 +835,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -842,7 +874,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText, queryByTestId} = render(
+      const {getByTestId, getByText, queryByTestId} = await render(
         <SettingsScreen />,
         {withSafeArea: true, withNavigation: true},
       );
@@ -886,7 +918,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText, queryByTestId} = render(
+      const {getByTestId, getByText, queryByTestId} = await render(
         <SettingsScreen />,
         {withSafeArea: true, withNavigation: true},
       );
@@ -928,7 +960,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -962,7 +994,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText, queryByTestId} = render(
+      const {getByTestId, getByText, queryByTestId} = await render(
         <SettingsScreen />,
         {withSafeArea: true, withNavigation: true},
       );
@@ -990,7 +1022,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1017,7 +1049,7 @@ describe('SettingsScreen', () => {
     });
 
     const openAdvanced = async (getByTestId: any, getByText: any) => {
-      fireEvent.press(getByText('Advanced Settings'));
+      await fireEvent.press(getByText('Advanced Settings'));
       await waitFor(() => {
         expect(getByTestId('key-cache-type-button')).toBeTruthy();
       });
@@ -1028,7 +1060,7 @@ describe('SettingsScreen', () => {
       runInAction(() => {
         modelStore.contextInitParams.flash_attn_type = 'off';
       });
-      const {getByTestId, getByText, getAllByText} = render(
+      const {getByTestId, getByText, getAllByText} = await render(
         <SettingsScreen />,
         {
           withSafeArea: true,
@@ -1064,7 +1096,7 @@ describe('SettingsScreen', () => {
       runInAction(() => {
         modelStore.contextInitParams.flash_attn_type = 'on';
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1095,7 +1127,7 @@ describe('SettingsScreen', () => {
     });
 
     const openSpeculative = async (getByTestId: any, getByText: any) => {
-      fireEvent.press(getByText('Advanced Settings'));
+      await fireEvent.press(getByText('Advanced Settings'));
       await waitFor(() => {
         expect(getByTestId('speculative-decoding-switch')).toBeTruthy();
       });
@@ -1115,7 +1147,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1144,7 +1176,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1169,7 +1201,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText, queryByTestId} = render(
+      const {getByTestId, getByText, queryByTestId} = await render(
         <SettingsScreen />,
         {withSafeArea: true, withNavigation: true},
       );
@@ -1200,7 +1232,7 @@ describe('SettingsScreen', () => {
           } as any,
         ];
       });
-      const {getByTestId, getByText, queryByTestId} = render(
+      const {getByTestId, getByText, queryByTestId} = await render(
         <SettingsScreen />,
         {withSafeArea: true, withNavigation: true},
       );
@@ -1226,7 +1258,7 @@ describe('SettingsScreen', () => {
         ttsStore.deviceMeetsMemory = true;
         ttsStore.userTTSOverride = null;
       });
-      const {getByTestId, queryByText} = render(<SettingsScreen />, {
+      const {getByTestId, queryByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1243,7 +1275,7 @@ describe('SettingsScreen', () => {
         ttsStore.deviceMeetsMemory = false;
         ttsStore.userTTSOverride = null;
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1260,14 +1292,14 @@ describe('SettingsScreen', () => {
         ttsStore.deviceMeetsMemory = false;
         ttsStore.userTTSOverride = null;
       });
-      const {getByTestId} = render(<SettingsScreen />, {
+      const {getByTestId} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
       const sw = getByTestId('tts-availability-switch');
 
       await act(async () => {
-        fireEvent(sw, 'valueChange', true);
+        await fireEvent(sw, 'valueChange', true);
       });
 
       expect(ttsStore.setUserTTSOverride).toHaveBeenCalledWith(true);
@@ -1278,14 +1310,14 @@ describe('SettingsScreen', () => {
         ttsStore.deviceMeetsMemory = true;
         ttsStore.userTTSOverride = null;
       });
-      const {getByTestId} = render(<SettingsScreen />, {
+      const {getByTestId} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
       const sw = getByTestId('tts-availability-switch');
 
       await act(async () => {
-        fireEvent(sw, 'valueChange', false);
+        await fireEvent(sw, 'valueChange', false);
       });
 
       expect(ttsStore.setUserTTSOverride).toHaveBeenCalledWith(false);
@@ -1296,7 +1328,7 @@ describe('SettingsScreen', () => {
         ttsStore.deviceMeetsMemory = false;
         ttsStore.userTTSOverride = true;
       });
-      const {getByTestId, getByText} = render(<SettingsScreen />, {
+      const {getByTestId, getByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1320,9 +1352,9 @@ describe('SettingsScreen', () => {
       searchProviderStore.setActiveProvider('brave');
     });
 
-    it('says no key is needed for You.com when it has none', () => {
+    it('says no key is needed for You.com when it has none', async () => {
       searchProviderStore.setActiveProvider('you');
-      const {getByText, queryByText} = render(<SettingsScreen />, {
+      const {getByText, queryByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1335,7 +1367,7 @@ describe('SettingsScreen', () => {
     it('says the key is set for You.com when it has one', async () => {
       searchProviderStore.setActiveProvider('you');
       await searchProviderStore.setKey('you', 'test-key');
-      const {getByText, queryByText} = render(<SettingsScreen />, {
+      const {getByText, queryByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1345,8 +1377,8 @@ describe('SettingsScreen', () => {
       expect(queryByText('No key set for You.com.')).toBeNull();
     });
 
-    it('says no key is set for Brave when it has none', () => {
-      const {getByText, queryByText} = render(<SettingsScreen />, {
+    it('says no key is set for Brave when it has none', async () => {
+      const {getByText, queryByText} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
@@ -1361,13 +1393,13 @@ describe('SettingsScreen', () => {
 
   it('shows effective value when image_max_tokens exceeds n_ctx', async () => {
     jest.useFakeTimers();
-    const {getByText, queryByText} = render(<SettingsScreen />, {
+    const {getByText, queryByText} = await render(<SettingsScreen />, {
       withSafeArea: true,
       withNavigation: true,
     });
 
     // Expand advanced settings
-    fireEvent.press(getByText('Advanced Settings'));
+    await fireEvent.press(getByText('Advanced Settings'));
 
     await waitFor(() => {
       // Initially, with image_max_tokens = 512 and n_ctx = 2048, no effective label should show
@@ -1375,7 +1407,7 @@ describe('SettingsScreen', () => {
     });
 
     // Now set image_max_tokens > n_ctx to trigger effective display
-    act(() => {
+    await act(() => {
       modelStore.contextInitParams.image_max_tokens = 3000;
     });
 
@@ -1401,95 +1433,102 @@ describe('SettingsScreen', () => {
       });
     });
 
-    const renderSettings = () =>
-      render(<SettingsScreen />, {withSafeArea: true, withNavigation: true});
+    const renderSettings = async () =>
+      await render(<SettingsScreen />, {
+        withSafeArea: true,
+        withNavigation: true,
+      });
 
-    it('toggle reflects the device default when no override is set', () => {
+    it('toggle reflects the device default when no override is set', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
         asrStore.userASROverride = null;
       });
-      const {getByTestId} = renderSettings();
+      const {getByTestId} = await renderSettings();
       expect(getByTestId('asr-availability-switch').props.value).toBe(true);
     });
 
-    it('toggle reflects an explicit user override over the device default', () => {
+    it('toggle reflects an explicit user override over the device default', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
         asrStore.userASROverride = false;
       });
-      const {getByTestId} = renderSettings();
+      const {getByTestId} = await renderSettings();
       expect(getByTestId('asr-availability-switch').props.value).toBe(false);
     });
 
-    it('shows the unsupported-device helper only when the device gate fails', () => {
+    it('shows the unsupported-device helper only when the device gate fails', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'low';
         asrStore.userASROverride = null;
       });
-      const {getByText} = renderSettings();
+      const {getByText} = await renderSettings();
       expect(
         getByText(l10n.en.voiceInput.unsupportedDeviceHelper),
       ).toBeTruthy();
     });
 
-    it('hides the unsupported-device helper on a supported device', () => {
+    it('hides the unsupported-device helper on a supported device', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
         asrStore.userASROverride = null;
       });
-      const {queryByText} = renderSettings();
+      const {queryByText} = await renderSettings();
       expect(
         queryByText(l10n.en.voiceInput.unsupportedDeviceHelper),
       ).toBeNull();
     });
 
-    it('shows the detected spoken language and clears it on Reset', () => {
+    it('shows the detected spoken language and clears it on Reset', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
         asrStore.userASROverride = null;
         asrStore.spokenLanguage = 'en';
       });
-      const {getByTestId} = renderSettings();
+      const {getByTestId} = await renderSettings();
       expect(getByTestId('asr-spoken-language').props.children).toBe(
         'Auto-detected: English (EN)',
       );
-      act(() => {
-        fireEvent.press(getByTestId('asr-reset-language'));
+      await act(async () => {
+        await fireEvent.press(getByTestId('asr-reset-language'));
       });
       expect(asrStore.setSpokenLanguage).toHaveBeenCalledWith(null);
     });
 
-    it('names a spoken language the app has no UI translation for by its code', () => {
+    it('names a spoken language the app has no UI translation for by its code', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
         asrStore.spokenLanguage = 'nl';
       });
-      const {getByTestId} = renderSettings();
+      const {getByTestId} = await renderSettings();
       expect(getByTestId('asr-spoken-language').props.children).toBe(
         'Auto-detected: NL',
       );
     });
 
-    it('shows auto-detect without Reset before a language is detected', () => {
+    it('shows auto-detect without Reset before a language is detected', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
       });
-      const {getByTestId, queryByTestId} = renderSettings();
+      const {getByTestId, queryByTestId} = await renderSettings();
       expect(getByTestId('asr-spoken-language').props.children).toBe(
         l10n.en.voiceInput.spokenLanguageAuto,
       );
       expect(queryByTestId('asr-reset-language')).toBeNull();
     });
 
-    it('writes the override through setUserASROverride when toggled', () => {
+    it('writes the override through setUserASROverride when toggled', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'low';
         asrStore.userASROverride = null;
       });
-      const {getByTestId} = renderSettings();
-      act(() => {
-        fireEvent(getByTestId('asr-availability-switch'), 'valueChange', true);
+      const {getByTestId} = await renderSettings();
+      await act(async () => {
+        await fireEvent(
+          getByTestId('asr-availability-switch'),
+          'valueChange',
+          true,
+        );
       });
       expect(asrStore.setUserASROverride).toHaveBeenCalledWith(true);
     });
@@ -1500,38 +1539,51 @@ describe('SettingsScreen', () => {
       [true, false, true],
     ])(
       'voice input %s, hands-free %s → model rows shown %s',
-      (dictation, handsFree, shown) => {
+      async (dictation, handsFree, shown) => {
         runInAction(() => {
           modelStore.deviceTier = 'low';
           asrStore.userASROverride = dictation;
           voiceModeStore.userVoiceModeOverride = handsFree;
         });
-        const {queryByTestId} = renderSettings();
+        const {queryByTestId} = await renderSettings();
         expect(queryByTestId('asr-install-small') != null).toBe(shown);
         expect(queryByTestId('asr-models-header') != null).toBe(shown);
       },
     );
 
-    it('adds one divider with the model section, none without it', () => {
-      const dividers = (handsFree: boolean) => {
+    it('adds one divider with the model section, none without it', async () => {
+      const dividers = async (handsFree: boolean) => {
         runInAction(() => {
           modelStore.deviceTier = 'low';
           asrStore.userASROverride = false;
           voiceModeStore.userVoiceModeOverride = handsFree;
         });
-        const {UNSAFE_queryAllByType, unmount} = renderSettings();
-        const count = UNSAFE_queryAllByType(Divider).length;
-        unmount();
+        const {unmount} = await renderSettings();
+        // The app's Divider wraps Paper's Divider with a separator style
+        // that overrides the height to 1, so the flattened height is 1,
+        // not hairlineWidth. Identify Dividers by the Paper base style
+        // (hairlineWidth) present in the style array.
+        const count = screen.container.queryAll((n: any) => {
+          if (n.type !== 'View') {
+            return false;
+          }
+          const st = n.props.style;
+          return (
+            Array.isArray(st) &&
+            st.some((s: any) => s && s.height === StyleSheet.hairlineWidth)
+          );
+        }).length;
+        await unmount();
         return count;
       };
-      expect(dividers(true) - dividers(false)).toBe(1);
+      expect((await dividers(true)) - (await dividers(false))).toBe(1);
     });
 
-    it('labels each tier with its speed and accuracy', () => {
+    it('labels each tier with its speed and accuracy', async () => {
       runInAction(() => {
         asrStore.userASROverride = true;
       });
-      const {getByText} = renderSettings();
+      const {getByText} = await renderSettings();
       expect(getByText('Default, fast')).toBeTruthy();
       expect(
         getByText('More accurate, slower. Better for other languages'),
@@ -1542,21 +1594,21 @@ describe('SettingsScreen', () => {
       ).toBeTruthy();
     });
 
-    it('marks the in-use tier and switches to another installed one', () => {
+    it('marks the in-use tier and switches to another installed one', async () => {
       runInAction(() => {
         asrStore.userASROverride = true;
         asrStore.selectedTier = 'base';
         asrStore.downloadStates.base = 'ready';
         asrStore.downloadStates.small = 'ready';
       });
-      const {getByTestId, queryByTestId} = renderSettings();
+      const {getByTestId, queryByTestId} = await renderSettings();
       expect(getByTestId('asr-in-use-base')).toBeTruthy();
       expect(queryByTestId('asr-use-base')).toBeNull();
       expect(queryByTestId('asr-in-use-small')).toBeNull();
       expect(getByTestId('asr-install-large-turbo')).toBeTruthy();
 
-      act(() => {
-        fireEvent.press(getByTestId('asr-use-small'));
+      await act(async () => {
+        await fireEvent.press(getByTestId('asr-use-small'));
       });
 
       expect(asrStore.selectTier).toHaveBeenCalledWith('small');
@@ -1564,43 +1616,43 @@ describe('SettingsScreen', () => {
       expect(getByTestId('asr-use-base')).toBeTruthy();
     });
 
-    it('marks no tier in use while none is installed', () => {
+    it('marks no tier in use while none is installed', async () => {
       runInAction(() => {
         asrStore.userASROverride = true;
       });
-      const {queryByTestId} = renderSettings();
+      const {queryByTestId} = await renderSettings();
       expect(queryByTestId('asr-in-use-base')).toBeNull();
     });
 
-    it('shows an install control for a not-installed tier when enabled', () => {
+    it('shows an install control for a not-installed tier when enabled', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
         asrStore.userASROverride = true;
         asrStore.downloadStates.small = 'not_installed';
       });
-      const {getByTestId} = renderSettings();
+      const {getByTestId} = await renderSettings();
       const install = getByTestId('asr-install-small');
-      act(() => {
-        fireEvent.press(install);
+      await act(async () => {
+        await fireEvent.press(install);
       });
       expect(asrStore.downloadModel).toHaveBeenCalledWith('small');
     });
 
-    it('shows a remove control for an installed tier and deletes on press', () => {
+    it('shows a remove control for an installed tier and deletes on press', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
         asrStore.userASROverride = true;
         asrStore.downloadStates.small = 'ready';
       });
-      const {getByTestId} = renderSettings();
+      const {getByTestId} = await renderSettings();
       const remove = getByTestId('asr-remove-small');
-      act(() => {
-        fireEvent.press(remove);
+      await act(async () => {
+        await fireEvent.press(remove);
       });
       expect(asrStore.deleteModel).toHaveBeenCalledWith('small');
     });
 
-    it('renders the insufficient-storage line for a disk-blocked tier', () => {
+    it('renders the insufficient-storage line for a disk-blocked tier', async () => {
       const freeMb = 50;
       runInAction(() => {
         modelStore.deviceTier = 'high';
@@ -1615,7 +1667,7 @@ describe('SettingsScreen', () => {
         (ASR_TIERS.small.estimatedBytes * ASR_DISK_HEADROOM_FACTOR) /
           (1024 * 1024),
       );
-      const {getByTestId, getByText} = renderSettings();
+      const {getByTestId, getByText} = await renderSettings();
       expect(getByTestId('asr-insufficient-storage-small')).toBeTruthy();
       expect(
         getByText(
@@ -1629,8 +1681,11 @@ describe('SettingsScreen', () => {
   });
 
   describe('hands-free voice', () => {
-    const renderSettings = () =>
-      render(<SettingsScreen />, {withSafeArea: true, withNavigation: true});
+    const renderSettings = async () =>
+      await render(<SettingsScreen />, {
+        withSafeArea: true,
+        withNavigation: true,
+      });
 
     afterEach(() => {
       (voiceModeStore as any).reset();
@@ -1639,28 +1694,28 @@ describe('SettingsScreen', () => {
       });
     });
 
-    it('shows the device gate, with no helper, on a capable phone', () => {
+    it('shows the device gate, with no helper, on a capable phone', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'high';
       });
-      const {getByTestId, queryByText} = renderSettings();
+      const {getByTestId, queryByText} = await renderSettings();
       expect(getByTestId('voice-mode-availability-switch').props.value).toBe(
         true,
       );
       expect(queryByText(l10n.en.voiceMode.unsupportedDeviceHelper)).toBeNull();
     });
 
-    it('is off with a heads-up on a weaker phone, and turns on from the switch', () => {
+    it('is off with a heads-up on a weaker phone, and turns on from the switch', async () => {
       runInAction(() => {
         modelStore.deviceTier = 'low';
       });
-      const {getByTestId, getByText} = renderSettings();
+      const {getByTestId, getByText} = await renderSettings();
       const toggle = getByTestId('voice-mode-availability-switch');
       expect(toggle.props.value).toBe(false);
       expect(getByText(l10n.en.voiceMode.unsupportedDeviceHelper)).toBeTruthy();
 
-      act(() => {
-        fireEvent(toggle, 'valueChange', true);
+      await act(async () => {
+        await fireEvent(toggle, 'valueChange', true);
       });
       expect(voiceModeStore.setUserVoiceModeOverride).toHaveBeenCalledWith(
         true,
@@ -1688,52 +1743,68 @@ describe('SettingsScreen', () => {
       });
     });
 
-    const visibleMenus = (UNSAFE_getAllByType: any) =>
-      UNSAFE_getAllByType(Menu).filter((menu: any) => menu.props.visible);
+    // The search-provider menu re-renders as it opens and closes, and the
+    // capture array keeps every render, so only the LATEST entry for that
+    // menu reflects its current state. Identify it by its option testIDs.
+    const searchProviderMenu = () => {
+      const menus = mockCapturedMenus.filter((menu: any) =>
+        React.Children.toArray(menu.children).some(
+          (child: any) =>
+            typeof child?.props?.testID === 'string' &&
+            child.props.testID.startsWith('search-provider-option-'),
+        ),
+      );
+      expect(menus.length).toBeGreaterThan(0);
+      return menus[menus.length - 1];
+    };
+    const visibleMenus = () => {
+      const menu = searchProviderMenu();
+      return menu.visible ? [menu] : [];
+    };
 
-    it('opens anchored under its button', () => {
-      const {getByTestId, UNSAFE_getAllByType} = render(<SettingsScreen />, {
+    it('opens anchored under its button', async () => {
+      const {getByTestId} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
-      expect(visibleMenus(UNSAFE_getAllByType)).toHaveLength(0);
+      expect(visibleMenus()).toHaveLength(0);
 
-      fireEvent.press(getByTestId('search-provider-selector-button'));
+      await fireEvent.press(getByTestId('search-provider-selector-button'));
 
-      const open = visibleMenus(UNSAFE_getAllByType);
+      const open = visibleMenus();
       expect(open).toHaveLength(1);
-      expect(open[0].props.anchor).toEqual({x: 30, y: 240});
+      expect(open[0].anchor).toEqual({x: 30, y: 240});
       expect(getByTestId('search-provider-option-exa')).toBeTruthy();
     });
 
-    it('selecting a provider sets it and closes the menu', () => {
-      const {getByTestId, UNSAFE_getAllByType} = render(<SettingsScreen />, {
+    it('selecting a provider sets it and closes the menu', async () => {
+      const {getByTestId} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
 
-      fireEvent.press(getByTestId('search-provider-selector-button'));
-      fireEvent.press(getByTestId('search-provider-option-exa'));
+      await fireEvent.press(getByTestId('search-provider-selector-button'));
+      await fireEvent.press(getByTestId('search-provider-option-exa'));
 
       expect(searchProviderStore.setActiveProvider).toHaveBeenCalledWith('exa');
-      expect(visibleMenus(UNSAFE_getAllByType)).toHaveLength(0);
+      expect(visibleMenus()).toHaveLength(0);
       expect(getByTestId('search-provider-selector-button')).toHaveTextContent(
         /Exa$/,
       );
     });
 
-    it('dismissing closes the menu without changing the provider', () => {
-      const {getByTestId, UNSAFE_getAllByType} = render(<SettingsScreen />, {
+    it('dismissing closes the menu without changing the provider', async () => {
+      const {getByTestId} = await render(<SettingsScreen />, {
         withSafeArea: true,
         withNavigation: true,
       });
 
-      fireEvent.press(getByTestId('search-provider-selector-button'));
-      act(() => {
-        visibleMenus(UNSAFE_getAllByType)[0].props.onDismiss();
+      await fireEvent.press(getByTestId('search-provider-selector-button'));
+      await act(() => {
+        visibleMenus()[0].onDismiss();
       });
 
-      expect(visibleMenus(UNSAFE_getAllByType)).toHaveLength(0);
+      expect(visibleMenus()).toHaveLength(0);
       expect(searchProviderStore.setActiveProvider).not.toHaveBeenCalled();
     });
   });

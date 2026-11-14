@@ -1,6 +1,6 @@
 import React from 'react';
 import {Platform} from 'react-native';
-import {act} from 'react-test-renderer';
+import {act} from '@testing-library/react-native';
 
 import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
 
@@ -100,6 +100,7 @@ const VALID_CONFIG: BenchConfig = {
       quants: [{quant: 'q4_0', filename: 'Qwen_Qwen3-1.7B-Q4_0.gguf'}],
     },
   ],
+
   backends: ['gpu'],
   bench: {pp: 4, tg: 4, pl: 1, nr: 1},
   // Tests pin to 0 so the suite doesn't pay 2s × N cells of pure setTimeout
@@ -143,8 +144,8 @@ describe('BenchmarkRunnerScreen', () => {
   });
 
   describe('component', () => {
-    it('renders with idle status and run/reset buttons', () => {
-      const {getByTestId} = render(<BenchmarkRunnerScreen />);
+    it('renders with idle status and run/reset buttons', async () => {
+      const {getByTestId} = await render(<BenchmarkRunnerScreen />);
       expect(getByTestId('bench-runner-screen')).toBeTruthy();
       expect(getByTestId('bench-runner-screen-status')).toBeTruthy();
       expect(getByTestId('bench-run-button')).toBeTruthy();
@@ -152,8 +153,8 @@ describe('BenchmarkRunnerScreen', () => {
       expect(getByTestId('bench-runner-screen-result-preview')).toBeTruthy();
     });
 
-    it('status accessibilityLabel matches rendered text (idle)', () => {
-      const {getByTestId} = render(<BenchmarkRunnerScreen />);
+    it('status accessibilityLabel matches rendered text (idle)', async () => {
+      const {getByTestId} = await render(<BenchmarkRunnerScreen />);
       const status = getByTestId('bench-runner-screen-status');
       expect(status.props.accessibilityLabel).toBe('idle');
       expect(status.props.children).toBe('idle');
@@ -162,11 +163,11 @@ describe('BenchmarkRunnerScreen', () => {
     it('tapping run while idle invokes the runner exactly once', async () => {
       const runner = jest.fn().mockResolvedValue(undefined);
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
       );
       await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
+        await fireEvent.press(getByTestId('bench-run-button'));
       });
       expect(loader).toHaveBeenCalledTimes(1);
       expect(runner).toHaveBeenCalledTimes(1);
@@ -181,20 +182,38 @@ describe('BenchmarkRunnerScreen', () => {
           }),
       );
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
       );
-      await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
+      // v14: the first press awaits the runner, which only resolves when
+      // resolveRunner() runs below — awaiting the press deadlocks (and the
+      // floating act poisons the next tests' renders). Start it, tap again
+      // via a direct onPress call (no second overlapping act), then settle.
+      const runButton = getByTestId('bench-run-button');
+      const firstPress = fireEvent.press(runButton);
+      // The press handler is invoked asynchronously inside fireEvent's
+      // act(); wait for the runner to be called before tapping again.
+      await waitFor(() => {
+        expect(runner).toHaveBeenCalledTimes(1);
       });
-      expect(runner).toHaveBeenCalledTimes(1);
-      await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
-      });
+      let fiber: any = (runButton as any).unstable_fiber;
+      let secondTap: Promise<unknown> | undefined;
+      while (fiber) {
+        if (typeof fiber.memoizedProps?.onPress === 'function') {
+          secondTap = fiber.memoizedProps.onPress();
+          break;
+        }
+        fiber = fiber.return;
+      }
+      if (!secondTap) {
+        throw new Error('run onPress not found in fiber chain');
+      }
+      await secondTap;
       expect(runner).toHaveBeenCalledTimes(1);
       await act(async () => {
         resolveRunner();
       });
+      await firstPress;
     });
 
     it('reset returns status to idle', async () => {
@@ -202,11 +221,11 @@ describe('BenchmarkRunnerScreen', () => {
         setStatus('error:test-error');
       });
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
       );
       await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
+        await fireEvent.press(getByTestId('bench-run-button'));
       });
       await waitFor(() => {
         expect(
@@ -214,7 +233,7 @@ describe('BenchmarkRunnerScreen', () => {
         ).toBe('error:test-error');
       });
       await act(async () => {
-        fireEvent.press(getByTestId('bench-reset-button'));
+        await fireEvent.press(getByTestId('bench-reset-button'));
       });
       expect(
         getByTestId('bench-runner-screen-status').props.accessibilityLabel,
@@ -223,9 +242,9 @@ describe('BenchmarkRunnerScreen', () => {
 
     it('missing config file sets status error:bench-config-missing', async () => {
       RNFS.exists.mockResolvedValueOnce(false);
-      const {getByTestId} = render(<BenchmarkRunnerScreen />);
+      const {getByTestId} = await render(<BenchmarkRunnerScreen />);
       await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
+        await fireEvent.press(getByTestId('bench-run-button'));
       });
       await waitFor(() => {
         expect(
@@ -237,9 +256,9 @@ describe('BenchmarkRunnerScreen', () => {
     it('malformed config JSON sets status to error:<parse-msg>', async () => {
       RNFS.exists.mockResolvedValueOnce(true);
       RNFS.readFile.mockResolvedValueOnce('this is not json {');
-      const {getByTestId} = render(<BenchmarkRunnerScreen />);
+      const {getByTestId} = await render(<BenchmarkRunnerScreen />);
       await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
+        await fireEvent.press(getByTestId('bench-run-button'));
       });
       await waitFor(() => {
         const lbl = getByTestId('bench-runner-screen-status').props
@@ -266,7 +285,9 @@ describe('BenchmarkRunnerScreen', () => {
       setRouteAutostart(true);
       const runner = jest.fn().mockResolvedValue(undefined);
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      render(<BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />);
+      await render(
+        <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
+      );
       // Same start path the button uses: loadConfig then runMatrix, once.
       await waitFor(() => {
         expect(loader).toHaveBeenCalledTimes(1);
@@ -278,7 +299,7 @@ describe('BenchmarkRunnerScreen', () => {
       // beforeEach default: route.params === {} → autostart undefined.
       const runner = jest.fn().mockResolvedValue(undefined);
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
       );
       // Flush mount effects so a (wrongly) scheduled autostart would surface.
@@ -295,7 +316,7 @@ describe('BenchmarkRunnerScreen', () => {
       setRouteAutostart(false);
       const runner = jest.fn().mockResolvedValue(undefined);
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
       );
       await act(async () => {
@@ -317,7 +338,7 @@ describe('BenchmarkRunnerScreen', () => {
           }),
       );
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
       );
       // Autostart kicks off the run.
@@ -327,7 +348,7 @@ describe('BenchmarkRunnerScreen', () => {
       // A later tap arrives while the run is in flight — single-flight gate
       // rejects it.
       await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
+        await fireEvent.press(getByTestId('bench-run-button'));
       });
       expect(runner).toHaveBeenCalledTimes(1);
       await act(async () => {
@@ -339,7 +360,7 @@ describe('BenchmarkRunnerScreen', () => {
       setRouteAutostart(true);
       const runner = jest.fn().mockResolvedValue(undefined);
       const loader = jest.fn().mockResolvedValue(VALID_CONFIG);
-      const {rerender} = render(
+      const {rerender} = await render(
         <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
       );
       await waitFor(() => {
@@ -348,7 +369,7 @@ describe('BenchmarkRunnerScreen', () => {
       // Force a re-render with stable autostart — the ref latch must keep the
       // run from firing again.
       await act(async () => {
-        rerender(
+        await rerender(
           <BenchmarkRunnerScreen __runner={runner} __loadConfig={loader} />,
         );
       });
@@ -494,7 +515,7 @@ describe('BenchmarkRunnerScreen', () => {
 
     it('onRun sets error:<msg> status when the matrix throws after the shell', async () => {
       stubOpenCLLogs();
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <BenchmarkRunnerScreen
           __runner={(cfg, set, last) =>
             runMatrix(
@@ -512,7 +533,7 @@ describe('BenchmarkRunnerScreen', () => {
         />,
       );
       await act(async () => {
-        fireEvent.press(getByTestId('bench-run-button'));
+        await fireEvent.press(getByTestId('bench-run-button'));
       });
       await waitFor(() => {
         expect(
@@ -994,9 +1015,9 @@ describe('BenchmarkRunnerScreen', () => {
       async (os, dir) => {
         await onPlatform(os, async () => {
           RNFS.exists.mockResolvedValueOnce(false);
-          const {getByTestId} = render(<BenchmarkRunnerScreen />);
+          const {getByTestId} = await render(<BenchmarkRunnerScreen />);
           await act(async () => {
-            fireEvent.press(getByTestId('bench-run-button'));
+            await fireEvent.press(getByTestId('bench-run-button'));
           });
           await waitFor(() => {
             expect(

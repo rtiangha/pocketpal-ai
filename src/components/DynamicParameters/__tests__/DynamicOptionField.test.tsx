@@ -23,8 +23,8 @@ describe('DynamicOptionField', () => {
     description: 'Select an option',
   };
 
-  it('should render with label and description', () => {
-    const {getByText} = render(
+  it('should render with label and description', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicOptionField parameter={mockParameter} />
       </TestWrapper>,
@@ -34,8 +34,8 @@ describe('DynamicOptionField', () => {
     expect(getByText('Select an option')).toBeTruthy();
   });
 
-  it('should render selector with correct placeholder', () => {
-    const {getByText} = render(
+  it('should render selector with correct placeholder', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicOptionField parameter={mockParameter} />
       </TestWrapper>,
@@ -44,8 +44,8 @@ describe('DynamicOptionField', () => {
     expect(getByText('Select test option')).toBeTruthy();
   });
 
-  it('should be disabled when disabled prop is true', () => {
-    const {getByTestId} = render(
+  it('should be disabled when disabled prop is true', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicOptionField parameter={mockParameter} disabled={true} />
       </TestWrapper>,
@@ -55,10 +55,10 @@ describe('DynamicOptionField', () => {
     expect(selector).toBeTruthy();
   });
 
-  it('should show required indicator when required', () => {
+  it('should show required indicator when required', async () => {
     const requiredParameter = {...mockParameter, required: true};
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicOptionField parameter={requiredParameter} />
       </TestWrapper>,
@@ -68,8 +68,8 @@ describe('DynamicOptionField', () => {
     expect(selector).toBeTruthy();
   });
 
-  it('should display error message when provided', () => {
-    const {getByTestId} = render(
+  it('should display error message when provided', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicOptionField
           parameter={mockParameter}
@@ -82,8 +82,8 @@ describe('DynamicOptionField', () => {
     expect(selector).toBeTruthy();
   });
 
-  it('should use default value from form context', () => {
-    const {getByTestId} = render(
+  it('should use default value from form context', async () => {
+    const {getByTestId} = await render(
       <TestWrapper defaultValues={{testOption: 'Option 2'}}>
         <DynamicOptionField parameter={mockParameter} />
       </TestWrapper>,
@@ -93,10 +93,10 @@ describe('DynamicOptionField', () => {
     expect(selector).toBeTruthy();
   });
 
-  it('should handle empty options array', () => {
+  it('should handle empty options array', async () => {
     const parameterWithoutOptions = {...mockParameter, options: []};
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicOptionField parameter={parameterWithoutOptions} />
       </TestWrapper>,
@@ -106,10 +106,10 @@ describe('DynamicOptionField', () => {
     expect(selector).toBeTruthy();
   });
 
-  it('should handle undefined options', () => {
+  it('should handle undefined options', async () => {
     const parameterWithoutOptions = {...mockParameter, options: undefined};
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicOptionField parameter={parameterWithoutOptions} />
       </TestWrapper>,

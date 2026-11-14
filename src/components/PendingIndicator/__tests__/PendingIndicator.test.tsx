@@ -6,18 +6,18 @@ import {l10n} from '../../../locales';
 import {PendingIndicator} from '../PendingIndicator';
 
 describe('PendingIndicator', () => {
-  it('renders the dot-row container with the documented testID', () => {
-    const {getByTestId} = render(<PendingIndicator />);
+  it('renders the dot-row container with the documented testID', async () => {
+    const {getByTestId} = await render(<PendingIndicator />);
     expect(getByTestId('pending-indicator')).toBeTruthy();
   });
 
-  it('renders no suffix when no tool call is in progress', () => {
-    const {queryByTestId} = render(<PendingIndicator />);
+  it('renders no suffix when no tool call is in progress', async () => {
+    const {queryByTestId} = await render(<PendingIndicator />);
     expect(queryByTestId('pending-indicator-suffix')).toBeNull();
   });
 
-  it('shows the friendly label as soon as a tool call starts (no token threshold for label)', () => {
-    const {getByTestId} = render(
+  it('shows the friendly label as soon as a tool call starts (no token threshold for label)', async () => {
+    const {getByTestId} = await render(
       <PendingIndicator
         pendingTalentNames={['render_html']}
         toolCallTokenCount={0}
@@ -29,8 +29,8 @@ describe('PendingIndicator', () => {
     );
   });
 
-  it('hides the token count below threshold but keeps the label', () => {
-    const {getByTestId} = render(
+  it('hides the token count below threshold but keeps the label', async () => {
+    const {getByTestId} = await render(
       <PendingIndicator
         pendingTalentNames={['render_html']}
         toolCallTokenCount={3}
@@ -41,8 +41,8 @@ describe('PendingIndicator', () => {
     expect(suffix.props.children).toMatch(/Building page/);
   });
 
-  it('shows label + token count once the count crosses the threshold', () => {
-    const {getByTestId} = render(
+  it('shows label + token count once the count crosses the threshold', async () => {
+    const {getByTestId} = await render(
       <PendingIndicator
         pendingTalentNames={['render_html']}
         toolCallTokenCount={120}
@@ -53,8 +53,8 @@ describe('PendingIndicator', () => {
     );
   });
 
-  it('uses the per-talent label for calculate', () => {
-    const {getByTestId} = render(
+  it('uses the per-talent label for calculate', async () => {
+    const {getByTestId} = await render(
       <PendingIndicator pendingTalentNames={['calculate']} />,
     );
     expect(getByTestId('pending-indicator-suffix').props.children).toBe(
@@ -62,8 +62,8 @@ describe('PendingIndicator', () => {
     );
   });
 
-  it('uses the per-talent label for datetime', () => {
-    const {getByTestId} = render(
+  it('uses the per-talent label for datetime', async () => {
+    const {getByTestId} = await render(
       <PendingIndicator pendingTalentNames={['datetime']} />,
     );
     expect(getByTestId('pending-indicator-suffix').props.children).toBe(
@@ -71,8 +71,8 @@ describe('PendingIndicator', () => {
     );
   });
 
-  it('falls back to the generic label for unknown talents', () => {
-    const {getByTestId} = render(
+  it('falls back to the generic label for unknown talents', async () => {
+    const {getByTestId} = await render(
       <PendingIndicator pendingTalentNames={['mystery_tool']} />,
     );
     expect(getByTestId('pending-indicator-suffix').props.children).toBe(
@@ -80,13 +80,13 @@ describe('PendingIndicator', () => {
     );
   });
 
-  it('overrides everything with "Stopping…" when isStopping is true', () => {
+  it('overrides everything with "Stopping…" when isStopping is true', async () => {
     // The user has tapped Stop and we're waiting for native llama.rn
     // to finish its current llama_decode chunk. Even if a tool-call
     // was in flight (label, token count, elapsed) the indicator must
     // surface ONLY the stopping signal so the user knows their tap
     // landed and the silent gap isn't a hung UI.
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <PendingIndicator
         pendingTalentNames={['render_html']}
         toolCallTokenCount={150}
@@ -101,9 +101,9 @@ describe('PendingIndicator', () => {
     expect(suffix.props.children).not.toMatch(/tokens/);
   });
 
-  it('appends elapsed seconds after one second has passed', () => {
+  it('appends elapsed seconds after one second has passed', async () => {
     jest.useFakeTimers();
-    const {getByTestId, rerender} = render(
+    const {getByTestId, rerender} = await render(
       <PendingIndicator
         pendingTalentNames={['render_html']}
         toolCallTokenCount={120}
@@ -113,10 +113,10 @@ describe('PendingIndicator', () => {
     expect(getByTestId('pending-indicator-suffix').props.children).not.toMatch(
       /\ds$/,
     );
-    act(() => {
+    await act(() => {
       jest.advanceTimersByTime(2500);
     });
-    rerender(
+    await rerender(
       <PendingIndicator
         pendingTalentNames={['render_html']}
         toolCallTokenCount={120}

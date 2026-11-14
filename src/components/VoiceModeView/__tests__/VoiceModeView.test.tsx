@@ -20,8 +20,8 @@ import {VoiceModeView} from '../VoiceModeView';
 const strings = l10n.en.voiceMode;
 const controls = {tapCloud: jest.fn(), toggleMute: jest.fn(), end: jest.fn()};
 
-const renderView = () =>
-  render(
+const renderView = async () =>
+  await render(
     <VoiceModeControlsContext.Provider value={controls}>
       <VoiceModeView />
     </VoiceModeControlsContext.Provider>,
@@ -49,6 +49,7 @@ describe('VoiceModeView', () => {
       strings.startingHint,
       'thinking',
     ],
+
     [
       'listening',
       false,
@@ -56,6 +57,7 @@ describe('VoiceModeView', () => {
       strings.listeningHint,
       'listening',
     ],
+
     ['listening', true, strings.mutedTitle, strings.mutedHint, 'muted'],
     [
       'transcribing',
@@ -64,6 +66,7 @@ describe('VoiceModeView', () => {
       strings.thinkingHint,
       'thinking',
     ],
+
     [
       'thinking',
       false,
@@ -71,6 +74,7 @@ describe('VoiceModeView', () => {
       strings.thinkingHint,
       'thinking',
     ],
+
     [
       'speaking',
       false,
@@ -80,9 +84,9 @@ describe('VoiceModeView', () => {
     ],
   ] as const)(
     '%s (muted %s) shows its status and cloud',
-    (phase, muted, title, hint, visual) => {
+    async (phase, muted, title, hint, visual) => {
       setSession(phase, muted);
-      const {getByText, getByTestId} = renderView();
+      const {getByText, getByTestId} = await renderView();
       expect(getByText(title)).toBeTruthy();
       expect(getByText(hint)).toBeTruthy();
       expect(getByTestId(`voice-cloud-${visual}`)).toBeTruthy();
@@ -93,24 +97,24 @@ describe('VoiceModeView', () => {
     ['transcribe_failed', strings.errorTranscribe],
     ['reply_failed', strings.errorReply],
     ['speech_failed', strings.errorSpeech],
-  ] as const)('shows the %s error as the subtitle', (error, text) => {
+  ] as const)('shows the %s error as the subtitle', async (error, text) => {
     setSession('listening', false, error);
-    const {getByTestId} = renderView();
+    const {getByTestId} = await renderView();
     expect(getByTestId('voice-status-hint')).toHaveTextContent(text);
   });
 
-  it('announces each new status, and an error with it', () => {
+  it('announces each new status, and an error with it', async () => {
     const announce = jest.spyOn(
       AccessibilityInfo,
       'announceForAccessibilityWithOptions',
     );
     setSession('listening');
-    renderView();
+    await renderView();
     expect(announce).toHaveBeenLastCalledWith(strings.listeningTitle, {
       queue: true,
     });
 
-    act(() => setSession('listening', false, 'reply_failed'));
+    await act(() => setSession('listening', false, 'reply_failed'));
     expect(announce).toHaveBeenLastCalledWith(
       `${strings.listeningTitle}. ${strings.errorReply}`,
       {queue: true},
@@ -118,30 +122,30 @@ describe('VoiceModeView', () => {
     announce.mockRestore();
   });
 
-  it('colours an error hint as an error', () => {
+  it('colours an error hint as an error', async () => {
     setSession('listening', false, 'speech_failed');
-    const {getByTestId} = renderView();
+    const {getByTestId} = await renderView();
     expect(getByTestId('voice-status-hint')).toHaveStyle({
       color: themeFixtures.lightTheme.colors.error,
     });
   });
 
-  it('routes the cloud, mute and End to the session', () => {
+  it('routes the cloud, mute and End to the session', async () => {
     setSession('speaking');
-    const {getByTestId} = renderView();
+    const {getByTestId} = await renderView();
 
-    fireEvent.press(getByTestId('voice-cloud'));
-    fireEvent.press(getByTestId('voice-mute'));
-    fireEvent.press(getByTestId('voice-end'));
+    await fireEvent.press(getByTestId('voice-cloud'));
+    await fireEvent.press(getByTestId('voice-mute'));
+    await fireEvent.press(getByTestId('voice-end'));
 
     expect(controls.tapCloud).toHaveBeenCalledTimes(1);
     expect(controls.toggleMute).toHaveBeenCalledTimes(1);
     expect(controls.end).toHaveBeenCalledTimes(1);
   });
 
-  it('presents the mic as one switch that is off while muted', () => {
+  it('presents the mic as one switch that is off while muted', async () => {
     setSession('listening', true);
-    const {getByLabelText} = renderView();
+    const {getByLabelText} = await renderView();
     const mic = getByLabelText(strings.micSwitchLabel);
     expect(mic.props.accessibilityRole).toBe('switch');
     expect(mic.props.accessibilityState).toEqual({checked: false});
@@ -154,15 +158,15 @@ describe('VoiceModeView', () => {
         {state: State.ACTIVE, translationY: translationY / 2, velocityY},
         {state: State.END, translationY, velocityY},
       ]);
-    const finishSlide = (finished: boolean) =>
-      act(async () => {
+    const finishSlide = async (finished: boolean) =>
+      await act(async () => {
         const calls = (Reanimated.withTiming as jest.Mock).mock.calls;
         calls[calls.length - 1][2](finished);
       });
 
     it('slides the view away, then shows the bar with the phase unchanged', async () => {
       setSession('speaking');
-      renderView();
+      await renderView();
 
       pull(120);
       await act(async () => {});
@@ -175,7 +179,7 @@ describe('VoiceModeView', () => {
 
     it('stays open when the slide is cut short', async () => {
       setSession('listening');
-      renderView();
+      await renderView();
 
       pull(120);
       await finishSlide(false);
@@ -185,7 +189,7 @@ describe('VoiceModeView', () => {
 
     it('collapses on a quick flick, however short', async () => {
       setSession('listening');
-      renderView();
+      await renderView();
 
       pull(30, 1200);
       await finishSlide(true);
@@ -195,7 +199,7 @@ describe('VoiceModeView', () => {
 
     it('springs back after a short, slow pull', async () => {
       setSession('listening');
-      renderView();
+      await renderView();
 
       pull(30, 100);
       await act(async () => {});
@@ -207,7 +211,7 @@ describe('VoiceModeView', () => {
     it('with reduced motion, snaps straight to the bar', async () => {
       (Reanimated.useReducedMotion as jest.Mock).mockReturnValue(true);
       setSession('listening');
-      renderView();
+      await renderView();
 
       pull(120);
       await act(async () => {});
@@ -218,22 +222,22 @@ describe('VoiceModeView', () => {
     });
   });
 
-  it('a screen reader can show the chat: a button, the escape gesture, a modal view', () => {
+  it('a screen reader can show the chat: a button, the escape gesture, a modal view', async () => {
     setSession('listening');
-    const {getByLabelText, getByTestId} = renderView();
+    const {getByLabelText, getByTestId} = await renderView();
 
     expect(getByTestId('voice-view').props.accessibilityViewIsModal).toBe(true);
-    fireEvent.press(getByLabelText(strings.showChatLabel));
+    await fireEvent.press(getByLabelText(strings.showChatLabel));
     expect(voiceModeStore.setPresentation).toHaveBeenCalledWith('bar');
 
-    fireEvent(getByTestId('voice-view'), 'accessibilityEscape');
+    await fireEvent(getByTestId('voice-view'), 'accessibilityEscape');
     expect(voiceModeStore.setPresentation).toHaveBeenCalledTimes(2);
   });
 
-  it('Android back collapses to the bar', () => {
+  it('Android back collapses to the bar', async () => {
     const addListener = jest.spyOn(BackHandler, 'addEventListener');
     setSession('listening');
-    renderView();
+    await renderView();
 
     const handler = addListener.mock.calls[0][1];
     expect(handler({} as any)).toBe(true);
@@ -241,9 +245,9 @@ describe('VoiceModeView', () => {
     addListener.mockRestore();
   });
 
-  it('shows no transcript: the chat is the transcript', () => {
+  it('shows no transcript: the chat is the transcript', async () => {
     setSession('speaking');
-    const {queryByTestId} = renderView();
+    const {queryByTestId} = await renderView();
     expect(queryByTestId('voice-transcript')).toBeNull();
   });
 });

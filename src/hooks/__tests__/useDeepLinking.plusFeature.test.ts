@@ -50,7 +50,7 @@ describe('useDeepLinking — Plus test feature (Android Linking)', () => {
   it('navigates on cold launch', async () => {
     getInitialURLSpy.mockResolvedValue(URL);
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 
@@ -69,7 +69,7 @@ describe('useDeepLinking — Plus test feature (Android Linking)', () => {
         return {remove: jest.fn()} as any;
       });
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     handlers.forEach(handler => handler({url: URL}));
 
@@ -81,7 +81,7 @@ describe('useDeepLinking — Plus test feature (Android Linking)', () => {
     (global as any).__E2E__ = false;
     getInitialURLSpy.mockResolvedValue(URL);
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 

@@ -47,8 +47,8 @@ describe('GreetingSection', () => {
   });
 
   describe('Rendering', () => {
-    it('renders the greeting section container', () => {
-      const {getByTestId} = render(
+    it('renders the greeting section container', async () => {
+      const {getByTestId} = await render(
         <FormWrapper>
           <GreetingSection />
         </FormWrapper>,
@@ -57,8 +57,8 @@ describe('GreetingSection', () => {
       expect(getByTestId('greeting-section')).toBeTruthy();
     });
 
-    it('renders the greeting text input', () => {
-      const {getByTestId} = render(
+    it('renders the greeting text input', async () => {
+      const {getByTestId} = await render(
         <FormWrapper>
           <GreetingSection />
         </FormWrapper>,
@@ -67,8 +67,8 @@ describe('GreetingSection', () => {
       expect(getByTestId('form-field-greetingText')).toBeTruthy();
     });
 
-    it('renders the add-prompt button', () => {
-      const {getByTestId} = render(
+    it('renders the add-prompt button', async () => {
+      const {getByTestId} = await render(
         <FormWrapper>
           <GreetingSection />
         </FormWrapper>,
@@ -77,8 +77,8 @@ describe('GreetingSection', () => {
       expect(getByTestId('suggested-prompt-add-button')).toBeTruthy();
     });
 
-    it('renders the section labels from l10n', () => {
-      const {getByText} = render(
+    it('renders the section labels from l10n', async () => {
+      const {getByText} = await render(
         <FormWrapper>
           <GreetingSection />
         </FormWrapper>,
@@ -92,8 +92,8 @@ describe('GreetingSection', () => {
   });
 
   describe('Initial state from default values', () => {
-    it('pre-seeds greetingText into the input', () => {
-      const {getByTestId} = render(
+    it('pre-seeds greetingText into the input', async () => {
+      const {getByTestId} = await render(
         <FormWrapper defaultValues={{greetingText: 'Hello there'}}>
           <GreetingSection />
         </FormWrapper>,
@@ -104,8 +104,8 @@ describe('GreetingSection', () => {
       );
     });
 
-    it('pre-seeds suggestedPrompts as N rows with correct values', () => {
-      const {getByTestId} = render(
+    it('pre-seeds suggestedPrompts as N rows with correct values', async () => {
+      const {getByTestId} = await render(
         <FormWrapper
           defaultValues={{suggestedPrompts: ['First prompt', 'Second prompt']}}>
           <GreetingSection />
@@ -122,8 +122,8 @@ describe('GreetingSection', () => {
       expect(getByTestId('suggested-prompt-remove-1')).toBeTruthy();
     });
 
-    it('renders no prompt rows when suggestedPrompts is empty', () => {
-      const {queryByTestId} = render(
+    it('renders no prompt rows when suggestedPrompts is empty', async () => {
+      const {queryByTestId} = await render(
         <FormWrapper defaultValues={{suggestedPrompts: []}}>
           <GreetingSection />
         </FormWrapper>,
@@ -137,7 +137,7 @@ describe('GreetingSection', () => {
     it('typing in greetingText updates form state', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <FormWrapper
           onFormValues={getValues => {
             getFormValues = getValues;
@@ -146,7 +146,7 @@ describe('GreetingSection', () => {
         </FormWrapper>,
       );
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('form-field-greetingText'),
         'Hi from a friendly pal',
       );
@@ -159,7 +159,7 @@ describe('GreetingSection', () => {
     it('tapping add-prompt appends an empty row', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <FormWrapper
           onFormValues={getValues => {
             getFormValues = getValues;
@@ -170,7 +170,7 @@ describe('GreetingSection', () => {
 
       expect(getFormValues!().suggestedPrompts).toEqual([]);
 
-      fireEvent.press(getByTestId('suggested-prompt-add-button'));
+      await fireEvent.press(getByTestId('suggested-prompt-add-button'));
 
       await waitFor(() => {
         expect(getFormValues!().suggestedPrompts).toEqual(['']);
@@ -180,7 +180,7 @@ describe('GreetingSection', () => {
     it('editing a prompt row updates that index in form state', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <FormWrapper
           defaultValues={{suggestedPrompts: ['original']}}
           onFormValues={getValues => {
@@ -190,7 +190,7 @@ describe('GreetingSection', () => {
         </FormWrapper>,
       );
 
-      fireEvent.changeText(
+      await fireEvent.changeText(
         getByTestId('suggested-prompt-input-0'),
         'edited prompt',
       );
@@ -203,7 +203,7 @@ describe('GreetingSection', () => {
     it('removing a prompt row drops that row and re-indexes the rest', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId, queryByTestId} = render(
+      const {getByTestId, queryByTestId} = await render(
         <FormWrapper
           defaultValues={{suggestedPrompts: ['a', 'b', 'c']}}
           onFormValues={getValues => {
@@ -214,7 +214,7 @@ describe('GreetingSection', () => {
       );
 
       // Remove index 1 ('b')
-      fireEvent.press(getByTestId('suggested-prompt-remove-1'));
+      await fireEvent.press(getByTestId('suggested-prompt-remove-1'));
 
       await waitFor(() => {
         expect(getFormValues!().suggestedPrompts).toEqual(['a', 'c']);
@@ -229,7 +229,7 @@ describe('GreetingSection', () => {
     it('does not trim or filter on typing — whitespace stays in form state', async () => {
       let getFormValues: () => PalFormData;
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <FormWrapper
           defaultValues={{suggestedPrompts: ['']}}
           onFormValues={getValues => {
@@ -239,7 +239,7 @@ describe('GreetingSection', () => {
         </FormWrapper>,
       );
 
-      fireEvent.changeText(getByTestId('suggested-prompt-input-0'), '  ');
+      await fireEvent.changeText(getByTestId('suggested-prompt-input-0'), '  ');
 
       await waitFor(() => {
         expect(getFormValues!().suggestedPrompts).toEqual(['  ']);

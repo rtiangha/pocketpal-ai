@@ -5,8 +5,8 @@ import {Divider} from '../Divider';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('Divider', () => {
-  it('defaults to testID=ui-divider', () => {
-    const {getByTestId} = render(<Divider />);
+  it('defaults to testID=ui-divider', async () => {
+    const {getByTestId} = await render(<Divider />);
     expect(getByTestId('ui-divider')).toBeTruthy();
   });
 });

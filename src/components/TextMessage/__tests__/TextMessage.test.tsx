@@ -25,7 +25,7 @@ describe('text message', () => {
         title: 'title',
       });
     const openUrlMock = jest.spyOn(Linking, 'openURL');
-    const {getByRole, getByText, debug} = render(
+    const {getByRole, getByText, debug} = await render(
       <TextMessage
         message={{
           ...derivedTextMessage,
@@ -42,7 +42,7 @@ describe('text message', () => {
     const image = getByRole('image');
     expect(image).toBeDefined();
     const text = getByText(link);
-    fireEvent.press(text);
+    await fireEvent.press(text);
     expect(openUrlMock).toHaveBeenCalledWith(link);
     getPreviewDataMock.mockRestore();
     openUrlMock.mockRestore();
@@ -65,7 +65,7 @@ describe('text message', () => {
         title: 'title',
       });
     const openUrlMock = jest.spyOn(Linking, 'openURL');
-    const {getByRole, getByText} = render(
+    const {getByRole, getByText} = await render(
       <TextMessage
         message={{...derivedTextMessage, text: link}}
         messageWidth={440}
@@ -78,19 +78,19 @@ describe('text message', () => {
     const image = getByRole('image');
     expect(image).toBeDefined();
     const text = getByText(link);
-    fireEvent.press(text);
+    await fireEvent.press(text);
     expect(openUrlMock).toHaveBeenCalledWith('https://' + link);
     getPreviewDataMock.mockRestore();
     openUrlMock.mockRestore();
   });
 
-  it('renders a step through its visible content, not raw content', () => {
+  it('renders a step through its visible content, not raw content', async () => {
     const echo = '{"name": "web_search", "arguments": {"query": "Firecrawl"}}';
     const call = {
       id: 'c0',
       function: {name: 'web_search', arguments: '{"query": "Firecrawl"}'},
     };
-    const {queryByText, rerender} = renderWithProviders(
+    const {queryByText, rerender} = await renderWithProviders(
       <TextMessage
         message={derivedTextMessage}
         messageWidth={440}
@@ -101,7 +101,7 @@ describe('text message', () => {
     );
     expect(queryByText(/web_search/)).not.toBeNull();
 
-    rerender(
+    await rerender(
       <TextMessage
         message={derivedTextMessage}
         messageWidth={440}
@@ -122,8 +122,8 @@ describe('text message', () => {
       (EnrichedMarkdownText as jest.Mock).mockClear();
     });
 
-    it('renders an assistant message without a step selectable', () => {
-      renderWithProviders(
+    it('renders an assistant message without a step selectable', async () => {
+      await renderWithProviders(
         <TextMessage
           message={{...derivedTextMessage, author: assistant, text: 'Hi'}}
           messageWidth={440}
@@ -140,8 +140,8 @@ describe('text message', () => {
       );
     });
 
-    it('turns selection and the block popup off on a user row', () => {
-      renderWithProviders(
+    it('turns selection and the block popup off on a user row', async () => {
+      await renderWithProviders(
         <TextMessage
           message={{...derivedTextMessage, text: 'Hi'}}
           messageWidth={440}
@@ -158,8 +158,8 @@ describe('text message', () => {
       );
     });
 
-    it('keeps selection and the block popup on assistant step content', () => {
-      renderWithProviders(
+    it('keeps selection and the block popup on assistant step content', async () => {
+      await renderWithProviders(
         <TextMessage
           message={{...derivedTextMessage, author: assistant}}
           messageWidth={440}
@@ -177,8 +177,8 @@ describe('text message', () => {
       );
     });
 
-    it('keeps selection and the block popup on a system row', () => {
-      renderWithProviders(
+    it('keeps selection and the block popup on a system row', async () => {
+      await renderWithProviders(
         <TextMessage
           message={{
             ...derivedTextMessage,
@@ -201,9 +201,9 @@ describe('text message', () => {
     });
   });
 
-  it('renders call-shaped JSON in a message without a step', () => {
+  it('renders call-shaped JSON in a message without a step', async () => {
     const echo = '{"name": "web_search", "arguments": {"query": "Firecrawl"}}';
-    const {queryByText} = renderWithProviders(
+    const {queryByText} = await renderWithProviders(
       <TextMessage
         message={{...derivedTextMessage, text: echo}}
         messageWidth={440}
@@ -221,7 +221,7 @@ describe('text message', () => {
       .spyOn(utils, 'getPreviewData')
       .mockResolvedValue({});
     const openUrlMock = jest.spyOn(Linking, 'openURL');
-    const {getByText} = render(
+    const {getByText} = await render(
       <TextMessage
         message={{
           ...derivedTextMessage,
@@ -236,7 +236,7 @@ describe('text message', () => {
     );
     await waitFor(() => getByText(email));
     const text = getByText(email);
-    fireEvent.press(text);
+    await fireEvent.press(text);
     expect(openUrlMock).toHaveBeenCalledWith(`mailto:${email}`);
     getPreviewDataMock.mockRestore();
     openUrlMock.mockRestore();

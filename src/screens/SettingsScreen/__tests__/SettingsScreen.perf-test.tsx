@@ -17,7 +17,9 @@ describe('SettingsScreen render performance', () => {
         await flushTimers();
         expect(screen.queryByTestId('batch-size-slider')).toBeNull();
 
-        fireEvent.press(screen.getByTestId('advanced-settings-accordion'));
+        await fireEvent.press(
+          screen.getByTestId('advanced-settings-accordion'),
+        );
         await flushTimers();
 
         expect(screen.getByTestId('batch-size-slider')).toBeTruthy();

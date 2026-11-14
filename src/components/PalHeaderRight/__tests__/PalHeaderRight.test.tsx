@@ -62,8 +62,8 @@ describe('PalHeaderRight', () => {
   });
 
   describe('Rendering', () => {
-    it('renders correctly', () => {
-      const {getByTestId} = render(
+    it('renders correctly', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
@@ -73,8 +73,8 @@ describe('PalHeaderRight', () => {
       expect(getByTestId('pal-menu-button')).toBeTruthy();
     });
 
-    it('menu is initially closed', () => {
-      const {queryByTestId} = render(
+    it('menu is initially closed', async () => {
+      const {queryByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
@@ -85,45 +85,45 @@ describe('PalHeaderRight', () => {
   });
 
   describe('Menu Interaction', () => {
-    it('opens menu when menu button is pressed', () => {
-      const {getByTestId} = render(
+    it('opens menu when menu button is pressed', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       expect(getByTestId('menu-content')).toBeTruthy();
     });
 
-    it('dismisses keyboard before opening menu if keyboard is visible', () => {
+    it('dismisses keyboard before opening menu if keyboard is visible', async () => {
       (Keyboard.isVisible as jest.Mock).mockReturnValue(true);
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       expect(Keyboard.dismiss).toHaveBeenCalled();
     });
 
-    it('does not dismiss keyboard if keyboard is not visible', () => {
+    it('does not dismiss keyboard if keyboard is not visible', async () => {
       (Keyboard.isVisible as jest.Mock).mockReturnValue(false);
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       expect(Keyboard.dismiss).not.toHaveBeenCalled();
     });
@@ -131,7 +131,7 @@ describe('PalHeaderRight', () => {
 
   describe('Export Functionality', () => {
     it('exports all pals when export option is selected', async () => {
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
@@ -139,13 +139,13 @@ describe('PalHeaderRight', () => {
 
       // Open menu
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       // Find and press export all pals button
       const exportButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.exportAllPals}`,
       );
-      fireEvent.press(exportButton);
+      await fireEvent.press(exportButton);
 
       await waitFor(() => {
         expect(exportAllPals).toHaveBeenCalled();
@@ -158,19 +158,19 @@ describe('PalHeaderRight', () => {
         new Error('Export failed'),
       );
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       const exportButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.exportAllPals}`,
       );
-      fireEvent.press(exportButton);
+      await fireEvent.press(exportButton);
 
       await waitFor(() => {
         expect(consoleError).toHaveBeenCalledWith(
@@ -187,19 +187,19 @@ describe('PalHeaderRight', () => {
     });
 
     it('closes menu after successful export', async () => {
-      const {getByTestId, queryByTestId} = render(
+      const {getByTestId, queryByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       const exportButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.exportAllPals}`,
       );
-      fireEvent.press(exportButton);
+      await fireEvent.press(exportButton);
 
       await waitFor(() => {
         expect(exportAllPals).toHaveBeenCalled();
@@ -217,19 +217,19 @@ describe('PalHeaderRight', () => {
 
   describe('Import Functionality', () => {
     it('imports pals when import option is selected', async () => {
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       const importButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.importPals}`,
       );
-      fireEvent.press(importButton);
+      await fireEvent.press(importButton);
 
       await waitFor(() => {
         expect(importPals).toHaveBeenCalled();
@@ -239,19 +239,19 @@ describe('PalHeaderRight', () => {
     it('shows success alert when pals are imported', async () => {
       (importPals as jest.Mock).mockResolvedValueOnce(5);
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       const importButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.importPals}`,
       );
-      fireEvent.press(importButton);
+      await fireEvent.press(importButton);
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -264,19 +264,19 @@ describe('PalHeaderRight', () => {
     it('does not show success alert when no pals are imported', async () => {
       (importPals as jest.Mock).mockResolvedValueOnce(0);
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       const importButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.importPals}`,
       );
-      fireEvent.press(importButton);
+      await fireEvent.press(importButton);
 
       await waitFor(() => {
         expect(importPals).toHaveBeenCalled();
@@ -290,19 +290,19 @@ describe('PalHeaderRight', () => {
         new Error('Import failed'),
       );
 
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       const importButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.importPals}`,
       );
-      fireEvent.press(importButton);
+      await fireEvent.press(importButton);
 
       await waitFor(() => {
         expect(consoleError).toHaveBeenCalledWith(
@@ -319,19 +319,19 @@ describe('PalHeaderRight', () => {
     });
 
     it('closes menu after import attempt', async () => {
-      const {getByTestId, queryByTestId} = render(
+      const {getByTestId, queryByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalHeaderRight />
         </L10nContext.Provider>,
       );
 
       const menuButton = getByTestId('pal-menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
 
       const importButton = getByTestId(
         `menu-item-${l10n.en.components.palHeaderRight.importPals}`,
       );
-      fireEvent.press(importButton);
+      await fireEvent.press(importButton);
 
       await waitFor(() => {
         expect(importPals).toHaveBeenCalled();

@@ -40,8 +40,8 @@ describe('DownloadErrorDialog', () => {
     jest.clearAllMocks();
   });
 
-  it('does not render when not visible', () => {
-    const {queryByText} = render(
+  it('does not render when not visible', async () => {
+    const {queryByText} = await render(
       <DownloadErrorDialog
         visible={false}
         onDismiss={mockDismiss}
@@ -52,7 +52,7 @@ describe('DownloadErrorDialog', () => {
     expect(queryByText('Download Failed')).toBeNull();
   });
 
-  it('renders authentication error correctly when no token is present', () => {
+  it('renders authentication error correctly when no token is present', async () => {
     const error: ErrorState = createErrorState(
       new Error('Client error: 401'),
       'download',
@@ -62,7 +62,7 @@ describe('DownloadErrorDialog', () => {
       },
     );
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <DownloadErrorDialog
         visible={true}
         onDismiss={mockDismiss}
@@ -90,7 +90,7 @@ describe('DownloadErrorDialog', () => {
     const hfButton = getByText(
       l10n.en.components.downloadErrorDialog.viewOnHuggingFace,
     );
-    fireEvent.press(hfButton);
+    await fireEvent.press(hfButton);
     expect(Linking.openURL).toHaveBeenCalledWith(
       'https://huggingface.co/test/test-model',
     );
@@ -99,11 +99,11 @@ describe('DownloadErrorDialog', () => {
     const retryButton = getByText(
       l10n.en.components.downloadErrorDialog.tryAgain,
     );
-    fireEvent.press(retryButton);
+    await fireEvent.press(retryButton);
     expect(mockTryAgain).toHaveBeenCalled();
   });
 
-  it('renders forbidden error correctly', () => {
+  it('renders forbidden error correctly', async () => {
     const error: ErrorState = createErrorState(
       new Error('Client error: 403'),
       'download',
@@ -114,7 +114,7 @@ describe('DownloadErrorDialog', () => {
     );
     console.log(error);
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <DownloadErrorDialog
         visible={true}
         onDismiss={mockDismiss}
@@ -140,7 +140,7 @@ describe('DownloadErrorDialog', () => {
     }
   });
 
-  it('renders token disabled case correctly', () => {
+  it('renders token disabled case correctly', async () => {
     // Update the mock to simulate having a token that's disabled
     hfStore.hfToken = 'test-token';
     hfStore.useHfToken = false;
@@ -154,7 +154,7 @@ describe('DownloadErrorDialog', () => {
       },
     );
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <DownloadErrorDialog
         visible={true}
         onDismiss={mockDismiss}
@@ -177,12 +177,12 @@ describe('DownloadErrorDialog', () => {
     const enableButton = getByText(
       l10n.en.components.downloadErrorDialog.enableAndRetry,
     );
-    fireEvent.press(enableButton);
+    await fireEvent.press(enableButton);
     expect(hfStore.setUseHfToken).toHaveBeenCalledWith(true);
     expect(mockTryAgain).toHaveBeenCalled();
   });
 
-  it('renders generic download error when error type is unknown', () => {
+  it('renders generic download error when error type is unknown', async () => {
     // Reset token state
     hfStore.hfToken = '';
     hfStore.useHfToken = false;
@@ -196,7 +196,7 @@ describe('DownloadErrorDialog', () => {
       },
     );
 
-    const {getByText, getByTestId} = render(
+    const {getByText, getByTestId} = await render(
       <DownloadErrorDialog
         visible={true}
         onDismiss={mockDismiss}

@@ -12,15 +12,15 @@ const items = [
 ];
 
 describe('Tabs', () => {
-  it('defaults to testID=ui-tabs and role=tablist', () => {
-    const {getByTestId} = render(
+  it('defaults to testID=ui-tabs and role=tablist', async () => {
+    const {getByTestId} = await render(
       <Tabs items={items} selectedValue="a" onChange={() => {}} />,
     );
     expect(getByTestId('ui-tabs').props.accessibilityRole).toBe('tablist');
   });
 
-  it('templates testID per item and marks selected', () => {
-    const {getByTestId} = render(
+  it('templates testID per item and marks selected', async () => {
+    const {getByTestId} = await render(
       <Tabs items={items} selectedValue="b" onChange={() => {}} />,
     );
     expect(
@@ -31,12 +31,12 @@ describe('Tabs', () => {
     ).toBe(false);
   });
 
-  it('fires onChange with item value on press', () => {
+  it('fires onChange with item value on press', async () => {
     const onChange = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <Tabs items={items} selectedValue="a" onChange={onChange} />,
     );
-    fireEvent.press(getByTestId('ui-tab-item-c'));
+    await fireEvent.press(getByTestId('ui-tab-item-c'));
     expect(onChange).toHaveBeenCalledWith('c');
   });
 });

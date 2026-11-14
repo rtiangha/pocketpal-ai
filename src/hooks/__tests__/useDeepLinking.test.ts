@@ -73,7 +73,7 @@ describe('useDeepLinking — cold-launch routing', () => {
   it('navigates to BenchmarkRunner with autostart:false for the bare bench URL on cold launch', async () => {
     getInitialURLSpy.mockResolvedValue('pocketpal://e2e/benchmark');
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
 
     // Flush the microtask queue so the .then() in the effect fires.
     await Promise.resolve();
@@ -92,7 +92,7 @@ describe('useDeepLinking — cold-launch routing', () => {
   it('navigates with autostart:true for the autostart bench URL on cold launch', async () => {
     getInitialURLSpy.mockResolvedValue('pocketpal://e2e/benchmark?autostart=1');
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
 
     await Promise.resolve();
     await Promise.resolve();
@@ -106,7 +106,7 @@ describe('useDeepLinking — cold-launch routing', () => {
     (global as any).__E2E__ = false;
     getInitialURLSpy.mockResolvedValue('pocketpal://e2e/benchmark');
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
 
     await Promise.resolve();
     await Promise.resolve();
@@ -121,7 +121,7 @@ describe('useDeepLinking — cold-launch routing', () => {
   it('does NOT navigate when getInitialURL returns null (regular launch)', async () => {
     getInitialURLSpy.mockResolvedValue(null);
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
 
     await Promise.resolve();
     await Promise.resolve();
@@ -134,7 +134,7 @@ describe('useDeepLinking — cold-launch routing', () => {
   it('does NOT navigate when getInitialURL returns an unrelated URL', async () => {
     getInitialURLSpy.mockResolvedValue('pocketpal://chat?palId=foo');
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
 
     await Promise.resolve();
     await Promise.resolve();
@@ -145,7 +145,7 @@ describe('useDeepLinking — cold-launch routing', () => {
   it('swallows getInitialURL rejections without navigating', async () => {
     getInitialURLSpy.mockRejectedValue(new Error('linking unavailable'));
 
-    expect(() => renderHook(() => useDeepLinking())).not.toThrow();
+    await renderHook(() => useDeepLinking());
 
     await Promise.resolve();
     await Promise.resolve();
@@ -170,7 +170,7 @@ describe('useDeepLinking — cold-launch routing', () => {
         return {remove: removeSpy} as any;
       });
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 
@@ -203,7 +203,7 @@ describe('useDeepLinking — cold-launch routing', () => {
         return {remove: jest.fn()} as any;
       });
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 
@@ -229,7 +229,7 @@ describe('useDeepLinking — cold-launch routing', () => {
         return {remove: jest.fn()} as any;
       });
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
     await Promise.resolve();
 
@@ -249,9 +249,9 @@ describe('useDeepLinking — cold-launch routing', () => {
       .spyOn(Linking, 'addEventListener')
       .mockImplementation(() => ({remove: removeSpy}) as any);
 
-    const {unmount} = renderHook(() => useDeepLinking());
+    const {unmount} = await renderHook(() => useDeepLinking());
     await Promise.resolve();
-    unmount();
+    await unmount();
 
     // Both the benchmark and prod hub/run 'url' listeners are removed.
     expect(removeSpy).toHaveBeenCalledTimes(2);
@@ -265,7 +265,7 @@ describe('useDeepLinking — cold-launch routing', () => {
       .spyOn(Linking, 'addEventListener')
       .mockImplementation(() => ({remove: jest.fn()}) as any);
 
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await Promise.resolve();
 
     // The benchmark listener is gated off, but the prod hub/run effect is
@@ -287,9 +287,9 @@ describe('useDeepLinking — cold-launch routing', () => {
       });
 
     // The hook must still mount and unmount without surfacing the throw.
-    const {unmount} = renderHook(() => useDeepLinking());
+    const {unmount} = await renderHook(() => useDeepLinking());
     await Promise.resolve();
-    expect(() => unmount()).not.toThrow();
+    await unmount();
 
     addEventListenerSpy.mockRestore();
   });
@@ -310,7 +310,7 @@ describe('useDeepLinking — deep-link routing', () => {
 
   it('routes the chat host link to the Pal', async () => {
     (palStore as any).pals = [{id: 'p1'}];
-    renderHook(() => useDeepLinking());
+    await renderHook(() => useDeepLinking());
     await getHandler()({
       url: 'pocketpal://chat?palId=p1',
       scheme: 'pocketpal',

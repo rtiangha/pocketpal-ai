@@ -31,8 +31,8 @@ const TestWrapper = ({
 };
 
 describe('FormField', () => {
-  it('renders with required props', () => {
-    const {getByText, getByPlaceholderText} = render(
+  it('renders with required props', async () => {
+    const {getByText, getByPlaceholderText} = await render(
       <TestWrapper>
         <FormField name="name" label="Name" placeholder="Enter name" />
       </TestWrapper>,
@@ -42,8 +42,8 @@ describe('FormField', () => {
     expect(getByPlaceholderText('Enter name')).toBeDefined();
   });
 
-  it('shows required asterisk when required prop is true', () => {
-    const {getByText} = render(
+  it('shows required asterisk when required prop is true', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <FormField name="name" label="Name" required />
       </TestWrapper>,
@@ -52,8 +52,8 @@ describe('FormField', () => {
     expect(getByText('Name*')).toBeDefined();
   });
 
-  it('shows sublabel when provided', () => {
-    const {getByText} = render(
+  it('shows sublabel when provided', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <FormField
           name="name"
@@ -66,20 +66,20 @@ describe('FormField', () => {
     expect(getByText('This is a helpful description')).toBeDefined();
   });
 
-  it('updates form value on text change', () => {
-    const {getByPlaceholderText} = render(
+  it('updates form value on text change', async () => {
+    const {getByPlaceholderText} = await render(
       <TestWrapper>
         <FormField name="name" label="Name" placeholder="Enter name" />
       </TestWrapper>,
     );
 
     const input = getByPlaceholderText('Enter name');
-    fireEvent.changeText(input, 'Test Name');
+    await fireEvent.changeText(input, 'Test Name');
 
     expect(input.props.value).toBe('Test Name');
   });
 
-  it('shows error message when form has errors', () => {
+  it('shows error message when form has errors', async () => {
     const TestComponent = () => {
       const methods = useForm<TestFormData>({
         defaultValues: {
@@ -102,12 +102,12 @@ describe('FormField', () => {
       );
     };
 
-    const {getByText} = render(<TestComponent />);
+    const {getByText} = await render(<TestComponent />);
     expect(getByText('Name is required')).toBeDefined();
   });
 
-  it('renders multiline input when multiline prop is true', () => {
-    const {getByPlaceholderText} = render(
+  it('renders multiline input when multiline prop is true', async () => {
+    const {getByPlaceholderText} = await render(
       <TestWrapper>
         <FormField
           name="systemPrompt"
@@ -123,9 +123,9 @@ describe('FormField', () => {
     expect(input.props.numberOfLines).toBe(5);
   });
 
-  it('calls onSubmitEditing when not multiline', () => {
+  it('calls onSubmitEditing when not multiline', async () => {
     const onSubmitEditing = jest.fn();
-    const {getByPlaceholderText} = render(
+    const {getByPlaceholderText} = await render(
       <TestWrapper>
         <FormField
           name="name"
@@ -137,13 +137,13 @@ describe('FormField', () => {
     );
 
     const input = getByPlaceholderText('Enter name');
-    fireEvent(input, 'onSubmitEditing');
+    await fireEvent(input, 'onSubmitEditing');
     expect(onSubmitEditing).toHaveBeenCalled();
   });
 
-  it('does not pass onSubmitEditing when multiline', () => {
+  it('does not pass onSubmitEditing when multiline', async () => {
     const onSubmitEditing = jest.fn();
-    const {getByPlaceholderText} = render(
+    const {getByPlaceholderText} = await render(
       <TestWrapper>
         <FormField
           name="systemPrompt"
@@ -159,8 +159,8 @@ describe('FormField', () => {
     expect(input.props.onSubmitEditing).toBeUndefined();
   });
 
-  it('disables input when disabled prop is true', () => {
-    const {getByPlaceholderText} = render(
+  it('disables input when disabled prop is true', async () => {
+    const {getByPlaceholderText} = await render(
       <TestWrapper>
         <FormField name="name" label="Name" placeholder="Enter name" disabled />
       </TestWrapper>,
@@ -170,8 +170,8 @@ describe('FormField', () => {
     expect(input.props.editable).toBe(false);
   });
 
-  it('handles empty or undefined values', () => {
-    const {getByPlaceholderText} = render(
+  it('handles empty or undefined values', async () => {
+    const {getByPlaceholderText} = await render(
       <TestWrapper defaultValues={{name: undefined}}>
         <FormField name="name" label="Name" placeholder="Enter name" />
       </TestWrapper>,
@@ -181,9 +181,9 @@ describe('FormField', () => {
     expect(input.props.value).toBe('');
   });
 
-  it('forwards ref to TextInput', () => {
+  it('forwards ref to TextInput', async () => {
     const ref = React.createRef<TextInputInstance>();
-    render(
+    await render(
       <TestWrapper>
         <FormField
           ref={ref}

@@ -8,7 +8,7 @@ jest.useFakeTimers();
 
 describe('CompletionSettings', () => {
   it('renders all settings correctly', async () => {
-    const {getByDisplayValue, getByTestId} = render(
+    const {getByDisplayValue, getByTestId} = await render(
       <CompletionSettings
         settings={{...mockCompletionParams, mirostat: 1}}
         onChange={jest.fn()}
@@ -75,8 +75,8 @@ describe('CompletionSettings', () => {
     expect(seedInput.props.value).toBe('0');
   });
 
-  it('gives each slider the granularity its parameter metadata declares', () => {
-    const {getByTestId} = render(
+  it('gives each slider the granularity its parameter metadata declares', async () => {
+    const {getByTestId} = await render(
       <CompletionSettings
         settings={{...mockCompletionParams, mirostat: 1}}
         onChange={jest.fn()}
@@ -89,8 +89,8 @@ describe('CompletionSettings', () => {
     expect(getByTestId('temperature-slider').props.step).toBe(0.01);
   });
 
-  it('spaces every underscore in a sampler label', () => {
-    const {getByText, queryByText} = render(
+  it('spaces every underscore in a sampler label', async () => {
+    const {getByText, queryByText} = await render(
       <CompletionSettings
         settings={mockCompletionParams}
         onChange={jest.fn()}
@@ -102,8 +102,8 @@ describe('CompletionSettings', () => {
   });
 
   describe('server defaults', () => {
-    it('shows no row anywhere without a server that reports defaults', () => {
-      const {queryAllByTestId} = render(
+    it('shows no row anywhere without a server that reports defaults', async () => {
+      const {queryAllByTestId} = await render(
         <CompletionSettings
           settings={{...defaultCompletionParams, mirostat: 1}}
           onChange={jest.fn()}
@@ -113,8 +113,8 @@ describe('CompletionSettings', () => {
       expect(queryAllByTestId(/server-default/)).toHaveLength(0);
     });
 
-    it("says a left-out sampler is the server's even when its value is unknown", () => {
-      const {getByTestId, queryByTestId} = render(
+    it("says a left-out sampler is the server's even when its value is unknown", async () => {
+      const {getByTestId, queryByTestId} = await render(
         <CompletionSettings
           settings={defaultCompletionParams}
           onChange={jest.fn()}
@@ -145,8 +145,8 @@ describe('CompletionSettings', () => {
       }
     });
 
-    it('never shows a row for the seed', () => {
-      const {queryAllByTestId} = render(
+    it('never shows a row for the seed', async () => {
+      const {queryAllByTestId} = await render(
         <CompletionSettings
           settings={{...defaultCompletionParams, seed: 42}}
           onChange={jest.fn()}
@@ -157,8 +157,8 @@ describe('CompletionSettings', () => {
       expect(queryAllByTestId(/^seed-server-default/)).toHaveLength(0);
     });
 
-    it('shows nothing for a moved parameter the server did not report', () => {
-      const {queryByTestId} = render(
+    it('shows nothing for a moved parameter the server did not report', async () => {
+      const {queryByTestId} = await render(
         <CompletionSettings
           settings={{...mockCompletionParams, min_p: 0.3}}
           onChange={jest.fn()}
@@ -171,8 +171,8 @@ describe('CompletionSettings', () => {
       expect(queryByTestId('min_p-server-default-reset')).toBeNull();
     });
 
-    it('reads a value moved onto the server default as such', () => {
-      const {getByTestId, queryByTestId} = render(
+    it('reads a value moved onto the server default as such', async () => {
+      const {getByTestId, queryByTestId} = await render(
         <CompletionSettings
           settings={{...mockCompletionParams, top_k: 20}}
           onChange={jest.fn()}
@@ -186,10 +186,10 @@ describe('CompletionSettings', () => {
       expect(queryByTestId('top_k-server-default-reset')).toBeNull();
     });
 
-    it('names the reported number when the control is on the app default', () => {
+    it('names the reported number when the control is on the app default', async () => {
       // At the app default the sampler is not forwarded at all, so 20 is what
       // the server actually runs and there is nothing to reset to.
-      const {getByTestId, getByText, queryByTestId} = render(
+      const {getByTestId, getByText, queryByTestId} = await render(
         <CompletionSettings
           settings={{
             ...mockCompletionParams,
@@ -205,9 +205,9 @@ describe('CompletionSettings', () => {
       expect(queryByTestId('top_k-server-default-reset')).toBeNull();
     });
 
-    it('shows the reported number and resets to the value the row names', () => {
+    it('shows the reported number and resets to the value the row names', async () => {
       const onChange = jest.fn();
-      const {getByTestId, getByText} = render(
+      const {getByTestId, getByText} = await render(
         <CompletionSettings
           settings={{...mockCompletionParams, top_k: 30}}
           onChange={onChange}
@@ -217,7 +217,7 @@ describe('CompletionSettings', () => {
 
       expect(getByText('Server default: 20 · Reset')).toBeTruthy();
 
-      fireEvent.press(getByTestId('top_k-server-default-reset'));
+      await fireEvent.press(getByTestId('top_k-server-default-reset'));
 
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith(
@@ -226,8 +226,8 @@ describe('CompletionSettings', () => {
       );
     });
 
-    it('exposes the reset as a labelled button with a reachable target', () => {
-      const {getByTestId} = render(
+    it('exposes the reset as a labelled button with a reachable target', async () => {
+      const {getByTestId} = await render(
         <CompletionSettings
           settings={{...mockCompletionParams, min_p: 0.3}}
           onChange={jest.fn()}
@@ -248,9 +248,9 @@ describe('CompletionSettings', () => {
       });
     });
 
-    it('marks the reset dead when the settings are not the editable source', () => {
+    it('marks the reset dead when the settings are not the editable source', async () => {
       const onChange = jest.fn();
-      const enabled = render(
+      const enabled = await render(
         <CompletionSettings
           settings={{...mockCompletionParams, min_p: 0.3}}
           onChange={onChange}
@@ -260,7 +260,7 @@ describe('CompletionSettings', () => {
       const enabledColor = enabled.getByText('Server default: 0.05 · Reset')
         .props.style;
 
-      const {getByTestId, getByText} = render(
+      const {getByTestId, getByText} = await render(
         <CompletionSettings
           settings={{...mockCompletionParams, min_p: 0.3}}
           onChange={onChange}
@@ -271,7 +271,7 @@ describe('CompletionSettings', () => {
 
       const reset = getByTestId('min_p-server-default-reset');
       expect(reset.props.accessibilityState).toEqual({disabled: true});
-      fireEvent.press(reset);
+      await fireEvent.press(reset);
       expect(onChange).not.toHaveBeenCalled();
       // A control that cannot act must not look like one that can.
       expect(getByText('Server default: 0.05 · Reset').props.style).not.toEqual(
@@ -279,9 +279,9 @@ describe('CompletionSettings', () => {
       );
     });
 
-    it('treats n predict as one number with two presentations', () => {
+    it('treats n predict as one number with two presentations', async () => {
       const onChange = jest.fn();
-      const {getByTestId, getByText, queryByTestId, rerender} = render(
+      const {getByTestId, getByText, queryByTestId, rerender} = await render(
         <CompletionSettings
           settings={{...mockCompletionParams, n_predict: 500}}
           onChange={onChange}
@@ -292,10 +292,10 @@ describe('CompletionSettings', () => {
       expect(getByTestId('n_predict-input')).toBeTruthy();
       expect(getByText('Server default: -1 · Reset')).toBeTruthy();
 
-      fireEvent.press(getByTestId('n_predict-server-default-reset'));
+      await fireEvent.press(getByTestId('n_predict-server-default-reset'));
       expect(onChange).toHaveBeenCalledWith('n_predict', -1);
 
-      rerender(
+      await rerender(
         <CompletionSettings
           settings={{...mockCompletionParams, n_predict: -1}}
           onChange={onChange}
@@ -313,7 +313,7 @@ describe('CompletionSettings', () => {
 
   it('handles slider changes', async () => {
     const mockOnChange = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <CompletionSettings
         settings={mockCompletionParams}
         onChange={mockOnChange}
@@ -322,8 +322,8 @@ describe('CompletionSettings', () => {
 
     const temperatureSlider = getByTestId('temperature-slider');
 
-    fireEvent(temperatureSlider, 'valueChange', 0.8);
-    fireEvent(temperatureSlider, 'slidingComplete', 0.8);
+    await fireEvent(temperatureSlider, 'valueChange', 0.8);
+    await fireEvent(temperatureSlider, 'slidingComplete', 0.8);
 
     // advance timers for debounce delay
     jest.advanceTimersByTime(300);
@@ -331,9 +331,9 @@ describe('CompletionSettings', () => {
     jest.useRealTimers();
   });
 
-  it('handles text input changes', () => {
+  it('handles text input changes', async () => {
     const mockOnChange = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <CompletionSettings
         settings={mockCompletionParams}
         onChange={mockOnChange}
@@ -341,12 +341,12 @@ describe('CompletionSettings', () => {
     );
 
     const nPredictInput = getByTestId('n_predict-input');
-    fireEvent.changeText(nPredictInput, '1024');
+    await fireEvent.changeText(nPredictInput, '1024');
     expect(mockOnChange).toHaveBeenCalledWith('n_predict', '1024');
   });
 
-  it('hides text input when n_predict is -1 (unlimited)', () => {
-    const {getByTestId, queryByTestId} = render(
+  it('hides text input when n_predict is -1 (unlimited)', async () => {
+    const {getByTestId, queryByTestId} = await render(
       <CompletionSettings
         settings={{...mockCompletionParams, n_predict: -1}}
         onChange={jest.fn()}
@@ -358,8 +358,8 @@ describe('CompletionSettings', () => {
     expect(queryByTestId('n_predict-input')).toBeNull();
   });
 
-  it('shows text input when n_predict is a custom value', () => {
-    const {getByTestId} = render(
+  it('shows text input when n_predict is a custom value', async () => {
+    const {getByTestId} = await render(
       <CompletionSettings
         settings={{...mockCompletionParams, n_predict: 500}}
         onChange={jest.fn()}
@@ -371,9 +371,9 @@ describe('CompletionSettings', () => {
     expect(getByTestId('n_predict-input')).toBeTruthy();
   });
 
-  it('switches n_predict between unlimited and custom via segmented buttons', () => {
+  it('switches n_predict between unlimited and custom via segmented buttons', async () => {
     const mockOnChange = jest.fn();
-    const {getByText} = render(
+    const {getByText} = await render(
       <CompletionSettings
         settings={{...mockCompletionParams, n_predict: 500}}
         onChange={mockOnChange}
@@ -381,18 +381,18 @@ describe('CompletionSettings', () => {
     );
 
     // Select Unlimited → should set to -1
-    fireEvent.press(getByText('Unlimited'));
+    await fireEvent.press(getByText('Unlimited'));
     expect(mockOnChange).toHaveBeenCalledWith('n_predict', -1);
 
     // Select Custom → should set to 1024
     mockOnChange.mockClear();
-    fireEvent.press(getByText('Custom'));
+    await fireEvent.press(getByText('Custom'));
     expect(mockOnChange).toHaveBeenCalledWith('n_predict', 1024);
   });
 
-  it('handles chip selection', () => {
+  it('handles chip selection', async () => {
     const mockOnChange = jest.fn();
-    const {getByText} = render(
+    const {getByText} = await render(
       <CompletionSettings
         settings={mockCompletionParams}
         onChange={mockOnChange}
@@ -400,7 +400,7 @@ describe('CompletionSettings', () => {
     );
 
     const mirostatV2Button = getByText('v2');
-    fireEvent.press(mirostatV2Button);
+    await fireEvent.press(mirostatV2Button);
     expect(mockOnChange).toHaveBeenCalledWith('mirostat', 2);
   });
 });

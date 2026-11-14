@@ -8,8 +8,8 @@ import {CardList} from '../CardList';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('Card', () => {
-  it('defaults to testID=ui-card and role=none', () => {
-    const {getByTestId} = render(
+  it('defaults to testID=ui-card and role=none', async () => {
+    const {getByTestId} = await render(
       <Card>
         <Text>body</Text>
       </Card>,
@@ -18,21 +18,21 @@ describe('Card', () => {
     expect(el.props.accessibilityRole).toBe('none');
   });
 
-  it('wraps in Pressable when onPress is provided', () => {
+  it('wraps in Pressable when onPress is provided', async () => {
     const onPress = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <Card onPress={onPress}>
         <Text>body</Text>
       </Card>,
     );
-    fireEvent.press(getByTestId('ui-card'));
+    await fireEvent.press(getByTestId('ui-card'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('CardList', () => {
-  it('defaults to testID=ui-card-list', () => {
-    const {getByTestId} = render(
+  it('defaults to testID=ui-card-list', async () => {
+    const {getByTestId} = await render(
       <CardList>
         <Text>body</Text>
       </CardList>,

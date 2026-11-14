@@ -5,8 +5,8 @@ import {CategoryBadge} from '../CategoryBadge';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('CategoryBadge', () => {
-  it('defaults to testID=ui-category-badge and role=text', () => {
-    const {getByTestId} = render(<CategoryBadge label="Chat" />);
+  it('defaults to testID=ui-category-badge and role=text', async () => {
+    const {getByTestId} = await render(<CategoryBadge label="Chat" />);
     expect(getByTestId('ui-category-badge').props.accessibilityRole).toBe(
       'text',
     );

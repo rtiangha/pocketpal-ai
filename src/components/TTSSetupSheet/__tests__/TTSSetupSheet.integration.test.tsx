@@ -42,27 +42,27 @@ describe('TTS setup end-to-end (single-view)', () => {
     });
   });
 
-  it('first tap on PlayButton with no voice opens the setup sheet and never calls play', () => {
+  it('first tap on PlayButton with no voice opens the setup sheet and never calls play', async () => {
     (ttsStore.openSetupSheet as jest.Mock).mockImplementation(() => {
       runInAction(() => {
         ttsStore.isSetupSheetOpen = true;
       });
     });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <PlayButton message={makeAssistantMsg()} />
       </L10nContext.Provider>,
     );
 
-    fireEvent.press(getByTestId('playbutton-msg-e2e'));
+    await fireEvent.press(getByTestId('playbutton-msg-e2e'));
 
     expect(ttsStore.openSetupSheet).toHaveBeenCalledTimes(1);
     expect(ttsStore.play).not.toHaveBeenCalled();
     expect(ttsStore.isSetupSheetOpen).toBe(true);
   });
 
-  it('picking a ready voice from an expanded engine group selects it and closes the sheet', () => {
+  it('picking a ready voice from an expanded engine group selects it and closes the sheet', async () => {
     runInAction(() => {
       ttsStore.isSetupSheetOpen = true;
       ttsStore.kittenDownloadState = 'ready';
@@ -79,18 +79,18 @@ describe('TTS setup end-to-end (single-view)', () => {
       });
     });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <TTSSetupSheet />
       </L10nContext.Provider>,
       {withBottomSheetProvider: true, withSafeArea: true},
     );
 
-    act(() => {
-      fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
     });
-    act(() => {
-      fireEvent.press(getByTestId('tts-voice-row-kitten-expr-voice-2-f'));
+    await act(async () => {
+      await fireEvent.press(getByTestId('tts-voice-row-kitten-expr-voice-2-f'));
     });
 
     expect(ttsStore.setCurrentVoice).toHaveBeenCalledWith(

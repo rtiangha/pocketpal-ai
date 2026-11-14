@@ -18,8 +18,8 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-const renderScreen = () =>
-  render(
+const renderScreen = async () =>
+  await render(
     <L10nContext.Provider value={l10n.en}>
       <Onboarding6Screen />
     </L10nContext.Provider>,
@@ -38,7 +38,7 @@ describe('Onboarding6Screen picker', () => {
 
   it('renders the three Sage tier rows from entry fields (no defaultModels lookup)', async () => {
     const sage = TOPIC_TO_PAL.education;
-    const {getByText} = renderScreen();
+    const {getByText} = await renderScreen();
 
     await waitFor(() => {
       for (const entry of sage.models) {
@@ -58,7 +58,7 @@ describe('Onboarding6Screen picker', () => {
     const recommended = sage.models.find(m => m.recommended)!;
     const expectedId = `${recommended.repo}/${recommended.filename}`;
 
-    renderScreen();
+    await renderScreen();
 
     await waitFor(() => {
       expect(uiStore.setOnboardingModelId).toHaveBeenCalledWith(expectedId);

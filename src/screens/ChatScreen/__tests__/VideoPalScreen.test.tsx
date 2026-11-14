@@ -16,8 +16,8 @@ import {LlamaContext} from 'llama.rn';
 import {ModelOrigin} from '../../../utils/types';
 import {mockLlamaContextParams} from '../../../../jest/fixtures/models';
 
-const render = (ui: React.ReactElement, options: any = {}) =>
-  baseRender(ui, {
+const render = async (ui: React.ReactElement, options: any = {}) =>
+  await baseRender(ui, {
     withNavigation: true,
     withSafeArea: true,
     withBottomSheetProvider: true,
@@ -71,7 +71,7 @@ describe('VideoPalScreen', () => {
     }
   });
 
-  it('renders chat view with start-video button and default prompt for a video pal', () => {
+  it('renders chat view with start-video button and default prompt for a video pal', async () => {
     const videoPal = makeVideoPal();
     (palStore as any).pals.push(videoPal);
     Object.defineProperty(chatSessionStore, 'activePalId', {
@@ -79,7 +79,7 @@ describe('VideoPalScreen', () => {
       configurable: true,
     });
 
-    const {getByLabelText, getByDisplayValue} = render(
+    const {getByLabelText, getByDisplayValue} = await render(
       <VideoPalScreen activePal={videoPal} />,
     );
 
@@ -100,9 +100,11 @@ describe('VideoPalScreen', () => {
 
     const alertSpy = jest.spyOn(Alert, 'alert');
 
-    const {getByLabelText} = render(<VideoPalScreen activePal={videoPal} />);
+    const {getByLabelText} = await render(
+      <VideoPalScreen activePal={videoPal} />,
+    );
 
-    fireEvent.press(getByLabelText('Start video analysis'));
+    await fireEvent.press(getByLabelText('Start video analysis'));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalled();
@@ -131,9 +133,11 @@ describe('VideoPalScreen', () => {
 
     const alertSpy = jest.spyOn(Alert, 'alert');
 
-    const {getByLabelText} = render(<VideoPalScreen activePal={videoPal} />);
+    const {getByLabelText} = await render(
+      <VideoPalScreen activePal={videoPal} />,
+    );
 
-    fireEvent.press(getByLabelText('Start video analysis'));
+    await fireEvent.press(getByLabelText('Start video analysis'));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalled();
@@ -168,18 +172,18 @@ describe('VideoPalScreen', () => {
       modelStore.isMultimodalActive = true;
     });
 
-    const {getByLabelText, getByTestId, queryByTestId} = render(
+    const {getByLabelText, getByTestId, queryByTestId} = await render(
       <VideoPalScreen activePal={videoPal} />,
     );
 
     // Start camera
-    fireEvent.press(getByLabelText('Start video analysis'));
+    await fireEvent.press(getByLabelText('Start video analysis'));
 
     // EmbeddedVideoView visible (close button present)
     await waitFor(() => expect(getByTestId('close-button')).toBeTruthy());
 
     // Increase interval -> palStore.updatePal called with new interval
-    fireEvent.press(getByTestId('increase-interval-button'));
+    await fireEvent.press(getByTestId('increase-interval-button'));
     await waitFor(() => {
       expect(palStore.updatePal).toHaveBeenCalledWith(
         videoPal.id,
@@ -190,7 +194,7 @@ describe('VideoPalScreen', () => {
     });
 
     // Close camera
-    fireEvent.press(getByTestId('close-button'));
+    await fireEvent.press(getByTestId('close-button'));
 
     await waitFor(() => {
       expect(queryByTestId('close-button')).toBeNull();
@@ -199,7 +203,7 @@ describe('VideoPalScreen', () => {
   });
 
   describe('under the generation lease', () => {
-    function openCamera() {
+    async function openCamera() {
       const videoPal = makeVideoPal();
       (palStore as any).pals.push(videoPal);
       Object.defineProperty(chatSessionStore, 'activePalId', {
@@ -218,7 +222,7 @@ describe('VideoPalScreen', () => {
           stopCompletion: jest.fn(),
         };
       });
-      return render(<VideoPalScreen activePal={videoPal} />);
+      return await render(<VideoPalScreen activePal={videoPal} />);
     }
 
     afterEach(() => {
@@ -229,24 +233,33 @@ describe('VideoPalScreen', () => {
     });
 
     it('closing the camera aborts the running generation', async () => {
-      const {getByLabelText, getByTestId} = openCamera();
-      fireEvent.press(getByLabelText('Start video analysis'));
+      const {getByLabelText, getByTestId} = await openCamera();
+      await fireEvent.press(getByLabelText('Start video analysis'));
       await waitFor(() => expect(getByTestId('close-button')).toBeTruthy());
 
-      fireEvent.press(getByTestId('close-button'));
+      await fireEvent.press(getByTestId('close-button'));
 
       expect(modelStore.abortActiveGeneration).toHaveBeenCalledTimes(1);
     });
 
     it('drops a frame that arrives while a generation holds the lease', async () => {
       (modelStore as any).startImageCompletion = jest.fn();
-      const {getByLabelText, getByTestId, UNSAFE_root} = openCamera();
-      fireEvent.press(getByLabelText('Start video analysis'));
+      const {getByLabelText, getByTestId} = await openCamera();
+      await fireEvent.press(getByLabelText('Start video analysis'));
       await waitFor(() => expect(getByTestId('close-button')).toBeTruthy());
-      const capture = (frame: string) =>
-        UNSAFE_root.findAll(
-          node => typeof node.props.onCapture === 'function',
-        )[0].props.onCapture(frame);
+      // onCapture lives on the composite EmbeddedVideoView, which is not in
+      // the v14 host tree — walk the fiber up from its close button to find
+      // the fiber whose memoizedProps carry onCapture.
+      const capture = (frame: string) => {
+        let fiber: any = (getByTestId('close-button') as any).unstable_fiber;
+        while (fiber) {
+          if (typeof fiber.memoizedProps?.onCapture === 'function') {
+            return fiber.memoizedProps.onCapture(frame);
+          }
+          fiber = fiber.return;
+        }
+        throw new Error('onCapture not found in fiber chain');
+      };
       const held = modelStore.tryAcquireGeneration();
 
       await capture('data:frame');

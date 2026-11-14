@@ -15,8 +15,8 @@ describe('ErrorSnackbar', () => {
     jest.clearAllMocks();
   });
 
-  it('renders null when there is no error', () => {
-    const {toJSON} = renderNative(
+  it('renders null when there is no error', async () => {
+    const {toJSON} = await renderNative(
       <ErrorSnackbar
         error={null}
         onDismiss={mockDismiss}
@@ -27,7 +27,7 @@ describe('ErrorSnackbar', () => {
     expect(toJSON()).toBeNull();
   });
 
-  it('renders authentication error for HuggingFace with correct icon and actions', () => {
+  it('renders authentication error for HuggingFace with correct icon and actions', async () => {
     const error: ErrorState = createErrorState(
       new Error('Client error: 401'),
       'download',
@@ -37,7 +37,7 @@ describe('ErrorSnackbar', () => {
       },
     );
 
-    const {getByText, getByTestId} = render(
+    const {getByText, getByTestId} = await render(
       <ErrorSnackbar
         error={error}
         onDismiss={mockDismiss}
@@ -54,11 +54,11 @@ describe('ErrorSnackbar', () => {
 
     // Check that the "Add Token" action is available for HF auth errors
     const addTokenButton = getByText('Add Token');
-    fireEvent.press(addTokenButton);
+    await fireEvent.press(addTokenButton);
     expect(mockSettings).toHaveBeenCalled();
   });
 
-  it('renders network error with correct icon and retry action', () => {
+  it('renders network error with correct icon and retry action', async () => {
     const error: ErrorState = createErrorState(
       new NetworkError('Network connection error'),
       'search',
@@ -67,7 +67,7 @@ describe('ErrorSnackbar', () => {
         context: 'download',
       },
     );
-    const {getByText, getByTestId} = render(
+    const {getByText, getByTestId} = await render(
       <ErrorSnackbar
         error={error}
         onDismiss={mockDismiss}
@@ -83,11 +83,11 @@ describe('ErrorSnackbar', () => {
 
     // For recoverable errors, check that "Retry" action is available
     const retryButton = getByText('Retry');
-    fireEvent.press(retryButton);
+    await fireEvent.press(retryButton);
     expect(mockRetry).toHaveBeenCalled();
   });
 
-  it('renders server error with correct icon and dismiss action', () => {
+  it('renders server error with correct icon and dismiss action', async () => {
     const error: ErrorState = createErrorState(
       new ServerError('Server unavailable'),
       'search',
@@ -96,7 +96,7 @@ describe('ErrorSnackbar', () => {
         context: 'search',
       },
     );
-    const {getByText, getByTestId} = render(
+    const {getByText, getByTestId} = await render(
       <ErrorSnackbar error={error} onDismiss={mockDismiss} />,
     );
 
@@ -108,11 +108,11 @@ describe('ErrorSnackbar', () => {
 
     // For non-recoverable errors without retry, check "Dismiss" action
     const dismissButton = getByText('Dismiss');
-    fireEvent.press(dismissButton);
+    await fireEvent.press(dismissButton);
     expect(mockDismiss).toHaveBeenCalled();
   });
 
-  it('renders storage error with correct icon', () => {
+  it('renders storage error with correct icon', async () => {
     const error: ErrorState = createErrorState(
       new Error('Not enough storage space'),
       'download',
@@ -122,7 +122,7 @@ describe('ErrorSnackbar', () => {
       },
     );
 
-    const {getByText, getByTestId} = render(
+    const {getByText, getByTestId} = await render(
       <ErrorSnackbar error={error} onDismiss={mockDismiss} />,
     );
 
@@ -133,7 +133,7 @@ describe('ErrorSnackbar', () => {
     expect(getByText('Not enough storage space')).toBeTruthy();
   });
 
-  it('renders unknown error with default icon', () => {
+  it('renders unknown error with default icon', async () => {
     const error: ErrorState = createErrorState(
       new Error('Something went wrong'),
       'search',
@@ -142,7 +142,7 @@ describe('ErrorSnackbar', () => {
         context: 'search',
       },
     );
-    const {getByText, getByTestId} = render(
+    const {getByText, getByTestId} = await render(
       <ErrorSnackbar
         error={error}
         onDismiss={mockDismiss}

@@ -10,16 +10,16 @@ describe('ChatHeaderTitle', () => {
     jest.clearAllMocks();
   });
 
-  it('renders "Chat" when no active session exists', () => {
+  it('renders "Chat" when no active session exists', async () => {
     runInAction(() => {
       chatSessionStore.resetActiveSession();
       chatSessionStore.sessions = [];
     });
-    const {getByText} = render(<ChatHeaderTitle />);
+    const {getByText} = await render(<ChatHeaderTitle />);
     expect(getByText('Chat')).toBeTruthy();
   });
 
-  it('renders session title when active session exists', () => {
+  it('renders session title when active session exists', async () => {
     const mockSession = {
       id: '123',
       title: 'Test Session',
@@ -33,28 +33,28 @@ describe('ChatHeaderTitle', () => {
       });
     });
 
-    const {getByText} = render(<ChatHeaderTitle />);
+    const {getByText} = await render(<ChatHeaderTitle />);
     expect(getByText('Test Session')).toBeTruthy();
   });
 
-  it('renders model name when active model exists', () => {
+  it('renders model name when active model exists', async () => {
     runInAction(() => {
       modelStore.models = [basicModel];
       modelStore.setActiveModel(basicModel.id);
     });
 
-    const {getByText} = render(<ChatHeaderTitle />);
+    const {getByText} = await render(<ChatHeaderTitle />);
     expect(getByText('basic model')).toBeTruthy();
   });
 
-  it('updates when active model changes', () => {
+  it('updates when active model changes', async () => {
     // Initial model
     runInAction(() => {
       modelStore.models = [basicModel];
       modelStore.setActiveModel(basicModel.id);
     });
 
-    const {getByText, rerender} = render(<ChatHeaderTitle />);
+    const {getByText, rerender} = await render(<ChatHeaderTitle />);
     expect(getByText('basic model')).toBeTruthy();
 
     // Change model
@@ -63,7 +63,7 @@ describe('ChatHeaderTitle', () => {
       modelStore.setActiveModel(downloadedModel.id);
     });
 
-    rerender(<ChatHeaderTitle />);
+    await rerender(<ChatHeaderTitle />);
     expect(getByText('downloaded model')).toBeTruthy();
   });
 });

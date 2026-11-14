@@ -145,7 +145,7 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.NetworkError);
+    ).rejects.toThrow(networkUtils.NetworkError);
 
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
@@ -155,7 +155,7 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.AppCheckError);
+    ).rejects.toThrow(networkUtils.AppCheckError);
 
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
@@ -169,7 +169,7 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.NetworkError);
+    ).rejects.toThrow(networkUtils.NetworkError);
   });
 
   it('should throw AppCheckError on 401/403 responses', async () => {
@@ -184,7 +184,7 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.AppCheckError);
+    ).rejects.toThrow(networkUtils.AppCheckError);
 
     // Test 403 error
     const forbiddenError = {
@@ -198,7 +198,7 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.AppCheckError);
+    ).rejects.toThrow(networkUtils.AppCheckError);
   });
 
   it('should throw ServerError on 500+ responses', async () => {
@@ -215,7 +215,7 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.ServerError);
+    ).rejects.toThrow(networkUtils.ServerError);
   });
 
   it('should throw ServerError with error message from server if available', async () => {
@@ -232,7 +232,7 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.ServerError);
+    ).rejects.toThrow(networkUtils.ServerError);
   });
 
   it('should handle AppCheck initialization errors', async () => {
@@ -242,6 +242,6 @@ describe('submitBenchmark', () => {
 
     await expect(
       submitBenchmark(mockDeviceInfo, mockBenchmarkResult),
-    ).rejects.toThrowError(networkUtils.AppCheckError);
+    ).rejects.toThrow(networkUtils.AppCheckError);
   });
 });

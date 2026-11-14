@@ -18,7 +18,7 @@ const confirmButtons = () => alertMock().mock.calls[0][2];
 const pressDeleteAndConfirm = async (
   getByTestId: (id: string) => any,
 ): Promise<void> => {
-  fireEvent.press(getByTestId('settings-delete-account'));
+  await fireEvent.press(getByTestId('settings-delete-account'));
   await act(async () => {
     await confirmButtons()[1].onPress();
   });
@@ -36,26 +36,26 @@ describe('AccountCard', () => {
     jest.restoreAllMocks();
   });
 
-  it('renders nothing while signed out', () => {
+  it('renders nothing while signed out', async () => {
     (authService as any).isAuthenticated = false;
-    const {queryByTestId} = render(<AccountCard />);
+    const {queryByTestId} = await render(<AccountCard />);
 
     expect(queryByTestId('account-card')).toBeNull();
     expect(queryByTestId('settings-delete-account')).toBeNull();
   });
 
-  it('shows the Account card with a Delete account button while signed in', () => {
-    const {getByTestId, getByText} = render(<AccountCard />);
+  it('shows the Account card with a Delete account button while signed in', async () => {
+    const {getByTestId, getByText} = await render(<AccountCard />);
 
     expect(getByTestId('account-card')).toBeTruthy();
     expect(getByText('Account')).toBeTruthy();
     expect(getByText('Delete account')).toBeTruthy();
   });
 
-  it('asks for one confirmation with a destructive Delete', () => {
-    const {getByTestId} = render(<AccountCard />);
+  it('asks for one confirmation with a destructive Delete', async () => {
+    const {getByTestId} = await render(<AccountCard />);
 
-    fireEvent.press(getByTestId('settings-delete-account'));
+    await fireEvent.press(getByTestId('settings-delete-account'));
 
     expect(alertMock()).toHaveBeenCalledTimes(1);
     const [title, message, buttons] = alertMock().mock.calls[0];
@@ -68,10 +68,10 @@ describe('AccountCard', () => {
     expect(deleteAccountMock).not.toHaveBeenCalled();
   });
 
-  it('deletes nothing when the confirmation is cancelled', () => {
-    const {getByTestId} = render(<AccountCard />);
+  it('deletes nothing when the confirmation is cancelled', async () => {
+    const {getByTestId} = await render(<AccountCard />);
 
-    fireEvent.press(getByTestId('settings-delete-account'));
+    await fireEvent.press(getByTestId('settings-delete-account'));
     confirmButtons()[0].onPress?.();
 
     expect(deleteAccountMock).not.toHaveBeenCalled();
@@ -79,7 +79,7 @@ describe('AccountCard', () => {
 
   it('deletes once on confirm', async () => {
     deleteAccountMock.mockResolvedValue({kind: 'deleted'});
-    const {getByTestId} = render(<AccountCard />);
+    const {getByTestId} = await render(<AccountCard />);
 
     await pressDeleteAndConfirm(getByTestId);
 
@@ -93,17 +93,17 @@ describe('AccountCard', () => {
         resolve = done;
       }),
     );
-    const {getByTestId} = render(<AccountCard />);
+    const {getByTestId} = await render(<AccountCard />);
 
-    fireEvent.press(getByTestId('settings-delete-account'));
-    act(() => {
+    await fireEvent.press(getByTestId('settings-delete-account'));
+    await act(() => {
       confirmButtons()[1].onPress();
     });
 
     expect(
       getByTestId('settings-delete-account').props.accessibilityState,
     ).toMatchObject({disabled: true});
-    fireEvent.press(getByTestId('settings-delete-account'));
+    await fireEvent.press(getByTestId('settings-delete-account'));
     expect(alertMock()).toHaveBeenCalledTimes(1);
     expect(deleteAccountMock).toHaveBeenCalledTimes(1);
 
@@ -126,7 +126,7 @@ describe('AccountCard', () => {
     ],
   ])('shows the %s outcome', async (_, outcome, message) => {
     deleteAccountMock.mockResolvedValue(outcome);
-    const {getByTestId} = render(<AccountCard />);
+    const {getByTestId} = await render(<AccountCard />);
 
     await pressDeleteAndConfirm(getByTestId);
 
@@ -136,7 +136,7 @@ describe('AccountCard', () => {
 
   it('shows nothing more when the Apple step is cancelled', async () => {
     deleteAccountMock.mockResolvedValue({kind: 'cancelled'});
-    const {getByTestId} = render(<AccountCard />);
+    const {getByTestId} = await render(<AccountCard />);
 
     await pressDeleteAndConfirm(getByTestId);
 
@@ -146,7 +146,7 @@ describe('AccountCard', () => {
   describe('the prompt when Apple cannot confirm', () => {
     const openPrompt = async () => {
       deleteAccountMock.mockResolvedValue({kind: 'cancelled'});
-      const {getByTestId} = render(<AccountCard />);
+      const {getByTestId} = await render(<AccountCard />);
       await pressDeleteAndConfirm(getByTestId);
       const answer = deleteAccountMock.mock.calls[0][0].confirmWithoutApple();
       const [title, message, buttons] = alertMock().mock.calls[1];
@@ -186,13 +186,13 @@ describe('AccountCard', () => {
         resolve = done;
       }),
     );
-    const {getByTestId, unmount} = render(<AccountCard />);
+    const {getByTestId, unmount} = await render(<AccountCard />);
 
-    fireEvent.press(getByTestId('settings-delete-account'));
-    act(() => {
+    await fireEvent.press(getByTestId('settings-delete-account'));
+    await act(() => {
       confirmButtons()[1].onPress();
     });
-    unmount();
+    await unmount();
     await act(async () => {
       resolve({kind: 'deleted'});
     });

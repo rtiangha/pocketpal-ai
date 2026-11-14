@@ -13,8 +13,8 @@ describe('ResponseBubble', () => {
   });
 
   describe('Content Display', () => {
-    it('should display children content to the user', () => {
-      const {getByText} = render(
+    it('should display children content to the user', async () => {
+      const {getByText} = await render(
         <ResponseBubble>
           <Text>Hello, this is a response</Text>
         </ResponseBubble>,
@@ -23,8 +23,8 @@ describe('ResponseBubble', () => {
       expect(getByText('Hello, this is a response')).toBeTruthy();
     });
 
-    it('should update displayed content when children change', () => {
-      const {rerender, getByText, queryByText} = render(
+    it('should update displayed content when children change', async () => {
+      const {rerender, getByText, queryByText} = await render(
         <ResponseBubble>
           <Text>Initial message</Text>
         </ResponseBubble>,
@@ -32,7 +32,7 @@ describe('ResponseBubble', () => {
 
       expect(getByText('Initial message')).toBeTruthy();
 
-      rerender(
+      await rerender(
         <ResponseBubble>
           <Text>Updated message</Text>
         </ResponseBubble>,
@@ -42,16 +42,16 @@ describe('ResponseBubble', () => {
       expect(queryByText('Initial message')).toBeNull();
     });
 
-    it('should handle empty content gracefully', () => {
-      const {queryByTestId} = render(<ResponseBubble />);
+    it('should handle empty content gracefully', async () => {
+      const {queryByTestId} = await render(<ResponseBubble />);
       // Should render without crashing
       expect(queryByTestId('masked-view')).toBeNull(); // Starts expanded
     });
   });
 
   describe('Expand/Collapse Behavior', () => {
-    it('should start in expanded state showing full content', () => {
-      const {queryByTestId} = render(
+    it('should start in expanded state showing full content', async () => {
+      const {queryByTestId} = await render(
         <ResponseBubble>
           <Text>Content</Text>
         </ResponseBubble>,
@@ -61,8 +61,8 @@ describe('ResponseBubble', () => {
       expect(queryByTestId('masked-view')).toBeNull();
     });
 
-    it('should toggle to partial state when user taps the bubble', () => {
-      const {getByText, queryByTestId} = render(
+    it('should toggle to partial state when user taps the bubble', async () => {
+      const {getByText, queryByTestId} = await render(
         <ResponseBubble>
           <Text>Content</Text>
         </ResponseBubble>,
@@ -72,25 +72,25 @@ describe('ResponseBubble', () => {
       expect(queryByTestId('masked-view')).toBeNull();
 
       // Tap to collapse
-      fireEvent.press(getByText('Content'));
+      await fireEvent.press(getByText('Content'));
 
       // Now in partial state (with mask)
       expect(queryByTestId('masked-view')).toBeTruthy();
     });
 
-    it('should toggle back to expanded when tapped again', () => {
-      const {getByText, queryByTestId} = render(
+    it('should toggle back to expanded when tapped again', async () => {
+      const {getByText, queryByTestId} = await render(
         <ResponseBubble>
           <Text>Content</Text>
         </ResponseBubble>,
       );
 
       // Tap to collapse
-      fireEvent.press(getByText('Content'));
+      await fireEvent.press(getByText('Content'));
       expect(queryByTestId('masked-view')).toBeTruthy();
 
       // Tap to expand
-      fireEvent.press(getByText('Content'));
+      await fireEvent.press(getByText('Content'));
       expect(queryByTestId('masked-view')).toBeNull();
     });
   });

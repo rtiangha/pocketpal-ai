@@ -1,12 +1,12 @@
 import React from 'react';
 import {Dimensions, Keyboard} from 'react-native';
-import {BottomSheetModal, useBottomSheetInternal} from '@gorhom/bottom-sheet';
+import {useBottomSheetInternal} from '@gorhom/bottom-sheet';
 import {
   useSafeAreaFrame,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
-import {act, render} from '../../../../jest/test-utils';
+import {act, render, screen} from '../../../../jest/test-utils';
 
 import {Sheet} from '../Sheet';
 import {SheetBackground} from '../SheetBackground';
@@ -17,6 +17,14 @@ const PERCENT_SNAP_POINTS = ['50%'];
 const setFrameHeight = (height: number) => {
   (useSafeAreaFrame as jest.Mock).mockReturnValue({...fullScreenFrame, height});
 };
+
+// The project mock of @gorhom/bottom-sheet renders BottomSheetModal as a host
+// View carrying all of its props, so the modal is found by its distinctive
+// backgroundComponent prop (always passed by Sheet).
+const getModal = () =>
+  screen.container.queryAll(
+    (n: any) => n.props.backgroundComponent !== undefined,
+  )[0];
 
 describe('Sheet', () => {
   beforeEach(() => {
@@ -38,48 +46,44 @@ describe('Sheet', () => {
     (useSafeAreaFrame as jest.Mock).mockReturnValue(fullScreenFrame);
   });
 
-  it('passes the top safe-area inset and resolved percentage snap points', () => {
-    const {UNSAFE_getByType} = render(<Sheet snapPoints={['50%']} />);
+  it('passes the top safe-area inset and resolved percentage snap points', async () => {
+    await render(<Sheet snapPoints={['50%']} />);
 
-    const modal = UNSAFE_getByType(BottomSheetModal);
+    const modal = getModal();
     expect(modal.props.topInset).toBe(24);
     expect(modal.props.snapPoints).toEqual([fullScreenFrame.height / 2]);
   });
 
-  it('renders the touch-taking SheetBackground', () => {
-    const {UNSAFE_getByType} = render(<Sheet />);
+  it('renders the touch-taking SheetBackground', async () => {
+    await render(<Sheet />);
 
-    expect(UNSAFE_getByType(BottomSheetModal).props.backgroundComponent).toBe(
-      SheetBackground,
-    );
+    expect(getModal().props.backgroundComponent).toBe(SheetBackground);
   });
 
-  it('resolves percentages against an app window shorter than the screen', () => {
+  it('resolves percentages against an app window shorter than the screen', async () => {
     setFrameHeight(400);
-    const {UNSAFE_getByType} = render(<Sheet snapPoints={['50%']} />);
+    await render(<Sheet snapPoints={['50%']} />);
 
-    const modal = UNSAFE_getByType(BottomSheetModal);
+    const modal = getModal();
     expect(modal.props.snapPoints).toEqual([200]);
     expect(modal.props.maxDynamicContentSize).toBe(360);
   });
 
-  it('re-resolves percentages and the full-height cap when only the window resizes', () => {
-    const {UNSAFE_getByType, rerender} = render(
-      <Sheet snapPoints={PERCENT_SNAP_POINTS} />,
-    );
+  it('re-resolves percentages and the full-height cap when only the window resizes', async () => {
+    const {rerender} = await render(<Sheet snapPoints={PERCENT_SNAP_POINTS} />);
 
     setFrameHeight(600);
-    rerender(<Sheet snapPoints={PERCENT_SNAP_POINTS} />);
+    await rerender(<Sheet snapPoints={PERCENT_SNAP_POINTS} />);
 
-    const modal = UNSAFE_getByType(BottomSheetModal);
+    const modal = getModal();
     expect(modal.props.snapPoints).toEqual([300]);
     expect(modal.props.maxDynamicContentSize).toBe(560);
   });
 
-  it('keeps the full-height snap point', () => {
-    const {UNSAFE_getByType} = render(<Sheet displayFullHeight />);
+  it('keeps the full-height snap point', async () => {
+    await render(<Sheet displayFullHeight />);
 
-    expect(UNSAFE_getByType(BottomSheetModal).props.snapPoints).toEqual([
+    expect(getModal().props.snapPoints).toEqual([
       fullScreenFrame.height - 24 - 16,
     ]);
   });
@@ -95,8 +99,8 @@ describe('Sheet', () => {
       height: portrait.screen.width,
     };
 
-    afterEach(() => {
-      act(() => {
+    afterEach(async () => {
+      await act(() => {
         Dimensions.set(portrait);
       });
     });
@@ -117,34 +121,34 @@ describe('Sheet', () => {
         jest.restoreAllMocks();
       });
 
-      it('dismisses the keyboard of a focused sheet input', () => {
+      it('dismisses the keyboard of a focused sheet input', async () => {
         focusSheetInput(42);
-        render(<Sheet snapPoints={['60%']} />);
+        await render(<Sheet snapPoints={['60%']} />);
         expect(Keyboard.dismiss).not.toHaveBeenCalled();
 
-        act(() => {
+        await act(() => {
           Dimensions.set({screen: landscape, window: landscape});
         });
 
         expect(Keyboard.dismiss).toHaveBeenCalledTimes(1);
       });
 
-      it('leaves the keyboard alone when no sheet input is focused', () => {
+      it('leaves the keyboard alone when no sheet input is focused', async () => {
         focusSheetInput(undefined);
-        render(<Sheet snapPoints={['60%']} />);
+        await render(<Sheet snapPoints={['60%']} />);
 
-        act(() => {
+        await act(() => {
           Dimensions.set({screen: landscape, window: landscape});
         });
 
         expect(Keyboard.dismiss).not.toHaveBeenCalled();
       });
 
-      it('leaves the keyboard alone when only the window changes', () => {
+      it('leaves the keyboard alone when only the window changes', async () => {
         focusSheetInput(42);
-        render(<Sheet snapPoints={['60%']} />);
+        await render(<Sheet snapPoints={['60%']} />);
 
-        act(() => {
+        await act(() => {
           Dimensions.set({
             screen: portrait.screen,
             window: {...portrait.window, height: portrait.window.height / 2},
@@ -154,34 +158,34 @@ describe('Sheet', () => {
         expect(Keyboard.dismiss).not.toHaveBeenCalled();
       });
 
-      it('leaves the keyboard alone when only the app frame changes', () => {
+      it('leaves the keyboard alone when only the app frame changes', async () => {
         focusSheetInput(42);
-        const {rerender} = render(<Sheet snapPoints={PERCENT_SNAP_POINTS} />);
+        const {rerender} = await render(
+          <Sheet snapPoints={PERCENT_SNAP_POINTS} />,
+        );
 
         setFrameHeight(400);
-        rerender(<Sheet snapPoints={PERCENT_SNAP_POINTS} />);
+        await rerender(<Sheet snapPoints={PERCENT_SNAP_POINTS} />);
 
         expect(Keyboard.dismiss).not.toHaveBeenCalled();
       });
     });
   });
 
-  it('enables dynamic sizing without snap points', () => {
-    const {UNSAFE_getByType} = render(<Sheet />);
+  it('enables dynamic sizing without snap points', async () => {
+    await render(<Sheet />);
 
-    const modal = UNSAFE_getByType(BottomSheetModal);
+    const modal = getModal();
     expect(modal.props.snapPoints).toBeUndefined();
     expect(modal.props.enableDynamicSizing).toBe(true);
   });
 
-  it('passes change and animate handlers through unchanged', () => {
+  it('passes change and animate handlers through unchanged', async () => {
     const onChange = jest.fn();
     const onAnimate = jest.fn();
-    const {UNSAFE_getByType} = render(
-      <Sheet onChange={onChange} onAnimate={onAnimate} />,
-    );
+    await render(<Sheet onChange={onChange} onAnimate={onAnimate} />);
 
-    const modal = UNSAFE_getByType(BottomSheetModal);
+    const modal = getModal();
     expect(modal.props.onChange).toBe(onChange);
     expect(modal.props.onAnimate).toBe(onAnimate);
   });

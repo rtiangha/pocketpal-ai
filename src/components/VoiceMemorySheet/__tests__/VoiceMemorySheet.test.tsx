@@ -18,6 +18,7 @@ jest.mock('../../Sheet', () => {
   Sheet.ScrollView = ({children, testID}: any) => (
     <View testID={testID}>{children}</View>
   );
+
   return {Sheet};
 });
 
@@ -28,14 +29,15 @@ const breakdown = {
     {kind: 'stt' as const, bytes: 0.33e9},
     {kind: 'tts' as const, bytes: 0.5e9},
   ],
+
   neededBytes: 3.73e9,
   totalBytes: 7.4e9,
 };
 const onContinue = jest.fn();
 const onChooseSmallerModel = jest.fn();
 
-const renderSheet = (fit: VoiceMemoryFit | null) =>
-  render(
+const renderSheet = async (fit: VoiceMemoryFit | null) =>
+  await render(
     <VoiceMemorySheet
       fit={fit}
       chatModelName="Gemma"
@@ -47,8 +49,8 @@ const renderSheet = (fit: VoiceMemoryFit | null) =>
   );
 
 describe('VoiceMemorySheet', () => {
-  it('when tight, shows the three models, needed vs total RAM and both actions', () => {
-    const {getByText, getByTestId} = renderSheet({
+  it('when tight, shows the three models, needed vs total RAM and both actions', async () => {
+    const {getByText, getByTestId} = await renderSheet({
       status: 'tight',
       sttTier: 'base',
       breakdown,
@@ -63,18 +65,19 @@ describe('VoiceMemorySheet', () => {
       /3\.7 GB of 8 GB on this phone/,
     );
 
-    fireEvent.press(getByTestId('voice-memory-continue'));
-    fireEvent.press(getByTestId('voice-memory-smaller-model'));
+    await fireEvent.press(getByTestId('voice-memory-continue'));
+    await fireEvent.press(getByTestId('voice-memory-smaller-model'));
     expect(onContinue).toHaveBeenCalledTimes(1);
     expect(onChooseSmallerModel).toHaveBeenCalledTimes(1);
   });
 
-  it("when it won't fit, offers no Continue anyway", () => {
-    const {getByText, queryByText, queryByTestId, getByTestId} = renderSheet({
-      status: 'wont_fit',
-      sttTier: 'base',
-      breakdown: {...breakdown, neededBytes: 9e9},
-    });
+  it("when it won't fit, offers no Continue anyway", async () => {
+    const {getByText, queryByText, queryByTestId, getByTestId} =
+      await renderSheet({
+        status: 'wont_fit',
+        sttTier: 'base',
+        breakdown: {...breakdown, neededBytes: 9e9},
+      });
 
     expect(getByText(strings.memoryWontFitTitle)).toBeTruthy();
     expect(getByText(strings.memoryWontFitBody)).toBeTruthy();
@@ -86,8 +89,8 @@ describe('VoiceMemorySheet', () => {
     expect(getByTestId('voice-memory-smaller-model')).toBeTruthy();
   });
 
-  it("when it won't fit but needs no more than the shown total, shows only the needed figure", () => {
-    const {getByTestId} = renderSheet({
+  it("when it won't fit but needs no more than the shown total, shows only the needed figure", async () => {
+    const {getByTestId} = await renderSheet({
       status: 'wont_fit',
       sttTier: 'base',
       breakdown: {...breakdown, neededBytes: 7.6e9},
@@ -97,8 +100,8 @@ describe('VoiceMemorySheet', () => {
     );
   });
 
-  it('when tight but needing more than the shown total, shows only the needed figure', () => {
-    const {getByTestId} = renderSheet({
+  it('when tight but needing more than the shown total, shows only the needed figure', async () => {
+    const {getByTestId} = await renderSheet({
       status: 'tight',
       sttTier: 'base',
       breakdown: {...breakdown, neededBytes: 12.05e9, totalBytes: 12.1e9},
@@ -108,8 +111,8 @@ describe('VoiceMemorySheet', () => {
     );
   });
 
-  it('shows only the rows the fit counts', () => {
-    const {queryByText, getByTestId, getByText} = renderSheet({
+  it('shows only the rows the fit counts', async () => {
+    const {queryByText, getByTestId, getByText} = await renderSheet({
       status: 'tight',
       sttTier: 'base',
       breakdown: {
@@ -117,6 +120,7 @@ describe('VoiceMemorySheet', () => {
           {kind: 'stt', bytes: 0.4e9},
           {kind: 'tts', bytes: 0.6e9},
         ],
+
         neededBytes: 1e9,
         totalBytes: 4e9,
       },
@@ -130,8 +134,8 @@ describe('VoiceMemorySheet', () => {
     );
   });
 
-  it('shows only the needed figure when total RAM is unknown', () => {
-    const {getByTestId} = renderSheet({
+  it('shows only the needed figure when total RAM is unknown', async () => {
+    const {getByTestId} = await renderSheet({
       status: 'tight',
       sttTier: 'base',
       breakdown: {...breakdown, totalBytes: Infinity},
@@ -141,8 +145,8 @@ describe('VoiceMemorySheet', () => {
     );
   });
 
-  it('names the Whisper tier the fit counted', () => {
-    const {getByText} = renderSheet({
+  it('names the Whisper tier the fit counted', async () => {
+    const {getByText} = await renderSheet({
       status: 'tight',
       sttTier: 'small',
       breakdown,
@@ -150,8 +154,8 @@ describe('VoiceMemorySheet', () => {
     expect(getByText('Speech recognition · Whisper Small')).toBeTruthy();
   });
 
-  it('is hidden without a fit to show', () => {
-    const {queryByTestId} = renderSheet(null);
+  it('is hidden without a fit to show', async () => {
+    const {queryByTestId} = await renderSheet(null);
     expect(queryByTestId('voice-memory-sheet')).toBeNull();
   });
 });

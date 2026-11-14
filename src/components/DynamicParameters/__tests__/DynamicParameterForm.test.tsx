@@ -1,6 +1,6 @@
 import React from 'react';
 import {FormProvider, useForm} from 'react-hook-form';
-import {render} from '../../../../jest/test-utils';
+import {render, screen} from '../../../../jest/test-utils';
 import {DynamicParameterForm} from '../DynamicParameterForm';
 import type {ParameterDefinition} from '../../../types/pal';
 
@@ -37,8 +37,8 @@ describe('DynamicParameterForm', () => {
     },
   ];
 
-  it('should render all parameter fields from schema', () => {
-    const {getByText} = render(
+  it('should render all parameter fields from schema', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={mockSchema} />
       </TestWrapper>,
@@ -49,18 +49,18 @@ describe('DynamicParameterForm', () => {
     expect(getByText('DateTime Field')).toBeTruthy();
   });
 
-  it('should render nothing when schema is empty', () => {
-    const {UNSAFE_root} = render(
+  it('should render nothing when schema is empty', async () => {
+    await render(
       <TestWrapper>
         <DynamicParameterForm schema={[]} />
       </TestWrapper>,
     );
 
     // The component should return null for empty schema
-    expect(UNSAFE_root).toBeTruthy();
+    expect(screen.root).toBeTruthy();
   });
 
-  it('should render text field for text type', () => {
+  it('should render text field for text type', async () => {
     const schema: ParameterDefinition[] = [
       {
         key: 'testText',
@@ -70,7 +70,7 @@ describe('DynamicParameterForm', () => {
       },
     ];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={schema} />
       </TestWrapper>,
@@ -79,7 +79,7 @@ describe('DynamicParameterForm', () => {
     expect(getByTestId('dynamic-field-testText')).toBeTruthy();
   });
 
-  it('should render option field for select type', () => {
+  it('should render option field for select type', async () => {
     const schema: ParameterDefinition[] = [
       {
         key: 'testSelect',
@@ -90,7 +90,7 @@ describe('DynamicParameterForm', () => {
       },
     ];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={schema} />
       </TestWrapper>,
@@ -99,7 +99,7 @@ describe('DynamicParameterForm', () => {
     expect(getByTestId('dynamic-option-testSelect')).toBeTruthy();
   });
 
-  it('should render combobox field for combobox type', () => {
+  it('should render combobox field for combobox type', async () => {
     const schema: ParameterDefinition[] = [
       {
         key: 'testCombobox',
@@ -110,7 +110,7 @@ describe('DynamicParameterForm', () => {
       },
     ];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={schema} />
       </TestWrapper>,
@@ -119,7 +119,7 @@ describe('DynamicParameterForm', () => {
     expect(getByTestId('dynamic-combobox-testCombobox')).toBeTruthy();
   });
 
-  it('should render datetime field for datetime_tag type', () => {
+  it('should render datetime field for datetime_tag type', async () => {
     const schema: ParameterDefinition[] = [
       {
         key: 'testDateTime',
@@ -129,7 +129,7 @@ describe('DynamicParameterForm', () => {
       },
     ];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={schema} />
       </TestWrapper>,
@@ -138,7 +138,7 @@ describe('DynamicParameterForm', () => {
     expect(getByTestId('dynamic-datetime-testDateTime')).toBeTruthy();
   });
 
-  it('should fallback to text field for unknown type', () => {
+  it('should fallback to text field for unknown type', async () => {
     const schema: ParameterDefinition[] = [
       {
         key: 'unknownField',
@@ -148,7 +148,7 @@ describe('DynamicParameterForm', () => {
       },
     ];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={schema} />
       </TestWrapper>,
@@ -158,7 +158,7 @@ describe('DynamicParameterForm', () => {
     expect(getByTestId('dynamic-field-unknownField')).toBeTruthy();
   });
 
-  it('should pass disabled prop to all fields', () => {
+  it('should pass disabled prop to all fields', async () => {
     const schema: ParameterDefinition[] = [
       {
         key: 'field1',
@@ -168,7 +168,7 @@ describe('DynamicParameterForm', () => {
       },
     ];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={schema} disabled={true} />
       </TestWrapper>,
@@ -178,8 +178,8 @@ describe('DynamicParameterForm', () => {
     expect(field.props.editable).toBe(false);
   });
 
-  it('should render multiple fields in order', () => {
-    const {getByTestId} = render(
+  it('should render multiple fields in order', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicParameterForm schema={mockSchema} />
       </TestWrapper>,

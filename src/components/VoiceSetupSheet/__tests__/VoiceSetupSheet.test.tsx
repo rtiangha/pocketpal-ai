@@ -24,6 +24,7 @@ jest.mock('../../Sheet', () => {
   Sheet.ScrollView = ({children, testID}: any) => (
     <View testID={testID}>{children}</View>
   );
+
   return {Sheet};
 });
 
@@ -54,8 +55,25 @@ const onClose = jest.fn();
 const asr = asrStore as any;
 const tts = ttsStore as any;
 
-const renderSheet = () =>
-  render(<VoiceSetupSheet isVisible onClose={onClose} onDone={onDone} />);
+const renderSheet = async () =>
+  await render(<VoiceSetupSheet isVisible onClose={onClose} onDone={onDone} />);
+
+// Invoke the Continue handler directly instead of fireEvent.press. The
+// handler awaits a deferred download; going through fireEvent leaves an
+// act() pending while the test rerenders/waits, and overlapping act() calls
+// poison the next test's render in v14. The Paper Button's onPress lives on
+// the composite fiber's memoizedProps, not on the host node.
+const pressContinue = (getByTestId: (id: string) => unknown) => {
+  const button = getByTestId('voice-setup-continue') as any;
+  let fiber: any = button.unstable_fiber;
+  while (fiber) {
+    if (typeof fiber.memoizedProps?.onPress === 'function') {
+      return fiber.memoizedProps.onPress() as Promise<void>;
+    }
+    fiber = fiber.return;
+  }
+  throw new Error('voice-setup-continue onPress not found in fiber chain');
+};
 
 describe('VoiceSetupSheet', () => {
   beforeEach(() => {
@@ -77,7 +95,7 @@ describe('VoiceSetupSheet', () => {
   });
 
   it('shows the whisper base row, the voice row and the mic step', async () => {
-    const {getByText, findByText} = renderSheet();
+    const {getByText, findByText} = await renderSheet();
     expect(getByText(strings.sttRowTitle)).toBeTruthy();
     expect(getByText(/^Whisper Base · /)).toBeTruthy();
     expect(await findByText('Sarah · ready')).toBeTruthy();
@@ -89,7 +107,7 @@ describe('VoiceSetupSheet', () => {
       asr.selectedTier = 'small';
       asr.downloadStates.small = 'ready';
     });
-    const {getByText, findByText} = renderSheet();
+    const {getByText, findByText} = await renderSheet();
     expect(getByText(/^Whisper Small · /)).toBeTruthy();
     expect(getByText(strings.installedLabel)).toBeTruthy();
     expect(await findByText('Sarah · ready')).toBeTruthy();
@@ -99,10 +117,10 @@ describe('VoiceSetupSheet', () => {
     runInAction(() => {
       asr.downloadStates.small = 'downloading';
     });
-    const {getByText, getByTestId} = renderSheet();
+    const {getByText, getByTestId} = await renderSheet();
     expect(getByText(/^Whisper Base · /)).toBeTruthy();
 
-    fireEvent.press(getByTestId('voice-setup-continue'));
+    await fireEvent.press(getByTestId('voice-setup-continue'));
 
     await waitFor(() =>
       expect(asrStore.downloadModel).toHaveBeenCalledWith('base'),
@@ -113,10 +131,10 @@ describe('VoiceSetupSheet', () => {
     runInAction(() => {
       asr.selectedTier = 'small';
     });
-    const {getByText, getByTestId} = renderSheet();
+    const {getByText, getByTestId} = await renderSheet();
     expect(getByText(/^Whisper Base · /)).toBeTruthy();
 
-    fireEvent.press(getByTestId('voice-setup-continue'));
+    await fireEvent.press(getByTestId('voice-setup-continue'));
 
     await waitFor(() =>
       expect(asrStore.downloadModel).toHaveBeenCalledWith('base'),
@@ -131,9 +149,9 @@ describe('VoiceSetupSheet', () => {
         asr.downloadStates.base = 'ready';
       });
     });
-    const {getByTestId} = renderSheet();
+    const {getByTestId} = await renderSheet();
 
-    fireEvent.press(getByTestId('voice-setup-continue'));
+    await fireEvent.press(getByTestId('voice-setup-continue'));
 
     await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
     expect(asrStore.downloadModel).toHaveBeenCalledWith('base');
@@ -153,15 +171,19 @@ describe('VoiceSetupSheet', () => {
           };
         }),
     );
-    const {getByTestId, rerender} = renderSheet();
-    fireEvent.press(getByTestId('voice-setup-continue'));
+    const {getByTestId, rerender} = await renderSheet();
+    // v14: the press awaits downloadModel, which only resolves when finish()
+    // runs below — awaiting the press deadlocks. Start it, close the sheet,
+    // then settle.
+    const pressPromise = pressContinue(getByTestId);
 
-    rerender(
+    await rerender(
       <VoiceSetupSheet isVisible={false} onClose={onClose} onDone={onDone} />,
     );
     await act(async () => {
       finish();
     });
+    await pressPromise;
 
     expect(ensureMicPermission).not.toHaveBeenCalled();
     expect(onDone).not.toHaveBeenCalled();
@@ -180,15 +202,15 @@ describe('VoiceSetupSheet', () => {
       });
     });
     try {
-      const {getByTestId} = renderSheet();
-      fireEvent.press(getByTestId('voice-setup-continue'));
+      const {getByTestId} = await renderSheet();
+      await fireEvent.press(getByTestId('voice-setup-continue'));
       await waitFor(() => expect(asrStore.downloadModel).toHaveBeenCalled());
       await act(async () => {});
       expect(ensureMicPermission).not.toHaveBeenCalled();
       expect(onDone).not.toHaveBeenCalled();
 
       Object.defineProperty(AppState, 'currentState', {value: 'active'});
-      fireEvent.press(getByTestId('voice-setup-continue'));
+      await fireEvent.press(getByTestId('voice-setup-continue'));
       await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
     } finally {
       Object.defineProperty(AppState, 'currentState', {value: appState});
@@ -200,7 +222,7 @@ describe('VoiceSetupSheet', () => {
       asr.downloadStates.base = 'downloading';
       asr.downloadProgress.base = 0.5;
     });
-    const {getByTestId, getByText, findByText} = renderSheet();
+    const {getByTestId, getByText, findByText} = await renderSheet();
     expect(getByText(/ of /)).toBeTruthy();
     expect(getByTestId('voice-setup-continue')).toBeDisabled();
     expect(await findByText('Sarah · ready')).toBeTruthy();
@@ -210,7 +232,7 @@ describe('VoiceSetupSheet', () => {
     runInAction(() => {
       asr.downloadStates.base = 'ready';
     });
-    const {getByText, findByText} = renderSheet();
+    const {getByText, findByText} = await renderSheet();
     expect(getByText(strings.installedLabel)).toBeTruthy();
     expect(await findByText('Sarah · ready')).toBeTruthy();
   });
@@ -221,10 +243,10 @@ describe('VoiceSetupSheet', () => {
       asr.downloadError.base = ASR_INSUFFICIENT_STORAGE;
       asr.freeDiskBytes = 10 * 1024 * 1024;
     });
-    const {getByTestId} = renderSheet();
+    const {getByTestId} = await renderSheet();
     expect(getByTestId('voice-setup-low-disk')).toBeTruthy();
 
-    fireEvent.press(getByTestId('voice-setup-continue'));
+    await fireEvent.press(getByTestId('voice-setup-continue'));
     await waitFor(() => expect(asrStore.downloadModel).toHaveBeenCalled());
     expect(onDone).not.toHaveBeenCalled();
   });
@@ -236,15 +258,15 @@ describe('VoiceSetupSheet', () => {
       'an unsupported Phonon voice',
       {id: 'Zoey', name: 'Zoey', engine: 'phonon'},
     ],
-  ])('with %s, offers to choose a neural voice', (_case, voice) => {
+  ])('with %s, offers to choose a neural voice', async (_case, voice) => {
     runInAction(() => {
       tts.currentVoice = voice;
     });
-    const {getByTestId, getByText, queryByTestId} = renderSheet();
+    const {getByTestId, getByText, queryByTestId} = await renderSheet();
 
     expect(getByText(strings.voiceRowMissing)).toBeTruthy();
     expect(queryByTestId('voice-setup-continue')).toBeNull();
-    fireEvent.press(getByTestId('voice-setup-choose-voice'));
+    await fireEvent.press(getByTestId('voice-setup-choose-voice'));
     expect(ttsStore.openSetupSheet).toHaveBeenCalledTimes(1);
   });
 
@@ -253,7 +275,7 @@ describe('VoiceSetupSheet', () => {
       tts.currentVoice = {id: 'Zoey', name: 'Zoey', engine: 'phonon'};
       tts.phononSupported = true;
     });
-    const {getByTestId, queryByTestId, findByText} = renderSheet();
+    const {getByTestId, queryByTestId, findByText} = await renderSheet();
 
     expect(getByTestId('voice-setup-continue')).toBeTruthy();
     expect(queryByTestId('voice-setup-choose-voice')).toBeNull();
@@ -265,10 +287,10 @@ describe('VoiceSetupSheet', () => {
       asr.downloadStates.base = 'ready';
     });
     (ensureMicPermission as jest.Mock).mockResolvedValue('blocked');
-    const {getByTestId, findByTestId} = renderSheet();
+    const {getByTestId, findByTestId} = await renderSheet();
 
-    fireEvent.press(getByTestId('voice-setup-continue'));
-    fireEvent.press(await findByTestId('voice-setup-open-settings'));
+    await fireEvent.press(getByTestId('voice-setup-continue'));
+    await fireEvent.press(await findByTestId('voice-setup-open-settings'));
 
     expect(openMicSettings).toHaveBeenCalledTimes(1);
     expect(onDone).not.toHaveBeenCalled();
@@ -279,9 +301,9 @@ describe('VoiceSetupSheet', () => {
       asr.downloadStates.base = 'ready';
     });
     (ensureMicPermission as jest.Mock).mockResolvedValue('denied');
-    const {getByTestId, findByText} = renderSheet();
+    const {getByTestId, findByText} = await renderSheet();
 
-    fireEvent.press(getByTestId('voice-setup-continue'));
+    await fireEvent.press(getByTestId('voice-setup-continue'));
 
     expect(await findByText(strings.micDenied)).toBeTruthy();
     expect(onDone).not.toHaveBeenCalled();
@@ -293,10 +315,10 @@ describe('VoiceSetupSheet', () => {
         asr.downloadStates.base = 'ready';
       });
       (ensureMicPermission as jest.Mock).mockResolvedValue('blocked');
-      const view = render(
+      const view = await render(
         <VoiceSetupSheet isVisible onClose={onClose} onDone={onDone} />,
       );
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
       await view.findByTestId('voice-setup-open-settings');
       return view;
     };
@@ -315,12 +337,14 @@ describe('VoiceSetupSheet', () => {
 
     it('brings Continue back when the sheet opens again', async () => {
       const {rerender, findByTestId} = await blockMic();
-      rerender(
+      await rerender(
         <VoiceSetupSheet isVisible={false} onClose={onClose} onDone={onDone} />,
       );
 
       (isMicGranted as jest.Mock).mockResolvedValue(true);
-      rerender(<VoiceSetupSheet isVisible onClose={onClose} onDone={onDone} />);
+      await rerender(
+        <VoiceSetupSheet isVisible onClose={onClose} onDone={onDone} />,
+      );
 
       expect(await findByTestId('voice-setup-continue')).toBeTruthy();
     });
@@ -337,7 +361,7 @@ describe('VoiceSetupSheet', () => {
   });
 
   describe("the voice's file", () => {
-    const voiceStatus = (view: ReturnType<typeof renderSheet>) =>
+    const voiceStatus = (view: Awaited<ReturnType<typeof renderSheet>>) =>
       view.getByTestId('voice-setup-voice-status');
     const deferred = () => {
       let resolve: (ok: boolean) => void = () => {};
@@ -349,15 +373,15 @@ describe('VoiceSetupSheet', () => {
         asr.downloadStates.base = 'ready';
       });
 
-    it('shows the voice name alone while the check is pending', () => {
+    it('shows the voice name alone while the check is pending', async () => {
       (hasVoiceFile as jest.Mock).mockReturnValue(new Promise(() => {}));
-      const view = renderSheet();
+      const view = await renderSheet();
       expect(voiceStatus(view)).toHaveTextContent('Sarah', {exact: true});
     });
 
     it('says a missing file is fetched by Continue', async () => {
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
-      const view = renderSheet();
+      const view = await renderSheet();
 
       expect(
         await view.findByText("Sarah isn't downloaded yet. Continue gets it."),
@@ -369,10 +393,10 @@ describe('VoiceSetupSheet', () => {
       readyWhisper();
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
       (ensureVoiceFile as jest.Mock).mockResolvedValue(false);
-      const view = renderSheet();
+      const view = await renderSheet();
       await view.findByText(/isn't downloaded yet/);
 
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
 
       expect(
         await view.findByText(
@@ -388,11 +412,11 @@ describe('VoiceSetupSheet', () => {
       const {colors} = themeFixtures.lightTheme;
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
       (ensureVoiceFile as jest.Mock).mockResolvedValue(false);
-      const view = renderSheet();
+      const view = await renderSheet();
       await view.findByText(/isn't downloaded yet/);
       expect(voiceStatus(view)).toHaveStyle({color: colors.onSurfaceVariant});
 
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
 
       await view.findByText(/Couldn't download Sarah/);
       expect(voiceStatus(view)).toHaveStyle({color: colors.error});
@@ -400,10 +424,10 @@ describe('VoiceSetupSheet', () => {
 
     it('never fetches the voice file when the whisper download fails', async () => {
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
-      const view = renderSheet();
+      const view = await renderSheet();
       await view.findByText(/isn't downloaded yet/);
 
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
 
       await waitFor(() => expect(asrStore.downloadModel).toHaveBeenCalled());
       await waitFor(() =>
@@ -417,7 +441,7 @@ describe('VoiceSetupSheet', () => {
       runInAction(() => {
         tts.currentVoice = {id: 's', name: 'Samantha', engine: 'system'};
       });
-      const view = renderSheet();
+      const view = await renderSheet();
       await act(async () => {});
 
       expect(voiceStatus(view)).toHaveTextContent(strings.voiceRowMissing);
@@ -430,11 +454,11 @@ describe('VoiceSetupSheet', () => {
       (ensureVoiceFile as jest.Mock)
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true);
-      const view = renderSheet();
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      const view = await renderSheet();
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
       await view.findByText(/Couldn't download Sarah/);
 
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
 
       await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
       expect(ensureMicPermission).toHaveBeenCalledTimes(1);
@@ -445,10 +469,10 @@ describe('VoiceSetupSheet', () => {
       asr.downloadModel.mockImplementationOnce(async () => {
         readyWhisper();
       });
-      const view = renderSheet();
+      const view = await renderSheet();
       await view.findByText('Sarah · ready');
 
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
 
       await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
       expect(ensureVoiceFile).toHaveBeenCalledWith(
@@ -464,29 +488,33 @@ describe('VoiceSetupSheet', () => {
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
       const ensure = deferred();
       (ensureVoiceFile as jest.Mock).mockReturnValue(ensure.promise);
-      const view = renderSheet();
+      const view = await renderSheet();
       await view.findByText(/isn't downloaded yet/);
 
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      // v14: the press awaits ensureVoiceFile, which only resolves below —
+      // awaiting the press deadlocks. Start it and assert while in flight.
+      const pressPromise = pressContinue(view.getByTestId);
 
       const button = await view.findByText(l10n.en.voiceInput.downloadingLabel);
       expect(button).toBeTruthy();
       expect(view.getByTestId('voice-setup-continue')).toBeDisabled();
       await act(async () => ensure.resolve(true));
+      await pressPromise;
     });
 
     it('stops setup when the sheet is closed during the file download', async () => {
       readyWhisper();
       const ensure = deferred();
       (ensureVoiceFile as jest.Mock).mockReturnValue(ensure.promise);
-      const view = renderSheet();
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      const view = await renderSheet();
+      const pressPromise = pressContinue(view.getByTestId);
       await waitFor(() => expect(ensureVoiceFile).toHaveBeenCalled());
 
-      view.rerender(
+      await view.rerender(
         <VoiceSetupSheet isVisible={false} onClose={onClose} onDone={onDone} />,
       );
       await act(async () => ensure.resolve(true));
+      await pressPromise;
 
       expect(ensureMicPermission).not.toHaveBeenCalled();
       expect(onDone).not.toHaveBeenCalled();
@@ -498,8 +526,8 @@ describe('VoiceSetupSheet', () => {
       const ensure = deferred();
       (ensureVoiceFile as jest.Mock).mockReturnValue(ensure.promise);
       try {
-        const view = renderSheet();
-        fireEvent.press(view.getByTestId('voice-setup-continue'));
+        const view = await renderSheet();
+        const pressPromise = pressContinue(view.getByTestId);
         await waitFor(() => expect(ensureVoiceFile).toHaveBeenCalled());
 
         Object.defineProperty(AppState, 'currentState', {
@@ -508,6 +536,7 @@ describe('VoiceSetupSheet', () => {
           writable: true,
         });
         await act(async () => ensure.resolve(true));
+        await pressPromise;
 
         expect(ensureMicPermission).not.toHaveBeenCalled();
         expect(onDone).not.toHaveBeenCalled();
@@ -520,12 +549,12 @@ describe('VoiceSetupSheet', () => {
       readyWhisper();
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
       (ensureVoiceFile as jest.Mock).mockResolvedValue(false);
-      const view = renderSheet();
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      const view = await renderSheet();
+      await fireEvent.press(view.getByTestId('voice-setup-continue'));
       await view.findByText(/Couldn't download Sarah/);
 
       (hasVoiceFile as jest.Mock).mockResolvedValue(true);
-      act(() => {
+      await act(() => {
         runInAction(() => {
           tts.currentVoice = {id: 'F2', name: 'Lily', engine: 'supertonic'};
         });
@@ -543,17 +572,18 @@ describe('VoiceSetupSheet', () => {
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
       const ensure = deferred();
       (ensureVoiceFile as jest.Mock).mockReturnValue(ensure.promise);
-      const view = renderSheet();
-      fireEvent.press(view.getByTestId('voice-setup-continue'));
+      const view = await renderSheet();
+      const pressPromise = pressContinue(view.getByTestId);
       await waitFor(() => expect(ensureVoiceFile).toHaveBeenCalled());
 
-      act(() => {
+      await act(() => {
         runInAction(() => {
           tts.currentVoice = {id: 'F2', name: 'Lily', engine: 'supertonic'};
         });
       });
       await view.findByText("Lily isn't downloaded yet. Continue gets it.");
       await act(async () => ensure.resolve(false));
+      await pressPromise;
 
       expect(view.queryByText(/Couldn't download/)).toBeNull();
       expect(view.getByText(/Lily isn't downloaded yet/)).toBeTruthy();

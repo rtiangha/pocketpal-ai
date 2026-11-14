@@ -17,8 +17,8 @@ import {VoiceBar} from '../VoiceBar';
 const strings = l10n.en.voiceMode;
 const controls = {tapCloud: jest.fn(), toggleMute: jest.fn(), end: jest.fn()};
 
-const renderBar = () =>
-  render(
+const renderBar = async () =>
+  await render(
     <VoiceModeControlsContext.Provider value={controls}>
       <VoiceBar />
     </VoiceModeControlsContext.Provider>,
@@ -33,22 +33,22 @@ describe('VoiceBar', () => {
     });
   });
 
-  it('shows the status, the swipe hint and a mini cloud', () => {
-    const {getByText, getByTestId} = renderBar();
+  it('shows the status, the swipe hint and a mini cloud', async () => {
+    const {getByText, getByTestId} = await renderBar();
     expect(getByText(strings.speakingTitle)).toBeTruthy();
     expect(getByText(strings.swipeUpHint)).toBeTruthy();
     expect(getByTestId('voice-cloud-speaking')).toBeTruthy();
   });
 
-  it('a tap opens the voice view without changing the phase', () => {
-    const {getByTestId} = renderBar();
-    fireEvent.press(getByTestId('voice-bar-expand'));
+  it('a tap opens the voice view without changing the phase', async () => {
+    const {getByTestId} = await renderBar();
+    await fireEvent.press(getByTestId('voice-bar-expand'));
     expect(voiceModeStore.setPresentation).toHaveBeenCalledWith('full');
     expect(voiceModeStore.phase).toBe('speaking');
   });
 
   it('a quick upward flick opens the voice view, however short', async () => {
-    renderBar();
+    await renderBar();
     fireGestureHandler(getByGestureTestId('voice-bar-swipe'), [
       {state: State.BEGAN, translationY: 0, velocityY: 0},
       {state: State.ACTIVE, translationY: -10, velocityY: -1200},
@@ -58,8 +58,8 @@ describe('VoiceBar', () => {
     expect(voiceModeStore.setPresentation).toHaveBeenCalledWith('full');
   });
 
-  it('a short, slow drag up settles back without opening', () => {
-    renderBar();
+  it('a short, slow drag up settles back without opening', async () => {
+    await renderBar();
     fireGestureHandler(getByGestureTestId('voice-bar-swipe'), [
       {state: State.BEGAN, translationY: 0, velocityY: 0},
       {state: State.ACTIVE, translationY: -10, velocityY: -100},
@@ -69,7 +69,7 @@ describe('VoiceBar', () => {
   });
 
   it('a swipe up opens the voice view', async () => {
-    renderBar();
+    await renderBar();
     fireGestureHandler(getByGestureTestId('voice-bar-swipe'), [
       {state: State.BEGAN, translationY: 0},
       {state: State.ACTIVE, translationY: -30},
@@ -79,27 +79,27 @@ describe('VoiceBar', () => {
     expect(voiceModeStore.setPresentation).toHaveBeenCalledWith('full');
   });
 
-  it('routes mute and End to the session', () => {
-    const {getByTestId} = renderBar();
-    fireEvent.press(getByTestId('voice-bar-mute'));
-    fireEvent.press(getByTestId('voice-bar-end'));
+  it('routes mute and End to the session', async () => {
+    const {getByTestId} = await renderBar();
+    await fireEvent.press(getByTestId('voice-bar-mute'));
+    await fireEvent.press(getByTestId('voice-bar-end'));
     expect(controls.toggleMute).toHaveBeenCalledTimes(1);
     expect(controls.end).toHaveBeenCalledTimes(1);
   });
 
-  it('shows an error in place of the hint', () => {
+  it('shows an error in place of the hint', async () => {
     runInAction(() => {
       voiceModeStore.lastError = 'reply_failed';
     });
-    const {getByText} = renderBar();
+    const {getByText} = await renderBar();
     expect(getByText(strings.errorReply)).toBeTruthy();
   });
 
-  it('runs no cloud of its own while the voice view is open', () => {
+  it('runs no cloud of its own while the voice view is open', async () => {
     runInAction(() => {
       voiceModeStore.presentation = 'full';
     });
-    const {queryByTestId} = renderBar();
+    const {queryByTestId} = await renderBar();
     expect(queryByTestId('voice-cloud-speaking')).toBeNull();
   });
 });

@@ -27,8 +27,8 @@ const seed = (key: string, record: Record<string, unknown>) => {
   routerStore.records.set(key, {key, ...record} as any);
 };
 
-const renderChat = () =>
-  render(
+const renderChat = async () =>
+  await render(
     <ChatView messages={[textMessage]} onSendPress={jest.fn()} user={user} />,
     {withNavigation: true, withBottomSheetProvider: true},
   );
@@ -74,32 +74,33 @@ describe('the pending slot while the bound router model loads', () => {
     });
   });
 
-  it('shows the load line instead of the dots', () => {
+  it('shows the load line instead of the dots', async () => {
     seed('srv-1/alpha', {kind: 'load', detail: {progress: {value: 0.4}}});
 
-    const {queryByTestId} = renderChat();
+    const {queryByTestId} = await renderChat();
 
     expect(queryByTestId('chat-router-loading')).toBeTruthy();
     expect(queryByTestId('pending-indicator')).toBeNull();
   });
 
-  it('announces the load line once while the chat re-renders', () => {
+  it('announces the load line once while the chat re-renders', async () => {
     const loadAt = (value: number) =>
       seed('srv-1/alpha', {kind: 'load', detail: {progress: {value}}});
     loadAt(0.4);
     const onSendPress = jest.fn();
-    const {rerender} = render(
+    const {rerender} = await render(
       <ChatView
         messages={[textMessage]}
         onSendPress={onSendPress}
         user={user}
       />,
+
       {withNavigation: true, withBottomSheetProvider: true},
     );
 
-    act(() => loadAt(0.6));
-    act(() => loadAt(0.8));
-    act(() => {
+    await act(() => loadAt(0.6));
+    await act(() => loadAt(0.8));
+    await act(() => {
       runInAction(() => {
         chatSessionStore.agentUiState = {
           status: 'prefill',
@@ -108,7 +109,7 @@ describe('the pending slot while the bound router model loads', () => {
         };
       });
     });
-    rerender(
+    await rerender(
       <ChatView
         messages={[{...textMessage}]}
         onSendPress={onSendPress}
@@ -124,6 +125,7 @@ describe('the pending slot while the bound router model loads', () => {
       'an unload of the bound model',
       () => seed('srv-1/alpha', {kind: 'unload'}),
     ],
+
     ['a load of another model', () => seed('srv-1/beta', {kind: 'load'})],
     [
       'a failed load',
@@ -133,6 +135,7 @@ describe('the pending slot while the bound router model loads', () => {
           failure: {cause: 'load-failed', message: ''},
         }),
     ],
+
     ['a session with no router load', () => {}],
     [
       'a Stop',
@@ -143,16 +146,16 @@ describe('the pending slot while the bound router model loads', () => {
         });
       },
     ],
-  ])('shows the dots for %s', (_label, arrange) => {
+  ])('shows the dots for %s', async (_label, arrange) => {
     arrange();
 
-    const {queryByTestId} = renderChat();
+    const {queryByTestId} = await renderChat();
 
     expect(queryByTestId('chat-router-loading')).toBeNull();
     expect(queryByTestId('pending-indicator')).toBeTruthy();
   });
 
-  it('shows nothing once the turn is no longer pending', () => {
+  it('shows nothing once the turn is no longer pending', async () => {
     seed('srv-1/alpha', {kind: 'load'});
     runInAction(() => {
       chatSessionStore.agentUiState = {
@@ -162,7 +165,7 @@ describe('the pending slot while the bound router model loads', () => {
       };
     });
 
-    const {queryByTestId} = renderChat();
+    const {queryByTestId} = await renderChat();
 
     expect(queryByTestId('chat-router-loading')).toBeNull();
   });

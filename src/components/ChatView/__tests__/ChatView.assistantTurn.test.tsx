@@ -3,7 +3,7 @@ import {StyleSheet} from 'react-native';
 import {runInAction} from 'mobx';
 
 import {textMessage, user} from '../../../../jest/fixtures';
-import {render, fireEvent} from '../../../../jest/test-utils';
+import {render, fireEvent, screen} from '../../../../jest/test-utils';
 import {l10n} from '../../../locales';
 import {MessageType, AgentStep} from '../../../utils/types';
 import {chatSessionStore, modelStore} from '../../../store';
@@ -59,16 +59,18 @@ beforeEach(() => {
 describe('ChatView — AssistantTurn integration', () => {
   // ---------- Story Test Requirements (Renderer) #6 + #11 ----------
 
-  it('#6 htmlPreviewCount counts step.toolOutcomes filtered to result.type=html across all turns', () => {
+  it('#6 htmlPreviewCount counts step.toolOutcomes filtered to result.type=html across all turns', async () => {
     const turn1 = makeAssistantTurn(
       [
         {
           toolCalls: [
             {id: 'c0', function: {name: 'render_html', arguments: '{}'}},
           ],
+
           toolOutcomes: [htmlOutcome('c0')],
         },
       ],
+
       't1',
       4,
     );
@@ -78,9 +80,11 @@ describe('ChatView — AssistantTurn integration', () => {
           toolCalls: [
             {id: 'c1', function: {name: 'render_html', arguments: '{}'}},
           ],
+
           toolOutcomes: [htmlOutcome('c1')],
         },
       ],
+
       't2',
       3,
     );
@@ -90,9 +94,11 @@ describe('ChatView — AssistantTurn integration', () => {
           toolCalls: [
             {id: 'c2', function: {name: 'render_html', arguments: '{}'}},
           ],
+
           toolOutcomes: [htmlOutcome('c2')],
         },
       ],
+
       't3',
       2,
     );
@@ -102,15 +108,17 @@ describe('ChatView — AssistantTurn integration', () => {
           toolCalls: [
             {id: 'c3', function: {name: 'render_html', arguments: '{}'}},
           ],
+
           toolOutcomes: [htmlOutcome('c3')],
         },
       ],
+
       't4',
       1,
     );
 
     const messages = [turn1, turn2, turn3, turn4];
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ChatView messages={messages} onSendPress={jest.fn()} user={user} />,
       {withNavigation: true, withBottomSheetProvider: true},
     );
@@ -118,7 +126,7 @@ describe('ChatView — AssistantTurn integration', () => {
     expect(getByTestId('soft-cap-warning')).toBeTruthy();
   });
 
-  it('#6b under threshold: 3 html outcomes → no soft-cap banner', () => {
+  it('#6b under threshold: 3 html outcomes → no soft-cap banner', async () => {
     const messages = [
       makeAssistantTurn(
         [
@@ -126,9 +134,11 @@ describe('ChatView — AssistantTurn integration', () => {
             toolCalls: [
               {id: 'c0', function: {name: 'render_html', arguments: '{}'}},
             ],
+
             toolOutcomes: [htmlOutcome('c0')],
           },
         ],
+
         't1',
         3,
       ),
@@ -138,9 +148,11 @@ describe('ChatView — AssistantTurn integration', () => {
             toolCalls: [
               {id: 'c1', function: {name: 'render_html', arguments: '{}'}},
             ],
+
             toolOutcomes: [htmlOutcome('c1')],
           },
         ],
+
         't2',
         2,
       ),
@@ -150,21 +162,24 @@ describe('ChatView — AssistantTurn integration', () => {
             toolCalls: [
               {id: 'c2', function: {name: 'render_html', arguments: '{}'}},
             ],
+
             toolOutcomes: [htmlOutcome('c2')],
           },
         ],
+
         't3',
         1,
       ),
     ];
-    const {queryByTestId} = render(
+
+    const {queryByTestId} = await render(
       <ChatView messages={messages} onSendPress={jest.fn()} user={user} />,
       {withNavigation: true, withBottomSheetProvider: true},
     );
     expect(queryByTestId('soft-cap-warning')).toBeNull();
   });
 
-  it('#6c text-result outcomes do NOT count toward htmlPreviewCount', () => {
+  it('#6c text-result outcomes do NOT count toward htmlPreviewCount', async () => {
     const messages = Array.from({length: 6}, (_, i) =>
       makeAssistantTurn(
         [
@@ -172,6 +187,7 @@ describe('ChatView — AssistantTurn integration', () => {
             toolCalls: [
               {id: `c${i}`, function: {name: 'calculate', arguments: '{}'}},
             ],
+
             toolOutcomes: [
               {
                 callId: `c${i}`,
@@ -182,18 +198,19 @@ describe('ChatView — AssistantTurn integration', () => {
             ],
           },
         ],
+
         `t${i}`,
         100 - i,
       ),
     );
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <ChatView messages={messages} onSendPress={jest.fn()} user={user} />,
       {withNavigation: true, withBottomSheetProvider: true},
     );
     expect(queryByTestId('soft-cap-warning')).toBeNull();
   });
 
-  it('the "…" on an assistant_turn row opens the menu (interaction Test #7)', () => {
+  it('the "…" on an assistant_turn row opens the menu (interaction Test #7)', async () => {
     const turn = makeAssistantTurn([{content: 'hi assistant'}], 't1', 1);
     const userMsg: MessageType.Text = {
       ...textMessage,
@@ -202,24 +219,28 @@ describe('ChatView — AssistantTurn integration', () => {
       author: user,
       createdAt: 0,
     };
-    const {UNSAFE_root, getAllByTestId, getByText} = render(
+    const {getAllByTestId, getByText} = await render(
       <ChatView
         messages={[turn, userMsg]}
         onSendPress={jest.fn()}
         user={user}
       />,
+
       {withNavigation: true, withBottomSheetProvider: true},
     );
 
-    const longPressNodes = UNSAFE_root.findAll(
+    const longPressNodes = screen.container.queryAll(
       (n: any) =>
         typeof n.type === 'string' &&
         typeof n.props.onTouchCancel === 'function',
     );
     expect(longPressNodes).toHaveLength(1);
+    // v14: `markdown` is a prop of the EnrichedMarkdownText composite,
+    // which is not in the host tree. The row's markdown block is the
+    // `markdown-content` host node inside it.
     expect(
-      longPressNodes[0].findAll(
-        (n: any) => n.props?.markdown === 'user prompt',
+      longPressNodes[0].queryAll(
+        (n: any) => n.props?.testID === 'markdown-content',
       ),
     ).not.toHaveLength(0);
     const assistantButton = getAllByTestId('message-menu-button').find(
@@ -232,7 +253,9 @@ describe('ChatView — AssistantTurn integration', () => {
         return false;
       },
     );
-    fireEvent.press(assistantButton!, {nativeEvent: {pageX: 1, pageY: 1}});
+    await fireEvent.press(assistantButton!, {
+      nativeEvent: {pageX: 1, pageY: 1},
+    });
 
     expect(
       getByText(l10n.en.components.chatView.menuItems.regenerate),
@@ -245,20 +268,27 @@ describe('ChatView — footer controls are not clipped by the row', () => {
     typeof n.type === 'string' ? n.type : (n.type?.displayName ?? n.type?.name);
 
   const clippingAncestors = (control: any) => {
+    // v14: only host nodes are in the tree, so the CellRenderer composite
+    // never appears as a `.parent`. Walk the fiber chain instead — it
+    // retains composites, and each fiber's memoizedProps carries the style
+    // that its host node renders with.
     const clipping: string[] = [];
-    for (let n = control.parent; n; n = n.parent) {
-      if (nodeName(n) === 'CellRenderer') {
+    let fiber = control?.unstable_fiber;
+    while (fiber) {
+      const name = nodeName({type: fiber.type});
+      if (name === 'CellRenderer') {
         return clipping;
       }
-      const overflow = StyleSheet.flatten(n.props?.style)?.overflow;
+      const overflow = StyleSheet.flatten(fiber.memoizedProps?.style)?.overflow;
       if (overflow === 'hidden' || overflow === 'scroll') {
-        clipping.push(`${nodeName(n)}:${overflow}`);
+        clipping.push(`${name}:${overflow}`);
       }
+      fiber = fiber.return;
     }
     throw new Error('control is not inside a list cell');
   };
 
-  it('keeps every ancestor up to the list cell overflow-visible', () => {
+  it('keeps every ancestor up to the list cell overflow-visible', async () => {
     const turn = makeAssistantTurn([{content: 'hi assistant'}], 't1', 1);
     const userMsg: MessageType.Text = {
       ...textMessage,
@@ -267,12 +297,13 @@ describe('ChatView — footer controls are not clipped by the row', () => {
       author: user,
       createdAt: 0,
     };
-    const {getByTestId, getAllByTestId} = render(
+    const {getByTestId, getAllByTestId} = await render(
       <ChatView
         messages={[turn, userMsg]}
         onSendPress={jest.fn()}
         user={user}
       />,
+
       {withNavigation: true, withBottomSheetProvider: true},
     );
 
@@ -280,6 +311,7 @@ describe('ChatView — footer controls are not clipped by the row', () => {
       getByTestId('footer-copy'),
       ...getAllByTestId('message-menu-button'),
     ];
+
     expect(controls).toHaveLength(2);
     for (const control of controls) {
       expect(clippingAncestors(control)).toEqual([]);
@@ -296,7 +328,7 @@ describe('ChatView — Copy menu item label is present in l10n', () => {
 // ---------- Canonical scenario H + I ----------
 
 describe('ChatView — abort with partial content', () => {
-  it('H — interrupted turn with copyable but no timings: AssistantTurnFooter shows copy alone, no timing', () => {
+  it('H — interrupted turn with copyable but no timings: AssistantTurnFooter shows copy alone, no timing', async () => {
     const turn: MessageType.AssistantTurn = {
       id: 't1',
       type: 'assistant_turn',
@@ -305,7 +337,7 @@ describe('ChatView — abort with partial content', () => {
       steps: [{content: 'I was about to say...', partial: true}],
       metadata: {interrupted: true, copyable: true},
     };
-    const {getByTestId, queryByTestId} = render(
+    const {getByTestId, queryByTestId} = await render(
       <ChatView messages={[turn]} onSendPress={jest.fn()} user={user} />,
       {withNavigation: true, withBottomSheetProvider: true},
     );
@@ -342,7 +374,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
 
   it.each(phases)(
     '$label → indicator visible=$visible',
-    ({status, visible}) => {
+    async ({status, visible}) => {
       runInAction(() => {
         chatSessionStore.agentUiState = {
           status,
@@ -351,7 +383,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
         };
       });
       const turn = makeAssistantTurn([{content: 'hi'}], 't1', 1);
-      const {queryByTestId} = render(
+      const {queryByTestId} = await render(
         <ChatView messages={[turn]} onSendPress={jest.fn()} user={user} />,
         {withNavigation: true, withBottomSheetProvider: true},
       );
@@ -363,7 +395,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
     },
   );
 
-  it('PendingIndicator no-flicker: streaming_text → re-render after rapid token bursts keeps indicator hidden', () => {
+  it('PendingIndicator no-flicker: streaming_text → re-render after rapid token bursts keeps indicator hidden', async () => {
     // Wiring test. The reducer-level test (agentStateReducer.test.ts
     // PendingIndicator no-flicker invariant) proves the predicate
     // stays stable; this test proves ChatView wires the predicate
@@ -380,7 +412,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
       };
     });
     const turn = makeAssistantTurn([{content: 'h'}], 't1', 1);
-    const {queryByTestId, rerender} = render(
+    const {queryByTestId, rerender} = await render(
       <ChatView messages={[turn]} onSendPress={jest.fn()} user={user} />,
       {withNavigation: true, withBottomSheetProvider: true},
     );
@@ -395,7 +427,7 @@ describe('ChatView — dead-zone phase walk via PendingIndicator', () => {
     for (let i = 0; i < 10; i++) {
       content += 'x';
       const updatedTurn = makeAssistantTurn([{content}], 't1', 1);
-      rerender(
+      await rerender(
         <ChatView
           messages={[updatedTurn]}
           onSendPress={jest.fn()}

@@ -39,8 +39,8 @@ jest.mock('../VideoPalScreen', () => ({
   VideoPalScreen: () => null,
 }));
 
-const renderScreen = () =>
-  render(<ChatScreen />, {
+const renderScreen = async () =>
+  await render(<ChatScreen />, {
     withNavigation: true,
     withBottomSheetProvider: true,
   });
@@ -51,7 +51,7 @@ describe('ChatScreen voice turn port', () => {
   });
 
   it('sends a spoken turn through the chat send path and hands back its turn id', async () => {
-    renderScreen();
+    await renderScreen();
     const onTurnCreated = jest.fn();
 
     await mockPort.send('What is the capital of France?', onTurnCreated);
@@ -62,15 +62,15 @@ describe('ChatScreen voice turn port', () => {
     );
   });
 
-  it('stops a spoken turn with the chat Stop', () => {
-    renderScreen();
+  it('stops a spoken turn with the chat Stop', async () => {
+    await renderScreen();
 
     mockPort.stop();
 
     expect(mockStop).toHaveBeenCalledTimes(1);
   });
 
-  it('ends voice mode when a video Pal takes over the chat', () => {
+  it('ends voice mode when a video Pal takes over the chat', async () => {
     const activePal = Object.getOwnPropertyDescriptor(
       chatSessionStore,
       'activePalId',
@@ -79,7 +79,7 @@ describe('ChatScreen voice turn port', () => {
     palStore.pals = [{id: 'video-pal', capabilities: {video: true}}] as any;
     activePal.mockReturnValue('video-pal');
 
-    renderScreen();
+    await renderScreen();
 
     expect(mockEnd).toHaveBeenCalled();
     activePal.mockReturnValue(null);

@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabled} x modes) standard-l-default-dark 1`] = `
 <View
@@ -11,77 +11,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.02)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 16,
+          "paddingVertical": 8,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.02)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 16,
-            "paddingVertical": 8,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#333333",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#333333",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#333333"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#333333"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -97,77 +93,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.02)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 16,
+          "paddingVertical": 8,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.02)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 16,
-            "paddingVertical": 8,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#333333",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#333333",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#333333"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#333333"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -183,77 +175,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": true,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.01)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 16,
+          "paddingVertical": 8,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": true,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.01)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 16,
-            "paddingVertical": 8,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#646466",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#646466",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#646466"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#646466"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -269,77 +257,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": true,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.01)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 16,
+          "paddingVertical": 8,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": true,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.01)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 16,
-            "paddingVertical": 8,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#646466",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#646466",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#646466"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#646466"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -355,77 +339,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.02)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.02)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#333333",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#333333",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#333333"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#333333"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -441,77 +421,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.02)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.02)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#333333",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#333333",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#333333"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#333333"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -527,77 +503,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": true,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.01)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": true,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.01)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#646466",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#646466",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#646466"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#646466"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -613,77 +585,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": true,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.01)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": true,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.01)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#646466",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 14,
-            "fontWeight": "500",
-            "lineHeight": 20,
-          }
+        {
+          "color": "#646466",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 14,
+          "fontWeight": "500",
+          "lineHeight": 20,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#646466"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#646466"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -699,77 +667,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.02)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.02)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#333333",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 12,
-            "fontWeight": "500",
-            "lineHeight": 16,
-          }
+        {
+          "color": "#333333",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 12,
+          "fontWeight": "500",
+          "lineHeight": 16,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#333333"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#333333"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -785,77 +749,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.02)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.02)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#333333",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 12,
-            "fontWeight": "500",
-            "lineHeight": 16,
-          }
+        {
+          "color": "#333333",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 12,
+          "fontWeight": "500",
+          "lineHeight": 16,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#333333"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#333333"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -871,77 +831,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": true,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.01)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": true,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.01)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#646466",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 12,
-            "fontWeight": "500",
-            "lineHeight": 16,
-          }
+        {
+          "color": "#646466",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 12,
+          "fontWeight": "500",
+          "lineHeight": 16,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#646466"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#646466"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -957,77 +913,73 @@ exports[`Dropdown — snapshot matrix baseline (variant x size x {default,disabl
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": true,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.01)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": true,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.01)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#646466",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 12,
-            "fontWeight": "500",
-            "lineHeight": 16,
-          }
+        {
+          "color": "#646466",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 12,
+          "fontWeight": "500",
+          "lineHeight": 16,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#646466"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#646466"
+      width={16}
+    />
   </View>
 </View>
 `;
@@ -1043,77 +995,73 @@ exports[`Dropdown — snapshot matrix non-Latin font-fallback canary (canaryVari
   }
 >
   <View
+    accessibilityLabel="Alpha"
+    accessibilityRole="button"
+    accessibilityState={
+      {
+        "busy": undefined,
+        "checked": undefined,
+        "disabled": false,
+        "expanded": undefined,
+        "selected": undefined,
+      }
+    }
+    accessibilityValue={
+      {
+        "max": undefined,
+        "min": undefined,
+        "now": undefined,
+        "text": undefined,
+      }
+    }
+    accessible={true}
     collapsable={false}
+    focusable={true}
+    onBlur={[Function]}
+    onClick={[Function]}
+    onFocus={[Function]}
+    onResponderGrant={[Function]}
+    onResponderMove={[Function]}
+    onResponderRelease={[Function]}
+    onResponderTerminate={[Function]}
+    onResponderTerminationRequest={[Function]}
+    onStartShouldSetResponder={[Function]}
+    style={
+      [
+        {
+          "alignItems": "center",
+          "alignSelf": "flex-start",
+          "backgroundColor": "rgba(51, 51, 51, 0.02)",
+          "borderRadius": 8,
+          "flexDirection": "row",
+          "gap": 4,
+          "minHeight": 44,
+          "paddingHorizontal": 8,
+          "paddingVertical": 4,
+        },
+        undefined,
+      ]
+    }
+    testID="ui-dropdown"
   >
-    <View
-      accessibilityLabel="Alpha"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
+    <Text
       style={
-        [
-          {
-            "alignItems": "center",
-            "alignSelf": "flex-start",
-            "backgroundColor": "rgba(51, 51, 51, 0.02)",
-            "borderRadius": 8,
-            "flexDirection": "row",
-            "gap": 4,
-            "minHeight": 44,
-            "paddingHorizontal": 8,
-            "paddingVertical": 4,
-          },
-          undefined,
-        ]
-      }
-      testID="ui-dropdown"
-    >
-      <Text
-        style={
-          {
-            "color": "#333333",
-            "fontFamily": "Inter-Medium",
-            "fontSize": 12,
-            "fontWeight": "500",
-            "lineHeight": 16,
-          }
+        {
+          "color": "#333333",
+          "fontFamily": "Inter-Medium",
+          "fontSize": 12,
+          "fontWeight": "500",
+          "lineHeight": 16,
         }
-      >
-        Alpha
-      </Text>
-      <SvgMock
-        height={16}
-        stroke="#333333"
-        width={16}
-      />
-    </View>
+      }
+    >
+      Alpha
+    </Text>
+    <SvgMock
+      height={16}
+      stroke="#333333"
+      width={16}
+    />
   </View>
 </View>
 `;

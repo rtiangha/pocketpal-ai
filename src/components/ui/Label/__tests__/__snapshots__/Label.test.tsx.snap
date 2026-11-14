@@ -1,4 +1,4 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`Label — snapshot matrix baseline (variant x size x {default,disabled} x modes) informational-m-default-dark 1`] = `
 <View

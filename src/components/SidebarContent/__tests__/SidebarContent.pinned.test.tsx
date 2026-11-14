@@ -45,8 +45,8 @@ const TestNavigator = () => (
   </NavigationContainer>
 );
 
-const openMenuFor = (getByText: (text: string) => any, title: string) => {
-  fireEvent(getByText(title), 'longPress', {
+const openMenuFor = async (getByText: (text: string) => any, title: string) => {
+  await fireEvent(getByText(title), 'longPress', {
     nativeEvent: {pageX: 0, pageY: 0},
   });
 };
@@ -72,28 +72,28 @@ describe('SidebarContent pin/unpin menu item', () => {
     });
   });
 
-  it('offers Pin and toggles the long-pressed session', () => {
-    const {getByText, getByTestId} = render(<TestNavigator />);
+  it('offers Pin and toggles the long-pressed session', async () => {
+    const {getByText, getByTestId} = await render(<TestNavigator />);
 
-    openMenuFor(getByText, 'Session 1');
+    await openMenuFor(getByText, 'Session 1');
 
     expect(getByText('Pin')).toBeTruthy();
-    fireEvent.press(getByTestId('session-pin-session-1'));
+    await fireEvent.press(getByTestId('session-pin-session-1'));
 
     expect(chatSessionStore.togglePinSession).toHaveBeenCalledWith('session-1');
   });
 
-  it('offers Unpin for a session that is already pinned', () => {
+  it('offers Unpin for a session that is already pinned', async () => {
     runInAction(() => {
       mockStore.groupedSessions = {
         Pinned: [{...originalGroups.Today[0], pinned: true}],
       };
     });
 
-    const {getByText} = render(<TestNavigator />);
+    const {getByText} = await render(<TestNavigator />);
 
     expect(getByText('Pinned')).toBeTruthy();
-    openMenuFor(getByText, 'Session 1');
+    await openMenuFor(getByText, 'Session 1');
 
     expect(getByText('Unpin')).toBeTruthy();
   });

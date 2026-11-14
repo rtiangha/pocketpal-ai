@@ -46,7 +46,7 @@ describe('PlusScreen render performance', () => {
           'Choose an amount',
         );
 
-        fireEvent.press(screen.getByTestId('plus-tile-plus.2'));
+        await fireEvent.press(screen.getByTestId('plus-tile-plus.2'));
         await flushTimers();
         expect(screen.getByTestId('plus-cta')).toHaveTextContent(
           'Get Plus · $9.99',

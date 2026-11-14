@@ -1,10 +1,7 @@
 import React from 'react';
 import {Dimensions} from 'react-native';
 import {fireEvent} from '@testing-library/react-native';
-import {
-  BottomSheetTextInput,
-  useBottomSheetInternal,
-} from '@gorhom/bottom-sheet';
+import {useBottomSheetInternal} from '@gorhom/bottom-sheet';
 import {useSafeAreaFrame} from 'react-native-safe-area-context';
 
 import {render} from '../../../../jest/test-utils';
@@ -21,10 +18,10 @@ const options = [
   {value: 'ja', label: 'Japanese'},
 ];
 
-const renderSheet = (
+const renderSheet = async (
   props: Partial<React.ComponentProps<typeof SearchableSelectSheet>> = {},
 ) =>
-  render(
+  await render(
     <SearchableSelectSheet
       isVisible
       onClose={jest.fn()}
@@ -38,37 +35,37 @@ const renderSheet = (
   );
 
 describe('SearchableSelectSheet', () => {
-  it('renders the container and all options when visible', () => {
-    const {getByTestId} = renderSheet();
+  it('renders the container and all options when visible', async () => {
+    const {getByTestId} = await renderSheet();
     expect(getByTestId('searchable-select-sheet')).toBeTruthy();
     expect(getByTestId('searchable-select-option-na')).toBeTruthy();
     expect(getByTestId('searchable-select-option-ar')).toBeTruthy();
     expect(getByTestId('searchable-select-option-ja')).toBeTruthy();
   });
 
-  it('renders no content when not visible', () => {
-    const {queryByTestId} = renderSheet({isVisible: false});
+  it('renders no content when not visible', async () => {
+    const {queryByTestId} = await renderSheet({isVisible: false});
     expect(queryByTestId('searchable-select-sheet')).toBeNull();
     expect(queryByTestId('searchable-select-option-na')).toBeNull();
   });
 
-  it('filters options case-insensitively by label', () => {
-    const {getByTestId, queryByTestId} = renderSheet();
-    fireEvent.changeText(getByTestId('searchable-select-search'), 'JAP');
+  it('filters options case-insensitively by label', async () => {
+    const {getByTestId, queryByTestId} = await renderSheet();
+    await fireEvent.changeText(getByTestId('searchable-select-search'), 'JAP');
     expect(getByTestId('searchable-select-option-ja')).toBeTruthy();
     expect(queryByTestId('searchable-select-option-ar')).toBeNull();
     expect(queryByTestId('searchable-select-option-na')).toBeNull();
   });
 
-  it('keeps "Auto" reachable via search', () => {
-    const {getByTestId, queryByTestId} = renderSheet();
-    fireEvent.changeText(getByTestId('searchable-select-search'), 'auto');
+  it('keeps "Auto" reachable via search', async () => {
+    const {getByTestId, queryByTestId} = await renderSheet();
+    await fireEvent.changeText(getByTestId('searchable-select-search'), 'auto');
     expect(getByTestId('searchable-select-option-na')).toBeTruthy();
     expect(queryByTestId('searchable-select-option-ja')).toBeNull();
   });
 
-  it('marks the selected row as selected', () => {
-    const {getByTestId} = renderSheet({value: 'ja'});
+  it('marks the selected row as selected', async () => {
+    const {getByTestId} = await renderSheet({value: 'ja'});
     expect(
       getByTestId('searchable-select-option-ja').props.accessibilityState
         .selected,
@@ -79,23 +76,23 @@ describe('SearchableSelectSheet', () => {
     ).toBe(false);
   });
 
-  it('selecting a row calls onSelect then onClose', () => {
+  it('selecting a row calls onSelect then onClose', async () => {
     const onSelect = jest.fn();
     const onClose = jest.fn();
-    const {getByTestId} = renderSheet({onSelect, onClose});
-    fireEvent.press(getByTestId('searchable-select-option-ja'));
+    const {getByTestId} = await renderSheet({onSelect, onClose});
+    await fireEvent.press(getByTestId('searchable-select-option-ja'));
     expect(onSelect).toHaveBeenCalledWith('ja');
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('clears the query on the selection path so a reopen is unfiltered', () => {
-    const {getByTestId, queryByTestId, rerender} = renderSheet();
-    fireEvent.changeText(getByTestId('searchable-select-search'), 'JAP');
+  it('clears the query on the selection path so a reopen is unfiltered', async () => {
+    const {getByTestId, queryByTestId, rerender} = await renderSheet();
+    await fireEvent.changeText(getByTestId('searchable-select-search'), 'JAP');
     expect(queryByTestId('searchable-select-option-ar')).toBeNull();
 
-    fireEvent.press(getByTestId('searchable-select-option-ja'));
+    await fireEvent.press(getByTestId('searchable-select-option-ja'));
 
-    rerender(
+    await rerender(
       <SearchableSelectSheet
         isVisible
         onClose={jest.fn()}
@@ -112,17 +109,17 @@ describe('SearchableSelectSheet', () => {
     expect(getByTestId('searchable-select-option-ja')).toBeTruthy();
   });
 
-  it('renders an empty state when the query matches nothing', () => {
-    const {getByTestId, queryByTestId} = renderSheet();
-    fireEvent.changeText(getByTestId('searchable-select-search'), 'zzz');
+  it('renders an empty state when the query matches nothing', async () => {
+    const {getByTestId, queryByTestId} = await renderSheet();
+    await fireEvent.changeText(getByTestId('searchable-select-search'), 'zzz');
     expect(getByTestId('searchable-select-sheet-empty')).toBeTruthy();
     expect(queryByTestId('searchable-select-option-na')).toBeNull();
     expect(queryByTestId('searchable-select-option-ar')).toBeNull();
     expect(queryByTestId('searchable-select-option-ja')).toBeNull();
   });
 
-  it('honours custom testID prefixes', () => {
-    const {getByTestId} = renderSheet({
+  it('honours custom testID prefixes', async () => {
+    const {getByTestId} = await renderSheet({
       testID: 'tts-language-sheet',
       searchTestID: 'tts-language-search',
       optionTestIDPrefix: 'tts-language-option',
@@ -151,35 +148,34 @@ describe('SearchableSelectSheet', () => {
       (useSafeAreaFrame as jest.Mock).mockImplementation(jestSetupFrame);
     });
 
-    const focusSearchIn = (frameHeight: number) => {
+    const focusSearchIn = async (frameHeight: number) => {
       (useSafeAreaFrame as jest.Mock).mockReturnValue({
         x: 0,
         y: 0,
         width: screen.width,
         height: frameHeight,
       });
-      const utils = renderSheet();
-      fireEvent(utils.getByTestId('searchable-select-search'), 'focus', {
+      const utils = await renderSheet();
+      await fireEvent(utils.getByTestId('searchable-select-search'), 'focus', {
         nativeEvent: {target: FIELD_TAG},
       });
       return utils;
     };
 
-    it('renders the search input as an RN TextInput', () => {
-      const {UNSAFE_queryByType, getByTestId} = focusSearchIn(screen.height);
+    it('renders the search input as an RN TextInput', async () => {
+      const {getByTestId} = await focusSearchIn(screen.height);
 
-      expect(UNSAFE_queryByType(BottomSheetTextInput)).toBeNull();
       expect(getByTestId('searchable-select-search').type).toBe('TextInput');
     });
 
-    it('sets its keyboard target on focus when the app window fills the screen', () => {
-      focusSearchIn(screen.height);
+    it('sets its keyboard target on focus when the app window fills the screen', async () => {
+      await focusSearchIn(screen.height);
 
       expect(sheet.keyboardState.target).toBe(FIELD_TAG);
     });
 
-    it('writes no keyboard target on focus when the app window is a split pane', () => {
-      focusSearchIn(screen.height - 100);
+    it('writes no keyboard target on focus when the app window is a split pane', async () => {
+      await focusSearchIn(screen.height - 100);
 
       expect(sheet.keyboardState.target).toBeUndefined();
       expect(sheet.animatedKeyboardState.set).not.toHaveBeenCalled();

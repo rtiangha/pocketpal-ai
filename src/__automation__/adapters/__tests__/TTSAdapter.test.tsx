@@ -16,8 +16,8 @@ describe('TTSAdapter', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the container and inputs with correct testIDs', () => {
-    const {getByTestId} = render(<TTSAdapter />);
+  it('renders the container and inputs with correct testIDs', async () => {
+    const {getByTestId} = await render(<TTSAdapter />);
 
     expect(getByTestId('tts-command-container')).toBeTruthy();
     expect(getByTestId('tts-command-input')).toBeTruthy();
@@ -25,9 +25,12 @@ describe('TTSAdapter', () => {
   });
 
   it('runs a download command', async () => {
-    const {getByTestId} = render(<TTSAdapter />);
+    const {getByTestId} = await render(<TTSAdapter />);
 
-    fireEvent.changeText(getByTestId('tts-command-input'), 'download::kitten');
+    await fireEvent.changeText(
+      getByTestId('tts-command-input'),
+      'download::kitten',
+    );
 
     await waitFor(() => {
       expect(runTtsCommand).toHaveBeenCalledWith('download::kitten');
@@ -35,9 +38,12 @@ describe('TTSAdapter', () => {
   });
 
   it('reads status on read::status', async () => {
-    const {getByTestId} = render(<TTSAdapter />);
+    const {getByTestId} = await render(<TTSAdapter />);
 
-    fireEvent.changeText(getByTestId('tts-command-input'), 'read::status');
+    await fireEvent.changeText(
+      getByTestId('tts-command-input'),
+      'read::status',
+    );
 
     await waitFor(() => {
       expect(readTtsStatus).toHaveBeenCalled();
@@ -46,16 +52,16 @@ describe('TTSAdapter', () => {
   });
 
   it('ignores empty text', async () => {
-    const {getByTestId} = render(<TTSAdapter />);
+    const {getByTestId} = await render(<TTSAdapter />);
 
-    fireEvent.changeText(getByTestId('tts-command-input'), '');
+    await fireEvent.changeText(getByTestId('tts-command-input'), '');
 
     await new Promise(r => setTimeout(r, 50));
     expect(runTtsCommand).not.toHaveBeenCalled();
   });
 
-  it('is hidden but remains in accessibility tree', () => {
-    const {getByTestId} = render(<TTSAdapter />);
+  it('is hidden but remains in accessibility tree', async () => {
+    const {getByTestId} = await render(<TTSAdapter />);
     const container = getByTestId('tts-command-container');
 
     expect(container.props.style).toEqual(

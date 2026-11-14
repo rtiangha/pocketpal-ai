@@ -54,8 +54,8 @@ const ANDROID_SYSTEM_VOICES = [
   },
 ];
 
-const renderView = () =>
-  render(
+const renderView = async () =>
+  await render(
     <L10nContext.Provider value={l10n.en}>
       <VoicePickerView />
     </L10nContext.Provider>,
@@ -80,8 +80,8 @@ describe('VoicePickerView', () => {
     });
   });
 
-  it('renders one engine group per neural engine', () => {
-    const {getByTestId} = renderView();
+  it('renders one engine group per neural engine', async () => {
+    const {getByTestId} = await renderView();
     expect(getByTestId('tts-engine-group-kitten')).toBeTruthy();
     expect(getByTestId('tts-engine-group-kokoro')).toBeTruthy();
     expect(getByTestId('tts-engine-group-supertonic')).toBeTruthy();
@@ -95,9 +95,11 @@ describe('VoicePickerView', () => {
     });
 
     it("lists the phone's voices in a System group", async () => {
-      const {findByTestId, getByTestId} = renderView();
+      const {findByTestId, getByTestId} = await renderView();
 
-      fireEvent.press(await findByTestId('tts-engine-group-toggle-system'));
+      await fireEvent.press(
+        await findByTestId('tts-engine-group-toggle-system'),
+      );
 
       expect(
         getByTestId('tts-voice-row-system-en-us-x-sfg-local'),
@@ -108,10 +110,14 @@ describe('VoicePickerView', () => {
     });
 
     it('tapping a system voice sets it and closes the sheet', async () => {
-      const {findByTestId, getByTestId} = renderView();
+      const {findByTestId, getByTestId} = await renderView();
 
-      fireEvent.press(await findByTestId('tts-engine-group-toggle-system'));
-      fireEvent.press(getByTestId('tts-voice-row-system-en-us-x-sfg-local'));
+      await fireEvent.press(
+        await findByTestId('tts-engine-group-toggle-system'),
+      );
+      await fireEvent.press(
+        getByTestId('tts-voice-row-system-en-us-x-sfg-local'),
+      );
 
       expect(ttsStore.setCurrentVoice).toHaveBeenCalledWith({
         id: 'en-us-x-sfg-local',
@@ -136,9 +142,11 @@ describe('VoicePickerView', () => {
           notInstalled: false,
         })),
       );
-      const {findByTestId, getByTestId, getAllByTestId} = renderView();
+      const {findByTestId, getByTestId, getAllByTestId} = await renderView();
 
-      fireEvent.press(await findByTestId('tts-engine-group-toggle-system'));
+      await fireEvent.press(
+        await findByTestId('tts-engine-group-toggle-system'),
+      );
 
       expect(getAllByTestId(/^tts-system-network-header-/)).toHaveLength(1);
       expect(getByTestId('tts-system-network-header-en-us')).toBeTruthy();
@@ -158,10 +166,14 @@ describe('VoicePickerView', () => {
           notInstalled: false,
         })),
       );
-      const {findByTestId, getByTestId} = renderView();
+      const {findByTestId, getByTestId} = await renderView();
 
-      fireEvent.press(await findByTestId('tts-engine-group-toggle-system'));
-      fireEvent.press(getByTestId('tts-voice-row-system-en-us-x-sfg-network'));
+      await fireEvent.press(
+        await findByTestId('tts-engine-group-toggle-system'),
+      );
+      await fireEvent.press(
+        getByTestId('tts-voice-row-system-en-us-x-sfg-network'),
+      );
 
       expect(ttsStore.setCurrentVoice).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -178,9 +190,11 @@ describe('VoicePickerView', () => {
           notInstalled: name.endsWith('-network'),
         })),
       );
-      const {findByTestId, getAllByTestId} = renderView();
+      const {findByTestId, getAllByTestId} = await renderView();
 
-      fireEvent.press(await findByTestId('tts-engine-group-toggle-system'));
+      await fireEvent.press(
+        await findByTestId('tts-engine-group-toggle-system'),
+      );
 
       expect(
         getAllByTestId(/^tts-voice-row-system-/).map(r => r.props.testID),
@@ -191,9 +205,12 @@ describe('VoicePickerView', () => {
       (Speech.getAvailableVoices as jest.Mock).mockResolvedValueOnce(
         ANDROID_SYSTEM_VOICES,
       );
-      const {findByTestId, queryAllByTestId, getAllByTestId} = renderView();
+      const {findByTestId, queryAllByTestId, getAllByTestId} =
+        await renderView();
 
-      fireEvent.press(await findByTestId('tts-engine-group-toggle-system'));
+      await fireEvent.press(
+        await findByTestId('tts-engine-group-toggle-system'),
+      );
 
       expect(getAllByTestId(/^tts-voice-row-system-/)).toHaveLength(2);
       expect(queryAllByTestId(/^tts-system-network-header-/)).toHaveLength(0);
@@ -219,12 +236,13 @@ describe('VoicePickerView', () => {
       googleVoice('de-de-x-deb-local', 'de-DE'),
       googleVoice('de-de-x-deb-network', 'de-DE'),
     ];
+
     const testIDs = (nodes: Array<{props: {testID?: string}}>) =>
       nodes.map(n => n.props.testID);
 
     const openSystemGroup = async () => {
-      const view = renderView();
-      fireEvent.press(
+      const view = await renderView();
+      await fireEvent.press(
         await view.findByTestId('tts-engine-group-toggle-system'),
       );
       return view;
@@ -296,15 +314,15 @@ describe('VoicePickerView', () => {
     it('shows only the picked language, and keeps it when the group collapses', async () => {
       const {getByTestId, getAllByTestId} = await openSystemGroup();
 
-      fireEvent.press(getByTestId('tts-system-language-button'));
+      await fireEvent.press(getByTestId('tts-system-language-button'));
       expect(getByTestId('tts-system-language-option-en')).toBeTruthy();
-      fireEvent.press(getByTestId('tts-system-language-option-de'));
+      await fireEvent.press(getByTestId('tts-system-language-option-de'));
 
       expect(testIDs(getAllByTestId(/^tts-system-section-/))).toEqual([
         'tts-system-section-de-de',
       ]);
-      fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
-      fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
       expect(testIDs(getAllByTestId(/^tts-system-section-/))).toEqual([
         'tts-system-section-de-de',
       ]);
@@ -319,7 +337,7 @@ describe('VoicePickerView', () => {
           language: 'de-DE',
         };
       });
-      const {findByTestId} = renderView();
+      const {findByTestId} = await renderView();
 
       const row = await findByTestId('tts-voice-row-system-de-de-x-deb-local');
       expect(row.props.accessibilityState).toEqual(
@@ -334,8 +352,8 @@ describe('VoicePickerView', () => {
       expect(
         getByText('No \u2068中文\u2069 voices on this phone yet.'),
       ).toBeTruthy();
-      fireEvent.press(getByTestId('tts-system-get-voices-zh'));
-      fireEvent.press(getByTestId('tts-system-get-voices'));
+      await fireEvent.press(getByTestId('tts-system-get-voices-zh'));
+      await fireEvent.press(getByTestId('tts-system-get-voices'));
       expect(Speech.openVoiceDataInstaller).toHaveBeenCalledTimes(2);
     });
 
@@ -383,7 +401,7 @@ describe('VoicePickerView', () => {
       const {getByTestId} = await openSystemGroup();
 
       await act(async () => {
-        fireEvent.press(getByTestId('tts-system-get-voices'));
+        await fireEvent.press(getByTestId('tts-system-get-voices'));
       });
 
       expect(warn).toHaveBeenCalledWith(
@@ -407,10 +425,10 @@ describe('VoicePickerView', () => {
       (Speech.getAvailableVoices as jest.Mock).mockRejectedValue(
         new Error('engine unbound'),
       );
-      const {getByTestId, getByText} = renderView();
+      const {getByTestId, getByText} = await renderView();
 
       await act(async () => {
-        fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
+        await fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
       });
 
       expect(warn).toHaveBeenCalledWith(
@@ -465,10 +483,10 @@ describe('VoicePickerView', () => {
       (Speech.getAvailableVoices as jest.Mock).mockImplementation(
         () => new Promise(resolve => pending.push(resolve)),
       );
-      const {getByTestId, queryByTestId, unmount} = renderView();
-      fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
+      const {getByTestId, queryByTestId, unmount} = await renderView();
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-system'));
 
-      act(() => {
+      await act(() => {
         appStateHandlers.forEach(h => h('active'));
       });
       await act(async () => {
@@ -485,10 +503,10 @@ describe('VoicePickerView', () => {
         queryByTestId('tts-voice-row-system-en-us-x-sfg-local'),
       ).toBeNull();
 
-      act(() => {
+      await act(() => {
         appStateHandlers.forEach(h => h('active'));
       });
-      unmount();
+      await unmount();
       await act(async () => {
         pending[2]!([]);
       });
@@ -519,7 +537,7 @@ describe('VoicePickerView', () => {
           language: 'en-US',
         };
       });
-      const {findByTestId, getAllByTestId, getByTestId} = renderView();
+      const {findByTestId, getAllByTestId, getByTestId} = await renderView();
 
       await findByTestId('tts-voice-row-system-en-us-x-sfg-local');
       const rows = getAllByTestId(/^tts-voice-row-system-/);
@@ -535,39 +553,39 @@ describe('VoicePickerView', () => {
     });
   });
 
-  it('groups start collapsed when no current voice; tap expands', () => {
-    const {getByTestId, queryByTestId} = renderView();
+  it('groups start collapsed when no current voice; tap expands', async () => {
+    const {getByTestId, queryByTestId} = await renderView();
     // Collapsed → install button not rendered yet.
     expect(queryByTestId('tts-kitten-install-button')).toBeNull();
-    fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
+    await fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
     expect(getByTestId('tts-kitten-install-button')).toBeTruthy();
   });
 
-  it('expanded ready group exposes voice rows with preview', () => {
+  it('expanded ready group exposes voice rows with preview', async () => {
     runInAction(() => {
       ttsStore.kittenDownloadState = 'ready';
     });
-    const {getByTestId} = renderView();
-    fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
+    const {getByTestId} = await renderView();
+    await fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
     expect(getByTestId('tts-voice-row-kitten-expr-voice-2-f')).toBeTruthy();
     expect(getByTestId('tts-voice-preview-kitten-expr-voice-2-f')).toBeTruthy();
   });
 
-  it('expanded not-installed group shows engine install button', () => {
-    const {getByTestId} = renderView();
-    fireEvent.press(getByTestId('tts-engine-group-toggle-kokoro'));
+  it('expanded not-installed group shows engine install button', async () => {
+    const {getByTestId} = await renderView();
+    await fireEvent.press(getByTestId('tts-engine-group-toggle-kokoro'));
     expect(getByTestId('tts-kokoro-install-button')).toBeTruthy();
-    fireEvent.press(getByTestId('tts-kokoro-install-button'));
+    await fireEvent.press(getByTestId('tts-kokoro-install-button'));
     expect(ttsStore.downloadKokoro).toHaveBeenCalled();
   });
 
-  it('tapping a ready voice calls setCurrentVoice and closes the sheet', () => {
+  it('tapping a ready voice calls setCurrentVoice and closes the sheet', async () => {
     runInAction(() => {
       ttsStore.kittenDownloadState = 'ready';
     });
-    const {getByTestId} = renderView();
-    fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
-    fireEvent.press(getByTestId('tts-voice-row-kitten-expr-voice-2-f'));
+    const {getByTestId} = await renderView();
+    await fireEvent.press(getByTestId('tts-engine-group-toggle-kitten'));
+    await fireEvent.press(getByTestId('tts-voice-row-kitten-expr-voice-2-f'));
     expect(ttsStore.setCurrentVoice).toHaveBeenCalledWith(
       expect.objectContaining({id: 'expr-voice-2-f', engine: 'kitten'}),
     );
@@ -575,11 +593,11 @@ describe('VoicePickerView', () => {
   });
 
   describe('Phonon', () => {
-    it('is listed first with its credit and install size when the device supports it', () => {
+    it('is listed first with its credit and install size when the device supports it', async () => {
       runInAction(() => {
         ttsStore.phononSupported = true;
       });
-      const {getByTestId, getAllByTestId, getByText} = renderView();
+      const {getByTestId, getAllByTestId, getByText} = await renderView();
 
       const groups = getAllByTestId(/^tts-engine-group-(?!toggle)/).map(
         g => g.props.testID,
@@ -591,15 +609,15 @@ describe('VoicePickerView', () => {
         'tts-engine-group-supertonic',
         'tts-engine-group-system',
       ]);
-      fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
       expect(getByTestId('tts-phonon-credit')).toBeTruthy();
       expect(getByText('Install · 64 MB')).toBeTruthy();
-      fireEvent.press(getByTestId('tts-phonon-install-button'));
+      await fireEvent.press(getByTestId('tts-phonon-install-button'));
       expect(ttsStore.downloadPhonon).toHaveBeenCalled();
     });
 
-    it('is not rendered, with no error text, when the device does not support it', () => {
-      const {queryByTestId, queryByText, getAllByTestId} = renderView();
+    it('is not rendered, with no error text, when the device does not support it', async () => {
+      const {queryByTestId, queryByText, getAllByTestId} = await renderView();
 
       expect(
         getAllByTestId(/^tts-engine-group-(?!toggle)/).map(g => g.props.testID),
@@ -616,30 +634,30 @@ describe('VoicePickerView', () => {
       expect(getEngineGroupCount(queryByTestId)).toBe(3);
     });
 
-    it('shows download progress against its 64 MB size', () => {
+    it('shows download progress against its 64 MB size', async () => {
       runInAction(() => {
         ttsStore.phononSupported = true;
         ttsStore.phononDownloadState = 'downloading';
         ttsStore.phononDownloadProgress = 0.5;
       });
-      const {getByTestId, getByText} = renderView();
+      const {getByTestId, getByText} = await renderView();
 
-      fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
 
       expect(getByText('Downloading…  50%  ·  32 / 64 MB')).toBeTruthy();
     });
 
-    it('shows its download error with a retry that retries Phonon', () => {
+    it('shows its download error with a retry that retries Phonon', async () => {
       runInAction(() => {
         ttsStore.phononSupported = true;
         ttsStore.phononDownloadState = 'error';
         ttsStore.phononDownloadError = 'sha256 mismatch';
       });
-      const {getByTestId, getByText} = renderView();
+      const {getByTestId, getByText} = await renderView();
 
-      fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
       expect(getByText('sha256 mismatch')).toBeTruthy();
-      fireEvent.press(getByTestId('tts-phonon-retry-button'));
+      await fireEvent.press(getByTestId('tts-phonon-retry-button'));
 
       expect(ttsStore.retryPhononDownload).toHaveBeenCalledTimes(1);
       expect(ttsStore.retryKittenDownload).not.toHaveBeenCalled();
@@ -648,14 +666,14 @@ describe('VoicePickerView', () => {
       });
     });
 
-    it('shows the eight voices and the credit once installed', () => {
+    it('shows the eight voices and the credit once installed', async () => {
       runInAction(() => {
         ttsStore.phononSupported = true;
         ttsStore.phononDownloadState = 'ready';
       });
-      const {getByTestId, getAllByTestId} = renderView();
+      const {getByTestId, getAllByTestId} = await renderView();
 
-      fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
+      await fireEvent.press(getByTestId('tts-engine-group-toggle-phonon'));
 
       expect(getAllByTestId(/^tts-voice-row-phonon-/)).toHaveLength(8);
       expect(getByTestId('tts-voice-row-phonon-Zoey')).toBeTruthy();
@@ -663,7 +681,7 @@ describe('VoicePickerView', () => {
     });
   });
 
-  it('default-expands the active engine group on first render', () => {
+  it('default-expands the active engine group on first render', async () => {
     runInAction(() => {
       ttsStore.kokoroDownloadState = 'ready';
       ttsStore.currentVoice = {
@@ -672,7 +690,7 @@ describe('VoicePickerView', () => {
         engine: 'kokoro',
       };
     });
-    const {getByTestId} = renderView();
+    const {getByTestId} = await renderView();
     // Active group is expanded → voice rows visible without a manual toggle.
     expect(getByTestId('tts-voice-row-kokoro-af_heart')).toBeTruthy();
   });

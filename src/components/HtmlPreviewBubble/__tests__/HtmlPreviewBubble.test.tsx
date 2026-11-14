@@ -7,8 +7,8 @@ import {HtmlPreviewBubble} from '../HtmlPreviewBubble';
 describe('HtmlPreviewBubble', () => {
   const html = '<p>hello</p>';
 
-  it('renders the collapsed bubble with the provided title', () => {
-    const {getByText, getByTestId} = render(
+  it('renders the collapsed bubble with the provided title', async () => {
+    const {getByText, getByTestId} = await render(
       <HtmlPreviewBubble html={html} title="My Preview" />,
       {withNavigation: true},
     );
@@ -17,18 +17,21 @@ describe('HtmlPreviewBubble', () => {
     expect(getByText('My Preview')).toBeTruthy();
   });
 
-  it('falls back to "Preview" when title is missing or empty', () => {
-    const {getByText, rerender} = render(<HtmlPreviewBubble html={html} />, {
-      withNavigation: true,
-    });
+  it('falls back to "Preview" when title is missing or empty', async () => {
+    const {getByText, rerender} = await render(
+      <HtmlPreviewBubble html={html} />,
+      {
+        withNavigation: true,
+      },
+    );
     expect(getByText('Preview')).toBeTruthy();
 
-    rerender(<HtmlPreviewBubble html={html} title="" />);
+    await rerender(<HtmlPreviewBubble html={html} title="" />);
     expect(getByText('Preview')).toBeTruthy();
   });
 
-  it('wraps html inside a full document with CSP meta tag and JS disabled in the in-row preview', () => {
-    const {getByTestId} = render(
+  it('wraps html inside a full document with CSP meta tag and JS disabled in the in-row preview', async () => {
+    const {getByTestId} = await render(
       <HtmlPreviewBubble html={html} title="CSP Test" />,
       {withNavigation: true},
     );
@@ -55,9 +58,9 @@ describe('HtmlPreviewBubble', () => {
     ).toBe(false);
   });
 
-  it('opens the fullscreen modal on press and closes it via the close button', () => {
+  it('opens the fullscreen modal on press and closes it via the close button', async () => {
     // In the jest RN mock, <Modal> renders its children only while visible.
-    const {getByTestId, queryByTestId} = render(
+    const {getByTestId, queryByTestId} = await render(
       <HtmlPreviewBubble html={html} title="Modal Test" />,
       {withNavigation: true},
     );
@@ -66,7 +69,7 @@ describe('HtmlPreviewBubble', () => {
     expect(queryByTestId('html-preview-modal-close')).toBeNull();
     expect(queryByTestId('html-preview-modal-webview')).toBeNull();
 
-    fireEvent.press(getByTestId('html-preview-bubble-collapsed'));
+    await fireEvent.press(getByTestId('html-preview-bubble-collapsed'));
 
     const closeBtn = getByTestId('html-preview-modal-close');
     expect(closeBtn).toBeTruthy();
@@ -74,32 +77,32 @@ describe('HtmlPreviewBubble', () => {
     expect(modalWebView.props.javaScriptEnabled).toBe(true);
     expect(modalWebView.props.source.baseUrl).toBe('about:blank');
 
-    fireEvent.press(closeBtn);
+    await fireEvent.press(closeBtn);
     expect(queryByTestId('html-preview-modal-close')).toBeNull();
   });
 
-  it('copies the raw HTML (not the wrapped document) on copy press', () => {
+  it('copies the raw HTML (not the wrapped document) on copy press', async () => {
     const setStringSpy = jest.spyOn(Clipboard, 'setString');
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <HtmlPreviewBubble html={html} title="Copy Test" />,
       {withNavigation: true},
     );
 
     // Collapsed-header copy button
-    fireEvent.press(getByTestId('html-preview-copy'));
+    await fireEvent.press(getByTestId('html-preview-copy'));
     expect(setStringSpy).toHaveBeenLastCalledWith(html);
 
     // Fullscreen-modal copy button copies the same raw html
-    fireEvent.press(getByTestId('html-preview-bubble-collapsed'));
-    fireEvent.press(getByTestId('html-preview-modal-copy'));
+    await fireEvent.press(getByTestId('html-preview-bubble-collapsed'));
+    await fireEvent.press(getByTestId('html-preview-modal-copy'));
     expect(setStringSpy).toHaveBeenLastCalledWith(html);
     expect(setStringSpy).toHaveBeenCalledTimes(2);
 
     setStringSpy.mockRestore();
   });
 
-  it('toggles between rendered preview and raw HTML code', () => {
-    const {getByTestId, queryByTestId} = render(
+  it('toggles between rendered preview and raw HTML code', async () => {
+    const {getByTestId, queryByTestId} = await render(
       <HtmlPreviewBubble html={html} title="Toggle Test" />,
       {withNavigation: true},
     );
@@ -108,12 +111,12 @@ describe('HtmlPreviewBubble', () => {
     expect(getByTestId('html-preview-webview')).toBeTruthy();
     expect(queryByTestId('html-preview-code')).toBeNull();
 
-    fireEvent.press(getByTestId('html-preview-toggle-code'));
+    await fireEvent.press(getByTestId('html-preview-toggle-code'));
 
     expect(getByTestId('html-preview-code')).toBeTruthy();
     expect(queryByTestId('html-preview-webview')).toBeNull();
 
-    fireEvent.press(getByTestId('html-preview-toggle-code'));
+    await fireEvent.press(getByTestId('html-preview-toggle-code'));
 
     expect(getByTestId('html-preview-webview')).toBeTruthy();
     expect(queryByTestId('html-preview-code')).toBeNull();

@@ -19,7 +19,7 @@ describe('TalentSurface', () => {
 
   // Four-priority dispatch: error > talent UI > chip > none.
 
-  it('#1 talent UI: outcome present + non-error + UI registered → renderResult fires', () => {
+  it('#1 talent UI: outcome present + non-error + UI registered → renderResult fires', async () => {
     talentUIRegistry.register({
       name: 'calculate',
       renderResult: result => (
@@ -37,11 +37,11 @@ describe('TalentSurface', () => {
         },
       ],
     };
-    const {getByTestId} = render(<TalentSurface step={step} />);
+    const {getByTestId} = await render(<TalentSurface step={step} />);
     expect(getByTestId('calc-result')).toBeTruthy();
   });
 
-  it('#2 unregistered tool with non-error outcome → ToolUsedChip', () => {
+  it('#2 unregistered tool with non-error outcome → ToolUsedChip', async () => {
     const step: AgentStep = {
       toolCalls: [{id: 'c0', function: {name: 'datetime', arguments: '{}'}}],
       toolOutcomes: [
@@ -53,12 +53,14 @@ describe('TalentSurface', () => {
         },
       ],
     };
-    const {getByTestId, getByText} = render(<TalentSurface step={step} />);
+    const {getByTestId, getByText} = await render(
+      <TalentSurface step={step} />,
+    );
     expect(getByTestId('tool-used-chip')).toBeTruthy();
     expect(getByText('used datetime')).toBeTruthy();
   });
 
-  it('#3 error outcome → ToolErrorBlock (subtle, low-prominence)', () => {
+  it('#3 error outcome → ToolErrorBlock (subtle, low-prominence)', async () => {
     const step: AgentStep = {
       toolCalls: [{id: 'c0', function: {name: 'render_html', arguments: '{}'}}],
       toolOutcomes: [
@@ -74,13 +76,15 @@ describe('TalentSurface', () => {
         },
       ],
     };
-    const {getByTestId, getByText} = render(<TalentSurface step={step} />);
+    const {getByTestId, getByText} = await render(
+      <TalentSurface step={step} />,
+    );
     expect(getByTestId('tool-error-block')).toBeTruthy();
     expect(getByText('render_html failed')).toBeTruthy();
     expect(getByText('invalid markup')).toBeTruthy();
   });
 
-  it('#3b error outcome wins over registered talent UI (priority order)', () => {
+  it('#3b error outcome wins over registered talent UI (priority order)', async () => {
     talentUIRegistry.register({
       name: 'render_html',
       renderResult: () => <Text testID="html-result">should NOT fire</Text>,
@@ -100,12 +104,14 @@ describe('TalentSurface', () => {
         },
       ],
     };
-    const {getByTestId, queryByTestId} = render(<TalentSurface step={step} />);
+    const {getByTestId, queryByTestId} = await render(
+      <TalentSurface step={step} />,
+    );
     expect(getByTestId('tool-error-block')).toBeTruthy();
     expect(queryByTestId('html-result')).toBeNull();
   });
 
-  it('#4 no outcome yet (in-flight) → renders nothing (PendingIndicator covers UX)', () => {
+  it('#4 no outcome yet (in-flight) → renders nothing (PendingIndicator covers UX)', async () => {
     talentUIRegistry.register({
       name: 'calculate',
       renderResult: () => <Text testID="should-not-fire">x</Text>,
@@ -113,13 +119,13 @@ describe('TalentSurface', () => {
     const step: AgentStep = {
       toolCalls: [{id: 'c0', function: {name: 'calculate', arguments: '{}'}}],
     };
-    const {queryByTestId} = render(<TalentSurface step={step} />);
+    const {queryByTestId} = await render(<TalentSurface step={step} />);
     expect(queryByTestId('should-not-fire')).toBeNull();
     expect(queryByTestId('tool-used-chip')).toBeNull();
     expect(queryByTestId('tool-error-block')).toBeNull();
   });
 
-  it('#5 multi-tool turn renders blocks in step.toolCalls array order', () => {
+  it('#5 multi-tool turn renders blocks in step.toolCalls array order', async () => {
     talentUIRegistry.register({
       name: 'render_html',
       renderResult: r => (
@@ -146,18 +152,18 @@ describe('TalentSurface', () => {
         },
       ],
     };
-    const {getByTestId} = render(<TalentSurface step={step} />);
+    const {getByTestId} = await render(<TalentSurface step={step} />);
     expect(getByTestId('preview-one')).toBeTruthy();
     expect(getByTestId('preview-two')).toBeTruthy();
   });
 
-  it('renders nothing when step is undefined or has no toolCalls', () => {
-    const {queryByTestId} = render(<TalentSurface />);
+  it('renders nothing when step is undefined or has no toolCalls', async () => {
+    const {queryByTestId} = await render(<TalentSurface />);
     expect(queryByTestId('tool-used-chip')).toBeNull();
     expect(queryByTestId('tool-error-block')).toBeNull();
   });
 
-  it('falls back to ToolUsedChip when renderResult returns null (e.g. unsupported result.type)', () => {
+  it('falls back to ToolUsedChip when renderResult returns null (e.g. unsupported result.type)', async () => {
     // RenderHtmlTalentUI returns null when result.type !== 'html'; the
     // dispatcher should fall through to the chip.
     talentUIRegistry.register({
@@ -177,7 +183,7 @@ describe('TalentSurface', () => {
         },
       ],
     };
-    const {queryByTestId, getByTestId, getByText} = render(
+    const {queryByTestId, getByTestId, getByText} = await render(
       <TalentSurface step={step} />,
     );
     expect(queryByTestId('ui')).toBeNull();
@@ -187,7 +193,7 @@ describe('TalentSurface', () => {
 
   // ---------- Multi-tool partial completion ----------
 
-  it('multi-tool partial completion: talent block + error block render together in array order', () => {
+  it('multi-tool partial completion: talent block + error block render together in array order', async () => {
     // step₀ has [A, B]; A succeeds (talent UI registered), B fails
     // (error result). Blocks emit in step.toolCalls array order. Both
     // must appear simultaneously after step_finished — ChatView's
@@ -223,7 +229,9 @@ describe('TalentSurface', () => {
         },
       ],
     };
-    const {getByTestId, getByText} = render(<TalentSurface step={step} />);
+    const {getByTestId, getByText} = await render(
+      <TalentSurface step={step} />,
+    );
     // Talent UI for the successful call.
     expect(getByTestId('html-ok')).toBeTruthy();
     // Error block for the failed call.
@@ -234,7 +242,7 @@ describe('TalentSurface', () => {
   // ---------- Persistence load with deleted talent ----------
 
   describe('persistence load with deleted talent', () => {
-    it('persisted turn references render_html but registry has no entry → ToolUsedChip renders, no row drop, no crash', () => {
+    it('persisted turn references render_html but registry has no entry → ToolUsedChip renders, no row drop, no crash', async () => {
       // Simulate the post-load state: TalentUIRegistry was reset
       // (e.g. talent removed from the build, or registry init lost a
       // race with the chat reload). The persisted step still has a
@@ -260,7 +268,7 @@ describe('TalentSurface', () => {
           },
         ],
       };
-      const {getByTestId, getByText, queryByTestId} = render(
+      const {getByTestId, getByText, queryByTestId} = await render(
         <TalentSurface step={step} />,
       );
       // Tool-used chip surfaces the call so the tool's name is visible
@@ -271,7 +279,7 @@ describe('TalentSurface', () => {
       expect(queryByTestId('tool-error-block')).toBeNull();
     });
 
-    it('persisted error outcome with deleted talent UI → still renders ToolErrorBlock (error wins over missing UI)', () => {
+    it('persisted error outcome with deleted talent UI → still renders ToolErrorBlock (error wins over missing UI)', async () => {
       // Even with no registered UI, an error outcome remains an
       // error. Priority order (error > talent UI > chip) says the
       // error block wins regardless of registry state.
@@ -292,7 +300,7 @@ describe('TalentSurface', () => {
           },
         ],
       };
-      const {getByTestId, queryByTestId} = render(
+      const {getByTestId, queryByTestId} = await render(
         <TalentSurface step={step} />,
       );
       expect(getByTestId('tool-error-block')).toBeTruthy();
@@ -309,7 +317,7 @@ describe('TalentSurface', () => {
   // talent UI's result. Both paths must degrade gracefully when
   // metrics are absent (older persisted calls).
   describe('per-call metrics', () => {
-    it('renders ToolMetricsFooter beneath a talent UI when metrics are present', () => {
+    it('renders ToolMetricsFooter beneath a talent UI when metrics are present', async () => {
       talentUIRegistry.register({
         name: 'render_html',
         renderResult: () => <Text testID="html-preview">preview</Text>,
@@ -335,13 +343,15 @@ describe('TalentSurface', () => {
           },
         ],
       };
-      const {getByTestId, getByText} = render(<TalentSurface step={step} />);
+      const {getByTestId, getByText} = await render(
+        <TalentSurface step={step} />,
+      );
       expect(getByTestId('html-preview')).toBeTruthy();
       expect(getByTestId('tool-metrics-footer')).toBeTruthy();
       expect(getByText(/1.500 tokens.+35s/)).toBeTruthy();
     });
 
-    it('omits the footer when metrics are absent (older persisted call)', () => {
+    it('omits the footer when metrics are absent (older persisted call)', async () => {
       talentUIRegistry.register({
         name: 'render_html',
         renderResult: () => <Text testID="html-preview">preview</Text>,
@@ -363,14 +373,14 @@ describe('TalentSurface', () => {
           },
         ],
       };
-      const {getByTestId, queryByTestId} = render(
+      const {getByTestId, queryByTestId} = await render(
         <TalentSurface step={step} />,
       );
       expect(getByTestId('html-preview')).toBeTruthy();
       expect(queryByTestId('tool-metrics-footer')).toBeNull();
     });
 
-    it('passes metrics through to ToolUsedChip for unregistered talents', () => {
+    it('passes metrics through to ToolUsedChip for unregistered talents', async () => {
       const step: AgentStep = {
         toolCalls: [
           {
@@ -388,7 +398,7 @@ describe('TalentSurface', () => {
           },
         ],
       };
-      const {getByText} = render(<TalentSurface step={step} />);
+      const {getByText} = await render(<TalentSurface step={step} />);
       expect(getByText(/used datetime.+7 tokens.+1s/)).toBeTruthy();
     });
   });

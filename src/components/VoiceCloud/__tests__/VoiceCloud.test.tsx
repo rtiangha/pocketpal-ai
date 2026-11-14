@@ -32,40 +32,46 @@ describe('VoiceCloud', () => {
 
   it.each(['listening', 'thinking', 'speaking', 'muted'] as const)(
     'renders the %s cloud',
-    visual => {
-      const {getByTestId} = render(<VoiceCloud visual={visual} size={280} />);
+    async visual => {
+      const {getByTestId} = await render(
+        <VoiceCloud visual={visual} size={280} />,
+      );
       expect(getByTestId(`voice-cloud-${visual}`)).toBeTruthy();
     },
   );
 
-  it('moves while listening', () => {
-    render(<VoiceCloud visual="listening" size={280} />);
+  it('moves while listening', async () => {
+    await render(<VoiceCloud visual="listening" size={280} />);
     expect(withRepeat).toHaveBeenCalled();
   });
 
-  it('stops its loops when it goes away', () => {
-    const {unmount} = render(<VoiceCloud visual="listening" size={280} />);
+  it('stops its loops when it goes away', async () => {
+    const {unmount} = await render(
+      <VoiceCloud visual="listening" size={280} />,
+    );
     (Reanimated.cancelAnimation as jest.Mock).mockClear();
 
-    unmount();
+    await unmount();
 
     expect(Reanimated.cancelAnimation).toHaveBeenCalledTimes(5);
   });
 
-  it('stays still when muted', () => {
-    render(<VoiceCloud visual="muted" size={280} />);
+  it('stays still when muted', async () => {
+    await render(<VoiceCloud visual="muted" size={280} />);
     expect(withRepeat).not.toHaveBeenCalled();
   });
 
-  it('stays still, in colour, as a still cloud', () => {
-    const {getByTestId} = render(<VoiceCloud visual="still" size={280} />);
+  it('stays still, in colour, as a still cloud', async () => {
+    const {getByTestId} = await render(
+      <VoiceCloud visual="still" size={280} />,
+    );
     expect(withRepeat).not.toHaveBeenCalled();
     expect(getByTestId('voice-cloud-still')).not.toHaveStyle({opacity: 0.4});
   });
 
-  it('stays still when the system asks for reduced motion', () => {
+  it('stays still when the system asks for reduced motion', async () => {
     (Reanimated.useReducedMotion as jest.Mock).mockReturnValueOnce(true);
-    render(<VoiceCloud visual="speaking" size={280} />);
+    await render(<VoiceCloud visual="speaking" size={280} />);
     expect(withRepeat).not.toHaveBeenCalled();
   });
 });

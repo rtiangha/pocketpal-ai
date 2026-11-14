@@ -311,6 +311,7 @@ describe('chat export -> import round trip', () => {
           createdAt: 2,
         },
       ],
+
       completionSettings: {temperature: 0.7},
     };
 
@@ -361,7 +362,9 @@ describe('chat export -> import round trip', () => {
 
     const renderSteps = (steps: AgentStep[]) =>
       JSON.stringify(
-        steps.map(step => render(<TalentSurface step={step} />).toJSON()),
+        steps.map(async step =>
+          (await render(<TalentSurface step={step} />)).toJSON(),
+        ),
       );
 
     it('restores every reply with the steps and text it was exported with', async () => {
@@ -408,7 +411,9 @@ describe('chat export -> import round trip', () => {
       const toolTurn = byCreatedAt.get(
         exportedReplies.find(m => m.id === 'h6NgzLwcSoKHidpC')!.createdAt,
       )!;
-      const {getByTestId} = render(<TalentSurface step={toolTurn.steps[0]} />);
+      const {getByTestId} = await render(
+        <TalentSurface step={toolTurn.steps[0]} />,
+      );
       expect(
         getByTestId('web-search-result-trigger').props.accessibilityLabel,
       ).toContain('Firecrawl');
@@ -431,6 +436,7 @@ describe('chat export -> import round trip', () => {
             ...reply,
           },
         ],
+
         completionSettings: {},
       };
       const {count, created} = await importJson(JSON.stringify(file));
@@ -451,6 +457,7 @@ describe('chat export -> import round trip', () => {
         'steps have fields of the wrong type',
         {steps: [{content: 5}, {toolCalls: 'x'}, {toolOutcomes: [null]}]},
       ],
+
       ['a step has non-string reasoning', {steps: [{reasoningContent: 5}]}],
       ['a step has a non-object tool call', {steps: [{toolCalls: [null]}]}],
       ['steps is absent', {}],
@@ -495,6 +502,7 @@ describe('chat export -> import round trip', () => {
         'a tool call and its outcome are empty objects',
         [{content: 'x', toolCalls: [{}], toolOutcomes: [{}]}],
       ],
+
       [
         'an outcome has no result',
         [
@@ -505,6 +513,7 @@ describe('chat export -> import round trip', () => {
           },
         ],
       ],
+
       [
         'a search result has no results list',
         [
@@ -521,6 +530,7 @@ describe('chat export -> import round trip', () => {
           },
         ],
       ],
+
       [
         'a search result has a null hit',
         [
@@ -544,7 +554,7 @@ describe('chat export -> import round trip', () => {
         metadata: {steps},
       });
       for (const step of imported) {
-        expect(() => render(<TalentSurface step={step} />)).not.toThrow();
+        await render(<TalentSurface step={step} />);
       }
     });
 
@@ -572,6 +582,7 @@ describe('chat export -> import round trip', () => {
         call('c6', 'read_url'),
         call('c7', 'render_html'),
       ],
+
       toolOutcomes: [
         outcome('c1', 'web_search', {
           type: 'search',
@@ -594,9 +605,7 @@ describe('chat export -> import round trip', () => {
         metadata: {steps: [wellFormedStep]},
       });
       expect(steps).toEqual([wellFormedStep]);
-      expect(() =>
-        render(<TalentSurface step={steps[0]} />, {withNavigation: true}),
-      ).not.toThrow();
+      await render(<TalentSurface step={steps[0]} />, {withNavigation: true});
     });
 
     const withCall = (index: number, value: unknown) => ({
@@ -622,10 +631,12 @@ describe('chat export -> import round trip', () => {
         'a call function name is not a string',
         withCall(1, {id: 'c2', function: {name: 1, arguments: '{}'}}),
       ],
+
       [
         'a call function has no arguments',
         withCall(1, {id: 'c2', function: {name: 'render_html'}}),
       ],
+
       [
         'call metrics are not numbers',
         withCall(
@@ -633,29 +644,35 @@ describe('chat export -> import round trip', () => {
           call('c1', 'web_search', {metrics: {tokens: '3', durationMs: 10}}),
         ),
       ],
+
       [
         'call metrics have no duration',
         withCall(0, call('c1', 'web_search', {metrics: {tokens: 3}})),
       ],
+
       ['an outcome is not an object', withOutcome(1, () => 'x')],
       [
         'an outcome callId is not a string',
         withOutcome(1, o => ({...o, callId: 2})),
       ],
+
       [
         'an outcome has no toolName',
         withOutcome(1, o => ({...o, toolName: undefined})),
       ],
+
       [
         'an outcome has no responseContent',
         withOutcome(1, o => ({...o, responseContent: undefined})),
       ],
+
       ['a result has no summary', withResult(1, {summary: undefined})],
       ['a result type is unknown', withResult(1, {type: 'video'})],
       [
         'a result type is an Object.prototype key',
         withResult(1, {type: 'toString'}),
       ],
+
       ['an html result has no html', withResult(1, {html: undefined})],
       ['an html result title is not a string', withResult(1, {title: {}})],
       ['a text result links is not an array', withResult(2, {links: 'x'})],
@@ -665,6 +682,7 @@ describe('chat export -> import round trip', () => {
         'an error result has no errorMessage',
         withResult(4, {errorMessage: undefined}),
       ],
+
       ['a search result query is not a string', withResult(0, {query: 5})],
       ['a search result has no results', withResult(0, {results: undefined})],
       ['a search hit is null', withHit(null)],
@@ -712,6 +730,7 @@ describe('chat export -> import round trip', () => {
           {title: 'Mars news', url: pageUrl, snippet: 'Rover lands.'},
           {title: '', url: 'https://mars.example/empty', snippet: ''},
         ],
+
         read: async url => ({
           url,
           title: 'Mars news',

@@ -54,17 +54,19 @@ describe('SidebarContent Plus entry', () => {
     jest.restoreAllMocks();
   });
 
-  it('has no Plus entry while no Plus feature has shipped', () => {
-    const {queryByTestId, getByTestId, getByText} = render(<TestNavigator />);
+  it('has no Plus entry while no Plus feature has shipped', async () => {
+    const {queryByTestId, getByTestId, getByText} = await render(
+      <TestNavigator />,
+    );
 
     expect(getByTestId('drawer-item-settings')).toBeTruthy();
     expect(getByText('App Info')).toBeTruthy();
     expect(queryByTestId('drawer-item-plus')).toBeNull();
   });
 
-  it('sits between Settings and App Info once a feature ships', () => {
+  it('sits between Settings and App Info once a feature ships', async () => {
     setShipOverride(['handsFreeVoice']);
-    const {getAllByText} = render(<TestNavigator />);
+    const {getAllByText} = await render(<TestNavigator />);
 
     expect(
       getAllByText(/^(Settings|PocketPal Plus|App Info)$/).map(
@@ -73,10 +75,10 @@ describe('SidebarContent Plus entry', () => {
     ).toEqual(['Settings', 'PocketPal Plus', 'App Info']);
   });
 
-  it('has no Plus entry in an ungated build, even with a feature shipped', () => {
+  it('has no Plus entry in an ungated build, even with a feature shipped', async () => {
     (global as any).__PLUS_STORE_GATE__ = false;
     setShipOverride(['handsFreeVoice']);
-    const {getAllByText, queryByTestId} = render(<TestNavigator />);
+    const {getAllByText, queryByTestId} = await render(<TestNavigator />);
 
     expect(queryByTestId('drawer-item-plus')).toBeNull();
     expect(
@@ -86,28 +88,28 @@ describe('SidebarContent Plus entry', () => {
     ).toEqual(['Settings', 'App Info']);
   });
 
-  it('closes the drawer, then opens Plus with no callback', () => {
+  it('closes the drawer, then opens Plus with no callback', async () => {
     setShipOverride(['handsFreeVoice']);
     const calls: string[] = [];
-    const {getByTestId} = render(<TestNavigator />);
+    const {getByTestId} = await render(<TestNavigator />);
     jest
       .spyOn(drawerProps!.navigation, 'closeDrawer')
       .mockImplementation(() => calls.push('closeDrawer'));
     const open = jest.spyOn(gate, 'openPlus');
 
-    fireEvent.press(getByTestId('drawer-item-plus'));
+    await fireEvent.press(getByTestId('drawer-item-plus'));
 
     expect(calls).toEqual(['closeDrawer']);
     expect(plusGate.request).toEqual({onUnlocked: undefined});
     expect(open).toHaveBeenCalledWith();
   });
 
-  it('shows the owned look without re-rendering the session list', () => {
+  it('shows the owned look without re-rendering the session list', async () => {
     setShipOverride(['handsFreeVoice']);
-    const {getByTestId} = render(<TestNavigator />);
+    const {getByTestId} = await render(<TestNavigator />);
     const sidebarRenders = (createStyles as jest.Mock).mock.calls.length;
 
-    act(() => {
+    await act(() => {
       runInAction(() => {
         purchaseStore.plusUnlocked = true;
       });

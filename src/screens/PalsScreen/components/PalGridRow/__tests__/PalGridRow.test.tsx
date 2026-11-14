@@ -1,7 +1,7 @@
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
+import {StyleSheet} from 'react-native';
 
-import {render} from '../../../../../../jest/test-utils';
+import {render, screen} from '../../../../../../jest/test-utils';
 import {createPal} from '../../../../../../jest/fixtures/pals';
 
 import {PalGridRow} from '../PalGridRow';
@@ -15,8 +15,8 @@ jest.mock('@react-navigation/native', () => ({
 describe('PalGridRow', () => {
   const items = [createPal({id: 'cell-a'}), createPal({id: 'cell-b'})];
 
-  const renderCells = () => {
-    const {UNSAFE_getAllByType} = render(
+  const renderCells = async () => {
+    await render(
       <PalGridRow
         row={{key: 'row-0', items}}
         cardWidth={180}
@@ -24,14 +24,17 @@ describe('PalGridRow', () => {
       />,
     );
 
-    return UNSAFE_getAllByType(View).filter(
-      view =>
-        Array.isArray(view.props.style) && view.props.style[0] === styles.cell,
-    );
+    return screen.container
+      .queryAll(i => i.type === 'View')
+      .filter(
+        view =>
+          Array.isArray(view.props.style) &&
+          view.props.style[0] === styles.cell,
+      );
   };
 
-  it('gives every cell the card width and no flex of its own', () => {
-    const cells = renderCells();
+  it('gives every cell the card width and no flex of its own', async () => {
+    const cells = await renderCells();
 
     expect(cells).toHaveLength(items.length);
     cells.forEach(cell => {

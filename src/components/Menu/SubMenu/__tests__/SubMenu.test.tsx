@@ -9,13 +9,42 @@ jest.mock('../../../../utils/edgeToEdge', () => ({
   measuresIncludeStatusBar: jest.fn(() => false),
 }));
 
+// RNTL v14 no longer exposes Paper Menu's props in the host tree, so capture
+// them via a thin mock. It renders children only when visible, preserving
+// the items-presence behaviour the tests rely on.
+const mockCapturedPaperMenus: any[] = [];
+jest.mock('react-native-paper', () => {
+  const actual = jest.requireActual('react-native-paper');
+  const {createElement, Fragment, isValidElement} = require('react');
+  const MenuMock = (props: any) => {
+    mockCapturedPaperMenus.push(props);
+    // Paper renders the anchor (the trigger element) whether the menu is
+    // open or closed; children only when visible. The anchor may be an
+    // element, a coordinate {x, y}, or a function returning an element.
+    const anchor =
+      typeof props.anchor === 'function' ? props.anchor() : props.anchor;
+    return createElement(
+      Fragment,
+      null,
+      isValidElement(anchor) ? anchor : null,
+      props.visible ? props.children : null,
+    );
+  };
+  MenuMock.Item = actual.Menu.Item;
+  return {...actual, Menu: MenuMock};
+});
+const paperMenu = () => {
+  expect(mockCapturedPaperMenus.length).toBeGreaterThan(0);
+  return mockCapturedPaperMenus[mockCapturedPaperMenus.length - 1];
+};
+
 describe('SubMenu', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders when visible', () => {
-    const {getByText} = render(
+  it('renders when visible', async () => {
+    const {getByText} = await render(
       <SubMenu visible={true} onDismiss={() => {}} anchor={{x: 100, y: 100}}>
         <MenuItem label="SubMenu Item" onPress={() => {}} />
       </SubMenu>,
@@ -24,8 +53,8 @@ describe('SubMenu', () => {
     expect(getByText('SubMenu Item')).toBeTruthy();
   });
 
-  it('does not render when not visible', () => {
-    const {queryByText} = render(
+  it('does not render when not visible', async () => {
+    const {queryByText} = await render(
       <SubMenu visible={false} onDismiss={() => {}} anchor={{x: 100, y: 100}}>
         <MenuItem label="SubMenu Item" onPress={() => {}} />
       </SubMenu>,
@@ -34,8 +63,8 @@ describe('SubMenu', () => {
     expect(queryByText('SubMenu Item')).toBeNull();
   });
 
-  it('handles multiple menu items', () => {
-    const {getByText} = render(
+  it('handles multiple menu items', async () => {
+    const {getByText} = await render(
       <SubMenu visible={true} onDismiss={() => {}} anchor={{x: 100, y: 100}}>
         <MenuItem label="Item 1" onPress={() => {}} />
         <MenuItem label="Item 2" onPress={() => {}} />
@@ -48,20 +77,19 @@ describe('SubMenu', () => {
     expect(getByText('Item 3')).toBeTruthy();
   });
 
-  it('passes statusBarHeight to PaperMenu', () => {
-    const PaperMenu = require('react-native-paper').Menu;
-    const {UNSAFE_getByType} = render(
+  it('passes statusBarHeight to PaperMenu', async () => {
+    await render(
       <SubMenu visible={true} onDismiss={() => {}} anchor={{x: 100, y: 100}}>
         <MenuItem label="Item 1" onPress={() => {}} />
       </SubMenu>,
     );
 
-    const paperMenuInstance = UNSAFE_getByType(PaperMenu);
-    expect(paperMenuInstance.props.statusBarHeight).toBeDefined();
-    expect(typeof paperMenuInstance.props.statusBarHeight).toBe('number');
+    const paperMenuInstance = paperMenu();
+    expect(paperMenuInstance.statusBarHeight).toBeDefined();
+    expect(typeof paperMenuInstance.statusBarHeight).toBe('number');
   });
 
-  it('uses insets.top when the edge-to-edge measure is off or on iOS', () => {
+  it('uses insets.top when the edge-to-edge measure is off or on iOS', async () => {
     (useSafeAreaInsets as jest.Mock).mockReturnValue({
       top: 47,
       right: 0,
@@ -69,18 +97,17 @@ describe('SubMenu', () => {
       left: 0,
     });
 
-    const PaperMenu = require('react-native-paper').Menu;
-    const {UNSAFE_getByType} = render(
+    await render(
       <SubMenu visible={true} onDismiss={() => {}} anchor={{x: 100, y: 100}}>
         <MenuItem label="Item 1" onPress={() => {}} />
       </SubMenu>,
     );
 
-    const paperMenuInstance = UNSAFE_getByType(PaperMenu);
-    expect(paperMenuInstance.props.statusBarHeight).toBe(47);
+    const paperMenuInstance = paperMenu();
+    expect(paperMenuInstance.statusBarHeight).toBe(47);
   });
 
-  it('passes 0 when RN measures in edge-to-edge window coordinates', () => {
+  it('passes 0 when RN measures in edge-to-edge window coordinates', async () => {
     (measuresIncludeStatusBar as jest.Mock).mockReturnValueOnce(true);
     (useSafeAreaInsets as jest.Mock).mockReturnValue({
       top: 47,
@@ -89,20 +116,18 @@ describe('SubMenu', () => {
       left: 0,
     });
 
-    const PaperMenu = require('react-native-paper').Menu;
-    const {UNSAFE_getByType} = render(
+    await render(
       <SubMenu visible={true} onDismiss={() => {}} anchor={{x: 100, y: 100}}>
         <MenuItem label="Item 1" onPress={() => {}} />
       </SubMenu>,
     );
 
-    expect(UNSAFE_getByType(PaperMenu).props.statusBarHeight).toBe(0);
+    expect(paperMenu().statusBarHeight).toBe(0);
   });
 
-  it('passes custom style alongside default styles', () => {
-    const PaperMenu = require('react-native-paper').Menu;
+  it('passes custom style alongside default styles', async () => {
     const customStyle = {marginTop: 10};
-    const {UNSAFE_getByType} = render(
+    await render(
       <SubMenu
         visible={true}
         onDismiss={() => {}}
@@ -112,16 +137,15 @@ describe('SubMenu', () => {
       </SubMenu>,
     );
 
-    const paperMenuInstance = UNSAFE_getByType(PaperMenu);
-    const styleArray = paperMenuInstance.props.style;
+    const paperMenuInstance = paperMenu();
+    const styleArray = paperMenuInstance.style;
     expect(styleArray).toEqual(
       expect.arrayContaining([expect.objectContaining(customStyle)]),
     );
   });
 
-  it('forwards additional props to PaperMenu', () => {
-    const PaperMenu = require('react-native-paper').Menu;
-    const {UNSAFE_getByType} = render(
+  it('forwards additional props to PaperMenu', async () => {
+    await render(
       <SubMenu
         visible={true}
         onDismiss={() => {}}
@@ -131,20 +155,19 @@ describe('SubMenu', () => {
       </SubMenu>,
     );
 
-    const paperMenuInstance = UNSAFE_getByType(PaperMenu);
-    expect(paperMenuInstance.props.anchor).toEqual({x: 200, y: 300});
-    expect(paperMenuInstance.props.testID).toBe('submenu-test');
+    const paperMenuInstance = paperMenu();
+    expect(paperMenuInstance.anchor).toEqual({x: 200, y: 300});
+    expect(paperMenuInstance.testID).toBe('submenu-test');
   });
 
-  it('passes contentStyle to PaperMenu', () => {
-    const PaperMenu = require('react-native-paper').Menu;
-    const {UNSAFE_getByType} = render(
+  it('passes contentStyle to PaperMenu', async () => {
+    await render(
       <SubMenu visible={true} onDismiss={() => {}} anchor={{x: 100, y: 100}}>
         <MenuItem label="Item 1" onPress={() => {}} />
       </SubMenu>,
     );
 
-    const paperMenuInstance = UNSAFE_getByType(PaperMenu);
-    expect(paperMenuInstance.props.contentStyle).toBeDefined();
+    const paperMenuInstance = paperMenu();
+    expect(paperMenuInstance.contentStyle).toBeDefined();
   });
 });

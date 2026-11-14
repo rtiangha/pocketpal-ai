@@ -1,11 +1,11 @@
 import React from 'react';
 import {Alert, StyleSheet} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 
 import {
   render as baseRender,
   fireEvent,
   act,
+  screen,
 } from '../../../../../../../jest/test-utils';
 import {
   hfModel1,
@@ -20,8 +20,8 @@ import {downloadManager} from '../../../../../../services/downloads';
 
 import {modelStore} from '../../../../../../store';
 
-const render = (ui: React.ReactElement, options: any = {}) =>
-  baseRender(ui, {withBottomSheetProvider: true, ...options});
+const render = async (ui: React.ReactElement, options: any = {}) =>
+  await baseRender(ui, {withBottomSheetProvider: true, ...options});
 
 describe('ModelFileCard', () => {
   const mockModelFile = {
@@ -44,8 +44,8 @@ describe('ModelFileCard', () => {
     (downloadManager.isDownloading as jest.Mock).mockReset();
   });
 
-  it('renders correctly with initial props', () => {
-    const {getByTestId, getByText} = render(
+  it('renders correctly with initial props', async () => {
+    const {getByTestId, getByText} = await render(
       <ModelFileCard modelFile={mockModelFile} hfModel={mockHFModel1} />,
     );
 
@@ -56,12 +56,12 @@ describe('ModelFileCard', () => {
   });
 
   it('handles bookmark toggle when not bookmarked', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ModelFileCard modelFile={mockModelFile} hfModel={mockHFModel1} />,
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('bookmark-button'));
+      await fireEvent.press(getByTestId('bookmark-button'));
     });
 
     expect(modelStore.addHFModel).toHaveBeenCalledWith(
@@ -73,7 +73,7 @@ describe('ModelFileCard', () => {
   it('shows alert when trying to remove downloaded model', async () => {
     modelStore.models = [downloadedHFModel];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ModelFileCard
         modelFile={downloadedHFModel.hfModelFile!}
         hfModel={downloadedHFModel.hfModel!}
@@ -81,7 +81,7 @@ describe('ModelFileCard', () => {
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('bookmark-button'));
+      await fireEvent.press(getByTestId('bookmark-button'));
     });
 
     expect(Alert.alert).toHaveBeenCalledWith(
@@ -91,7 +91,7 @@ describe('ModelFileCard', () => {
   });
 
   it('handles download initiation', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ModelFileCard
         modelFile={mockHFModel1.siblings[0]}
         hfModel={mockHFModel1}
@@ -99,7 +99,7 @@ describe('ModelFileCard', () => {
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('download-button'));
+      await fireEvent.press(getByTestId('download-button'));
     });
 
     expect(modelStore.downloadHFModel).toHaveBeenCalledWith(
@@ -115,7 +115,7 @@ describe('ModelFileCard', () => {
     (downloadManager.isDownloading as jest.Mock).mockImplementation(modelId => {
       return modelId === hfModel1.id;
     });
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ModelFileCard
         modelFile={hfModel1.hfModelFile!}
         hfModel={hfModel1.hfModel!}
@@ -123,19 +123,29 @@ describe('ModelFileCard', () => {
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('cancel-button'));
+      await fireEvent.press(getByTestId('cancel-button'));
     });
 
     expect(modelStore.cancelDownload).toHaveBeenCalledWith(hfModel1.id);
   });
 
   describe('progress fill', () => {
-    const fillWidth = (ui: ReturnType<typeof render>) =>
-      StyleSheet.flatten(ui.UNSAFE_getByType(LinearGradient).props.style).width;
-    const renderWithProgress = (downloading: boolean) => {
+    // v14: react-native-linear-gradient renders a BVLinearGradient host
+    // node (not a View) whose flattened style width is the progress
+    // percentage.
+    const fillWidth = () => {
+      const fills = screen.container.queryAll(
+        (n: any) =>
+          n.type === 'BVLinearGradient' &&
+          typeof StyleSheet.flatten(n.props.style)?.width === 'string',
+      );
+      expect(fills).toHaveLength(1);
+      return StyleSheet.flatten(fills[0].props.style).width;
+    };
+    const renderWithProgress = async (downloading: boolean) => {
       modelStore.models = [{...hfModel1, isDownloaded: false, progress: 40}];
       (downloadManager.isDownloading as jest.Mock).mockReturnValue(downloading);
-      return render(
+      return await render(
         <ModelFileCard
           modelFile={hfModel1.hfModelFile!}
           hfModel={hfModel1.hfModel!}
@@ -143,22 +153,24 @@ describe('ModelFileCard', () => {
       );
     };
 
-    it('follows progress while downloading', () => {
-      expect(fillWidth(renderWithProgress(true))).toBe('40%');
+    it('follows progress while downloading', async () => {
+      await renderWithProgress(true);
+      expect(fillWidth()).toBe('40%');
     });
 
-    it('stays empty for progress left from a failed download', () => {
-      expect(fillWidth(renderWithProgress(false))).toBe('0%');
+    it('stays empty for progress left from a failed download', async () => {
+      await renderWithProgress(false);
+      expect(fillWidth()).toBe('0%');
     });
   });
 
-  it('disables download button when storage is insufficient', () => {
+  it('disables download button when storage is insufficient', async () => {
     const insufficientStorageFile = {
       ...mockModelFile,
       canFitInStorage: false,
     };
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ModelFileCard
         modelFile={insufficientStorageFile}
         hfModel={mockHFModel1}
@@ -173,7 +185,7 @@ describe('ModelFileCard', () => {
   it('shows delete confirmation for downloaded model', async () => {
     modelStore.models = [downloadedHFModel];
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ModelFileCard
         modelFile={downloadedHFModel.hfModelFile!}
         hfModel={downloadedHFModel.hfModel!}
@@ -181,7 +193,7 @@ describe('ModelFileCard', () => {
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('download-button'));
+      await fireEvent.press(getByTestId('download-button'));
     });
 
     expect(Alert.alert).toHaveBeenCalledWith(

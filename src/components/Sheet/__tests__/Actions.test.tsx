@@ -1,7 +1,7 @@
 import React from 'react';
 import {render} from '@testing-library/react-native';
 import {StyleProp, StyleSheet, Text, ViewStyle} from 'react-native';
-import type {ReactTestRendererJSON} from 'react-test-renderer';
+import type {JsonElement} from 'test-renderer';
 import {KEYBOARD_STATUS, useBottomSheetInternal} from '@gorhom/bottom-sheet';
 import * as Reanimated from 'react-native-reanimated';
 import {
@@ -20,18 +20,17 @@ const mockUseBottomSheetInternal = useBottomSheetInternal as jest.Mock;
 const mockUseSafeAreaInsets = useSafeAreaInsets as jest.Mock;
 const INSET = 34;
 
-const renderBar = (style?: object) =>
-  render(
+const renderBar = async (style?: object) =>
+  await render(
     <Actions style={style}>
       <Text>Cancel</Text>
       <Text>Save</Text>
     </Actions>,
   );
 
-const barStyle = (utils: ReturnType<typeof renderBar>) =>
+const barStyle = (utils: Awaited<ReturnType<typeof renderBar>>) =>
   StyleSheet.flatten(
-    (utils.toJSON() as ReactTestRendererJSON).props
-      .style as StyleProp<ViewStyle>,
+    (utils.toJSON() as JsonElement).props.style as StyleProp<ViewStyle>,
   ) as ViewStyle;
 
 describe('Actions', () => {
@@ -54,23 +53,23 @@ describe('Actions', () => {
     });
   });
 
-  it('renders children correctly', () => {
-    const {getByText} = renderBar();
+  it('renders children correctly', async () => {
+    const {getByText} = await renderBar();
 
     expect(getByText('Cancel')).toBeTruthy();
     expect(getByText('Save')).toBeTruthy();
   });
 
   describe('outside a sheet', () => {
-    it('pads the bar above the bottom inset without an animated style', () => {
-      const utils = renderBar();
+    it('pads the bar above the bottom inset without an animated style', async () => {
+      const utils = await renderBar();
 
       expect(barStyle(utils).paddingBottom).toBe(10 + INSET);
       expect(useAnimatedStyle).not.toHaveBeenCalled();
     });
 
-    it("lets the caller's style win, padding included", () => {
-      const utils = renderBar({paddingBottom: 3, paddingHorizontal: 4});
+    it("lets the caller's style win, padding included", async () => {
+      const utils = await renderBar({paddingBottom: 3, paddingHorizontal: 4});
 
       expect(barStyle(utils)).toEqual(
         expect.objectContaining({paddingBottom: 3, paddingHorizontal: 4}),
@@ -102,12 +101,14 @@ describe('Actions', () => {
         0,
         10 + INSET,
       ],
+
       [
         'dropped',
         {status: KEYBOARD_STATUS.SHOWN, heightWithinContainer: 300},
         16,
         10 + INSET,
       ],
+
       [
         'lifted',
         {status: KEYBOARD_STATUS.SHOWN, heightWithinContainer: 300},
@@ -116,7 +117,7 @@ describe('Actions', () => {
       ],
     ])(
       'starts at its %s padding without animating',
-      (_, keyboardState, position, expected) => {
+      async (_, keyboardState, position, expected) => {
         mockUseBottomSheetInternal.mockReturnValue(
           mockSheetContext(
             {heightWithinContainer: 0, ...keyboardState},
@@ -124,7 +125,7 @@ describe('Actions', () => {
           ),
         );
 
-        const utils = renderBar();
+        const utils = await renderBar();
 
         expect(barStyle(utils).paddingBottom).toBe(expected);
         expect(withTiming).not.toHaveBeenCalled();
@@ -132,12 +133,12 @@ describe('Actions', () => {
       },
     );
 
-    it('reads the sheet state once, not on every render', () => {
+    it('reads the sheet state once, not on every render', async () => {
       const sheet = mockSheetContext({status: KEYBOARD_STATUS.HIDDEN});
       mockUseBottomSheetInternal.mockReturnValue(sheet);
 
-      const utils = renderBar();
-      utils.rerender(
+      const utils = await renderBar();
+      await utils.rerender(
         <Actions>
           <Text>Cancel</Text>
         </Actions>,
@@ -178,7 +179,7 @@ describe('Actions', () => {
         duration: 250,
       });
 
-      beforeEach(() => {
+      beforeEach(async () => {
         reactionSpy = jest
           .spyOn(Reanimated, 'useAnimatedReaction')
           .mockImplementation((p, r, d) => {
@@ -201,7 +202,7 @@ describe('Actions', () => {
           {position: 0},
         );
         mockUseBottomSheetInternal.mockReturnValue(sheet);
-        renderBar();
+        await renderBar();
       });
 
       afterEach(() => {
@@ -288,12 +289,12 @@ describe('Actions', () => {
       });
     });
 
-    it('owns its bottom padding over the caller, and nothing else', () => {
+    it('owns its bottom padding over the caller, and nothing else', async () => {
       mockUseBottomSheetInternal.mockReturnValue(
         mockSheetContext({status: KEYBOARD_STATUS.HIDDEN}),
       );
 
-      const utils = renderBar({paddingBottom: 3, paddingHorizontal: 4});
+      const utils = await renderBar({paddingBottom: 3, paddingHorizontal: 4});
 
       expect(barStyle(utils)).toEqual(
         expect.objectContaining({

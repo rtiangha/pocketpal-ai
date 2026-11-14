@@ -42,11 +42,11 @@ describe('Sheet render performance', () => {
         const sheet = sheetMethods(screen);
         expect(sheet.present).not.toHaveBeenCalled();
 
-        fireEvent.press(screen.getByTestId('perf-toggle'));
+        await fireEvent.press(screen.getByTestId('perf-toggle'));
         await flushTimers();
         expect(sheet.present).toHaveBeenCalledTimes(1);
 
-        fireEvent.press(screen.getByTestId('perf-toggle'));
+        await fireEvent.press(screen.getByTestId('perf-toggle'));
         await flushTimers();
         expect(sheet.close).toHaveBeenCalledTimes(2);
       },

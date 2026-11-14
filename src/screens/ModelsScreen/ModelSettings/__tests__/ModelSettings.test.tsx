@@ -66,8 +66,8 @@ describe('ModelSettings', () => {
     jest.spyOn(Keyboard, 'dismiss');
   });
 
-  it('renders correctly with initial props', () => {
-    const {getByText, getByPlaceholderText} = render(
+  it('renders correctly with initial props', async () => {
+    const {getByText, getByPlaceholderText} = await render(
       <ModelSettings {...mockProps} />,
     );
 
@@ -79,7 +79,7 @@ describe('ModelSettings', () => {
   });
 
   it('allows editing model name input', async () => {
-    const {getByDisplayValue} = render(<ModelSettings {...mockProps} />);
+    const {getByDisplayValue} = await render(<ModelSettings {...mockProps} />);
 
     // Find the model name input by its current value
     const modelNameInput = getByDisplayValue('test-model');
@@ -89,7 +89,7 @@ describe('ModelSettings', () => {
 
     // Simulate user typing
     await act(async () => {
-      fireEvent.changeText(modelNameInput, 'My Custom Name');
+      await fireEvent.changeText(modelNameInput, 'My Custom Name');
     });
 
     // Verify the change handler was called
@@ -97,11 +97,13 @@ describe('ModelSettings', () => {
   });
 
   it('handles BOS token changes', async () => {
-    const {getByPlaceholderText} = render(<ModelSettings {...mockProps} />);
+    const {getByPlaceholderText} = await render(
+      <ModelSettings {...mockProps} />,
+    );
 
     const bosInput = getByPlaceholderText('BOS Token');
     await act(async () => {
-      fireEvent.changeText(bosInput, '<|NEW_START|>');
+      await fireEvent.changeText(bosInput, '<|NEW_START|>');
     });
 
     expect(mockProps.onChange).toHaveBeenCalledWith(
@@ -111,36 +113,38 @@ describe('ModelSettings', () => {
   });
 
   it('handles EOS token changes', async () => {
-    const {getByPlaceholderText} = render(<ModelSettings {...mockProps} />);
+    const {getByPlaceholderText} = await render(
+      <ModelSettings {...mockProps} />,
+    );
 
     const eosInput = getByPlaceholderText('EOS Token');
     await act(async () => {
-      fireEvent.changeText(eosInput, '<|NEW_END|>');
+      await fireEvent.changeText(eosInput, '<|NEW_END|>');
     });
 
     expect(mockProps.onChange).toHaveBeenCalledWith('eosToken', '<|NEW_END|>');
   });
 
   it('toggles BOS switch correctly', async () => {
-    const {getByTestId} = render(<ModelSettings {...mockProps} />);
+    const {getByTestId} = await render(<ModelSettings {...mockProps} />);
 
     const bosSwitch = getByTestId('BOS-switch');
 
     await act(async () => {
-      fireEvent(bosSwitch, 'valueChange', false);
+      await fireEvent(bosSwitch, 'valueChange', false);
     });
 
     expect(mockProps.onChange).toHaveBeenCalledWith('addBosToken', false);
   });
 
   it('saves template changes', async () => {
-    const {getByText, getByPlaceholderText, getByTestId} = render(
+    const {getByText, getByPlaceholderText, getByTestId} = await render(
       <ModelSettings {...mockProps} />,
     );
 
     // Open dialog
     await act(async () => {
-      fireEvent.press(getByText('Edit'));
+      await fireEvent.press(getByText('Edit'));
     });
 
     const templateInput = getByPlaceholderText(
@@ -148,11 +152,11 @@ describe('ModelSettings', () => {
     );
     const newTemplate = 'New Template Content';
     await act(async () => {
-      fireEvent.changeText(templateInput, newTemplate);
+      await fireEvent.changeText(templateInput, newTemplate);
     });
 
     await act(async () => {
-      fireEvent.press(getByTestId('template-close-button'));
+      await fireEvent.press(getByTestId('template-close-button'));
     });
 
     expect(mockProps.onChange).toHaveBeenCalledWith(
@@ -162,59 +166,59 @@ describe('ModelSettings', () => {
   });
 
   it('handles system prompt changes', async () => {
-    const {getByTestId} = render(<ModelSettings {...mockProps} />);
+    const {getByTestId} = await render(<ModelSettings {...mockProps} />);
 
     const systemPromptInput = getByTestId('system-prompt-input');
     const newPrompt = 'New system prompt';
     await act(async () => {
-      fireEvent.changeText(systemPromptInput, newPrompt);
+      await fireEvent.changeText(systemPromptInput, newPrompt);
     });
     await act(async () => {
-      fireEvent(systemPromptInput, 'blur');
+      await fireEvent(systemPromptInput, 'blur');
     });
 
     expect(mockProps.onChange).toHaveBeenCalledWith('systemPrompt', newPrompt);
   });
 
   it('dismisses keyboard when the template sheet is closed', async () => {
-    const {getByTestId, getByText, getByPlaceholderText} = render(
+    const {getByTestId, getByText, getByPlaceholderText} = await render(
       <ModelSettings {...mockProps} />,
     );
     const editButton = getByText('Edit');
     await act(async () => {
-      fireEvent.press(editButton);
+      await fireEvent.press(editButton);
     });
 
     const input = getByPlaceholderText('Enter your chat template here...');
     await act(async () => {
-      fireEvent.changeText(input, 'New Template Content');
+      await fireEvent.changeText(input, 'New Template Content');
     });
 
     const sheetCloseButton = getByTestId('sheet-close-button');
     await act(async () => {
-      fireEvent.press(sheetCloseButton);
+      await fireEvent.press(sheetCloseButton);
     });
 
     expect(Keyboard.dismiss).toHaveBeenCalled();
   });
 
-  it('handles stop words additions and removals', () => {
-    const {getByTestId} = render(<ModelSettings {...mockProps} />);
+  it('handles stop words additions and removals', async () => {
+    const {getByTestId} = await render(<ModelSettings {...mockProps} />);
 
     // Test adding new stop word
     const stopInput = getByTestId('stop-input');
-    fireEvent.changeText(stopInput, 'newstop');
-    fireEvent(stopInput, 'submitEditing');
+    await fireEvent.changeText(stopInput, 'newstop');
+    await fireEvent(stopInput, 'submitEditing');
 
     expect(mockProps.onStopWordsChange).toHaveBeenCalledWith(['newstop']);
 
     // Mock existing stop words
     mockProps.stopWords = ['<stop1>'];
-    const {getAllByRole} = render(<ModelSettings {...mockProps} />);
+    const {getAllByRole} = await render(<ModelSettings {...mockProps} />);
 
     // Test removing stop word using chip close button
     const closeButtons = getAllByRole('button', {name: /close/i});
-    fireEvent.press(closeButtons[0]);
+    await fireEvent.press(closeButtons[0]);
 
     expect(mockProps.onStopWordsChange).toHaveBeenCalledWith([]);
   });

@@ -31,8 +31,8 @@ jest.mock(
   }),
 );
 
-const renderWithI18n = (ui: React.ReactElement) => {
-  return render(
+const renderWithI18n = async (ui: React.ReactElement) => {
+  return await render(
     <L10nContext.Provider value={l10n.en as any}>{ui}</L10nContext.Provider>,
   );
 };
@@ -44,37 +44,37 @@ describe('HeaderRight', () => {
     chatSessionStore.activeSessionId = null;
   });
 
-  it('renders without UsageStats when displayMemUsage is false', () => {
+  it('renders without UsageStats when displayMemUsage is false', async () => {
     uiStore.displayMemUsage = false;
-    const {queryByTestId} = renderWithI18n(<HeaderRight />);
+    const {queryByTestId} = await renderWithI18n(<HeaderRight />);
     expect(queryByTestId('usage-stats')).toBeNull();
     expect(queryByTestId('reset-button')).toBeTruthy();
     expect(queryByTestId('menu-button')).toBeTruthy();
   });
 
-  it('renders UsageStats when displayMemUsage is true', () => {
+  it('renders UsageStats when displayMemUsage is true', async () => {
     uiStore.displayMemUsage = true;
-    const {queryByTestId} = renderWithI18n(<HeaderRight />);
+    const {queryByTestId} = await renderWithI18n(<HeaderRight />);
     expect(queryByTestId('usage-stats')).toBeTruthy();
     expect(queryByTestId('reset-button')).toBeTruthy();
     expect(queryByTestId('menu-button')).toBeTruthy();
   });
 
-  it('calls resetActiveSession when reset button is pressed', () => {
-    const {queryByTestId} = renderWithI18n(<HeaderRight />);
+  it('calls resetActiveSession when reset button is pressed', async () => {
+    const {queryByTestId} = await renderWithI18n(<HeaderRight />);
     const resetButton = queryByTestId('reset-button');
     expect(resetButton).toBeTruthy();
     if (resetButton) {
-      fireEvent.press(resetButton);
+      await fireEvent.press(resetButton);
     }
     expect(chatSessionStore.resetActiveSession).toHaveBeenCalled();
   });
 
   describe('Menu functionality', () => {
-    it('opens menu when menu button is pressed', () => {
-      const {getByTestId} = renderWithI18n(<HeaderRight />);
+    it('opens menu when menu button is pressed', async () => {
+      const {getByTestId} = await renderWithI18n(<HeaderRight />);
       const menuButton = getByTestId('menu-button');
-      fireEvent.press(menuButton);
+      await fireEvent.press(menuButton);
       // Menu should be visible now
       expect(getByTestId('menu-view')).toBeTruthy();
     });
@@ -91,6 +91,7 @@ describe('HeaderRight', () => {
             settingsSource: 'pal',
           },
         ];
+
         chatSessionStore.activeSessionId = 'test-session';
         // Set up the mock model store
         modelStore.models = [modelsList[0]];
@@ -103,9 +104,9 @@ describe('HeaderRight', () => {
       });
 
       it('shows session-specific menu items', async () => {
-        const {getByTestId, findByText} = renderWithI18n(<HeaderRight />);
+        const {getByTestId, findByText} = await renderWithI18n(<HeaderRight />);
         const menuButton = getByTestId('menu-button');
-        fireEvent.press(menuButton);
+        await fireEvent.press(menuButton);
 
         expect(
           await findByText(l10n.en.components.headerRight.generationSettings),
@@ -121,25 +122,25 @@ describe('HeaderRight', () => {
       });
 
       it('handles generation settings press', async () => {
-        const {getByTestId, findByText} = renderWithI18n(<HeaderRight />);
+        const {getByTestId, findByText} = await renderWithI18n(<HeaderRight />);
         const menuButton = getByTestId('menu-button');
-        fireEvent.press(menuButton);
+        await fireEvent.press(menuButton);
 
         const settingsButton = await findByText(
           l10n.en.components.headerRight.generationSettings,
         );
-        fireEvent.press(settingsButton);
+        await fireEvent.press(settingsButton);
 
         expect(getByTestId('chat-generation-settings-sheet')).toBeTruthy();
       });
 
       it('handles delete action with confirmation', async () => {
-        const {getByTestId, findByText} = renderWithI18n(<HeaderRight />);
+        const {getByTestId, findByText} = await renderWithI18n(<HeaderRight />);
         const menuButton = getByTestId('menu-button');
-        fireEvent.press(menuButton);
+        await fireEvent.press(menuButton);
 
         const deleteButton = await findByText('Delete');
-        fireEvent.press(deleteButton);
+        await fireEvent.press(deleteButton);
 
         // Verify Alert was shown with correct options
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -170,12 +171,12 @@ describe('HeaderRight', () => {
       });
 
       it('handles duplicate action', async () => {
-        const {getByTestId, findByText} = renderWithI18n(<HeaderRight />);
+        const {getByTestId, findByText} = await renderWithI18n(<HeaderRight />);
         const menuButton = getByTestId('menu-button');
-        fireEvent.press(menuButton);
+        await fireEvent.press(menuButton);
 
         const duplicateButton = await findByText('Duplicate chat history');
-        fireEvent.press(duplicateButton);
+        await fireEvent.press(duplicateButton);
 
         expect(chatSessionStore.duplicateSession).toHaveBeenCalledWith(
           'test-session',

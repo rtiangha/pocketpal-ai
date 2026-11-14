@@ -27,44 +27,44 @@ describe('useTouchLongPress', () => {
     jest.useRealTimers();
   });
 
-  const setup = () => {
+  const setup = async () => {
     const onLongPress = jest.fn();
-    const utils = render(<Target onLongPress={onLongPress} />);
+    const utils = await render(<Target onLongPress={onLongPress} />);
     return {onLongPress, target: utils.getByTestId('target'), ...utils};
   };
 
-  const wait = (ms: number) =>
-    act(() => {
+  const wait = async (ms: number) =>
+    await act(() => {
       jest.advanceTimersByTime(ms);
     });
 
-  it('gives the view no responder handlers', () => {
-    const {target} = setup();
+  it('gives the view no responder handlers', async () => {
+    const {target} = await setup();
 
     expect(target.props.onStartShouldSetResponder).toBeUndefined();
     expect(target.props.onResponderGrant).toBeUndefined();
   });
 
-  it('fires once after a 500 ms hold with the touch-start point', () => {
-    const {onLongPress, target} = setup();
+  it('fires once after a 500 ms hold with the touch-start point', async () => {
+    const {onLongPress, target} = await setup();
     const start: {nativeEvent: unknown} = touch(3, 4);
 
-    fireEvent(target, 'touchStart', start);
+    await fireEvent(target, 'touchStart', start);
     start.nativeEvent = null;
-    wait(499);
+    await wait(499);
     expect(onLongPress).not.toHaveBeenCalled();
-    wait(1);
+    await wait(1);
 
     expect(onLongPress).toHaveBeenCalledTimes(1);
     expect(onLongPress).toHaveBeenCalledWith(touch(3, 4));
   });
 
-  it('still fires when the finger drifts within 10 px', () => {
-    const {onLongPress, target} = setup();
+  it('still fires when the finger drifts within 10 px', async () => {
+    const {onLongPress, target} = await setup();
 
-    fireEvent(target, 'touchStart', touch(0, 0));
-    fireEvent(target, 'touchMove', touch(6, 8));
-    wait(500);
+    await fireEvent(target, 'touchStart', touch(0, 0));
+    await fireEvent(target, 'touchMove', touch(6, 8));
+    await wait(500);
 
     expect(onLongPress).toHaveBeenCalledTimes(1);
   });
@@ -73,12 +73,12 @@ describe('useTouchLongPress', () => {
     ['a drag past 10 px', 'touchMove', touch(11, 0)],
     ['a release', 'touchEnd', touch(0, 0)],
     ['a cancelled touch', 'touchCancel', touch(0, 0)],
-  ])('does not fire after %s', (_case, eventName, event) => {
-    const {onLongPress, target} = setup();
+  ])('does not fire after %s', async (_case, eventName, event) => {
+    const {onLongPress, target} = await setup();
 
-    fireEvent(target, 'touchStart', touch(0, 0));
-    fireEvent(target, eventName, event);
-    wait(500);
+    await fireEvent(target, 'touchStart', touch(0, 0));
+    await fireEvent(target, eventName, event);
+    await wait(500);
 
     expect(onLongPress).not.toHaveBeenCalled();
   });
@@ -89,10 +89,10 @@ describe('useTouchLongPress', () => {
     ['a cancelled touch', 'touchCancel', touch(0, 0)],
   ])(
     'presses in on touch start and out once on %s',
-    (_case, eventName, event) => {
+    async (_case, eventName, event) => {
       const onPressIn = jest.fn();
       const onPressOut = jest.fn();
-      const {getByTestId} = render(
+      const {getByTestId} = await render(
         <Target
           onLongPress={jest.fn()}
           onPressIn={onPressIn}
@@ -101,37 +101,37 @@ describe('useTouchLongPress', () => {
       );
       const target = getByTestId('target');
 
-      fireEvent(target, 'touchStart', touch(0, 0));
+      await fireEvent(target, 'touchStart', touch(0, 0));
       expect(onPressIn).toHaveBeenCalledTimes(1);
       expect(onPressOut).not.toHaveBeenCalled();
-      fireEvent(target, eventName, event);
-      fireEvent(target, 'touchEnd', touch(0, 0));
+      await fireEvent(target, eventName, event);
+      await fireEvent(target, 'touchEnd', touch(0, 0));
 
       expect(onPressOut).toHaveBeenCalledTimes(1);
     },
   );
 
-  it('stays pressed through a long-press until release', () => {
+  it('stays pressed through a long-press until release', async () => {
     const onLongPress = jest.fn();
     const onPressOut = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <Target onLongPress={onLongPress} onPressOut={onPressOut} />,
     );
     const target = getByTestId('target');
 
-    fireEvent(target, 'touchStart', touch(0, 0));
-    wait(500);
+    await fireEvent(target, 'touchStart', touch(0, 0));
+    await wait(500);
     expect(onLongPress).toHaveBeenCalledTimes(1);
     expect(onPressOut).not.toHaveBeenCalled();
-    fireEvent(target, 'touchEnd', touch(0, 0));
+    await fireEvent(target, 'touchEnd', touch(0, 0));
 
     expect(onPressOut).toHaveBeenCalledTimes(1);
   });
 
-  it('starts nothing when canStart says no', () => {
+  it('starts nothing when canStart says no', async () => {
     const onLongPress = jest.fn();
     const onPressIn = jest.fn();
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <Target
         onLongPress={onLongPress}
         onPressIn={onPressIn}
@@ -139,19 +139,19 @@ describe('useTouchLongPress', () => {
       />,
     );
 
-    fireEvent(getByTestId('target'), 'touchStart', touch(0, 0));
-    wait(500);
+    await fireEvent(getByTestId('target'), 'touchStart', touch(0, 0));
+    await wait(500);
 
     expect(onPressIn).not.toHaveBeenCalled();
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
-  it('does not fire after unmount', () => {
-    const {onLongPress, target, unmount} = setup();
+  it('does not fire after unmount', async () => {
+    const {onLongPress, target, unmount} = await setup();
 
-    fireEvent(target, 'touchStart', touch(0, 0));
-    unmount();
-    wait(500);
+    await fireEvent(target, 'touchStart', touch(0, 0));
+    await unmount();
+    await wait(500);
 
     expect(onLongPress).not.toHaveBeenCalled();
   });

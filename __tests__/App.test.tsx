@@ -2,7 +2,6 @@
  * @format
  */
 
-import {StatusBar} from 'react-native';
 import React from 'react';
 import App from '../App';
 import {useTheme} from '../src/hooks/useTheme';
@@ -17,6 +16,23 @@ import {it} from '@jest/globals';
 
 import {act, render} from '@testing-library/react-native';
 
+// StatusBar renders no host node, so capture its props via a mock of the
+// react-native StatusBar module (default export, as re-exported by the
+// react-native index). It renders null, matching the real component's
+// observable behaviour in the test renderer.
+const mockCapturedStatusBars: any[] = [];
+jest.mock('react-native/Libraries/Components/StatusBar/StatusBar', () => {
+  const StatusBarMock = (props: any) => {
+    mockCapturedStatusBars.push(props);
+    return null;
+  };
+  return {__esModule: true, default: StatusBarMock};
+});
+const statusBarProps = () => {
+  expect(mockCapturedStatusBars.length).toBeGreaterThan(0);
+  return mockCapturedStatusBars[mockCapturedStatusBars.length - 1];
+};
+
 // Hydration gate test plumbing — see __mocks__/external/mobx-persist-store.js.
 // __setHydrated() flips the controllable mock; we restore the default
 // (true) after each test so other suites are unaffected.
@@ -27,8 +43,8 @@ afterEach(() => {
   __setHydrated(true);
 });
 
-it('renders correctly', () => {
-  const result = render(<App />);
+it('renders correctly', async () => {
+  const result = await render(<App />);
   expect(result).toBeDefined();
   // With _hydrated === true (default), no splash mounts — closes the
   // regression where the gate could be silently disabled and the splash
@@ -36,9 +52,9 @@ it('renders correctly', () => {
   expect(result.queryByTestId('hydration-splash')).toBeNull();
 });
 
-it('renders hydration splash while UIStore is not hydrated', () => {
+it('renders hydration splash while UIStore is not hydrated', async () => {
   __setHydrated(false);
-  const result = render(<App />);
+  const result = await render(<App />);
   // The splash must mount, AND <PaperProvider> must NOT — i.e. nothing
   // below the gate is in the tree. The drawer header titles, only
   // present after PaperProvider + NavigationContainer mount, are the
@@ -65,19 +81,19 @@ describe('navigation bar appearance', () => {
     uiStore.colorScheme = 'light';
   });
 
-  it('does not set the navigation bar before hydration', () => {
+  it('does not set the navigation bar before hydration', async () => {
     __setHydrated(false);
-    render(<App />);
+    await render(<App />);
 
     expect(NativeNavigationBar.setNavigationBarDark).not.toHaveBeenCalled();
   });
 
-  it('sets the navigation bar from the hydrated app scheme', () => {
+  it('sets the navigation bar from the hydrated app scheme', async () => {
     uiStore.colorScheme = 'dark';
     __setHydrated(false);
-    render(<App />);
+    await render(<App />);
 
-    act(() => {
+    await act(() => {
       __setHydrated(true);
     });
 
@@ -85,11 +101,11 @@ describe('navigation bar appearance', () => {
     expect(NativeNavigationBar.setNavigationBarDark).toHaveBeenCalledWith(true);
   });
 
-  it('follows a scheme change made after hydration', () => {
+  it('follows a scheme change made after hydration', async () => {
     uiStore.colorScheme = 'dark';
-    render(<App />);
+    await render(<App />);
 
-    act(() => {
+    await act(() => {
       uiStore.setColorScheme('light');
     });
 
@@ -99,16 +115,16 @@ describe('navigation bar appearance', () => {
   });
 });
 
-it('mounts the app once UIStore hydration completes', () => {
+it('mounts the app once UIStore hydration completes', async () => {
   // Pending hydration: splash mounts, nothing below.
   __setHydrated(false);
-  const result = render(<App />);
+  const result = await render(<App />);
   expect(result.queryByTestId('hydration-splash')).not.toBeNull();
   expect(result.queryByText('Models')).toBeNull();
 
   // Hydration completes. The observable flag flips inside MobX action;
   // the observer-wrapped gate re-renders and falls through to the app.
-  act(() => {
+  await act(() => {
     __setHydrated(true);
   });
 
@@ -122,20 +138,20 @@ describe('status bar', () => {
     (useTheme as jest.Mock).mockReturnValue(themeFixtures.lightTheme);
   });
 
-  it('shows dark icons over the light theme', () => {
-    const result = render(<App />);
+  it('shows dark icons over the light theme', async () => {
+    await render(<App />);
 
-    expect(result.UNSAFE_getByType(StatusBar).props).toMatchObject({
+    expect(statusBarProps()).toMatchObject({
       barStyle: 'dark-content',
     });
   });
 
-  it('shows light icons over the dark theme', () => {
+  it('shows light icons over the dark theme', async () => {
     (useTheme as jest.Mock).mockReturnValue(themeFixtures.darkTheme);
 
-    const result = render(<App />);
+    await render(<App />);
 
-    expect(result.UNSAFE_getByType(StatusBar).props).toMatchObject({
+    expect(statusBarProps()).toMatchObject({
       barStyle: 'light-content',
     });
   });
@@ -149,12 +165,12 @@ describe('Plus host', () => {
     });
   });
 
-  it('draws the Plus host outside the screen-reader scope of the app', () => {
+  it('draws the Plus host outside the screen-reader scope of the app', async () => {
     setShipOverride(['handsFreeVoice']);
-    const result = render(<App />);
+    const result = await render(<App />);
     expect(result.queryByTestId('plus-host')).toBeNull();
 
-    act(() => openPlus());
+    await act(() => openPlus());
 
     const scope = result.getByTestId('plus-a11y-scope', {
       includeHiddenElements: true,
@@ -164,6 +180,6 @@ describe('Plus host', () => {
     expect(
       result.queryByTestId('plus-host', {includeHiddenElements: true}),
     ).toBe(host);
-    expect(scope.findAll(node => node === host)).toHaveLength(0);
+    expect(scope.queryAll(node => node === host)).toHaveLength(0);
   });
 });

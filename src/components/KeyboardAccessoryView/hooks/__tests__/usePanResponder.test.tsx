@@ -26,10 +26,10 @@ describe('usePanResponder', () => {
     jest.clearAllMocks();
   });
 
-  it('returns pan handlers and position Y on iOS', () => {
+  it('returns pan handlers and position Y on iOS', async () => {
     mockPlatform.OS = 'ios';
 
-    const {getByTestId} = render(<TestComponent />);
+    const {getByTestId} = await render(<TestComponent />);
 
     const testComponent = getByTestId('test-component');
     const animatedView = getByTestId('animated-view');
@@ -38,10 +38,10 @@ describe('usePanResponder', () => {
     expect(animatedView).toBeTruthy();
   });
 
-  it('returns empty pan handlers on Android', () => {
+  it('returns empty pan handlers on Android', async () => {
     mockPlatform.OS = 'android';
 
-    const {getByTestId} = render(<TestComponent />);
+    const {getByTestId} = await render(<TestComponent />);
 
     const testComponent = getByTestId('test-component');
     const animatedView = getByTestId('animated-view');
@@ -50,7 +50,7 @@ describe('usePanResponder', () => {
     expect(animatedView).toBeTruthy();
   });
 
-  it('provides consistent positionY reference across renders', () => {
+  it('provides consistent positionY reference across renders', async () => {
     mockPlatform.OS = 'ios';
 
     const TestComponentWithState = () => {
@@ -73,7 +73,7 @@ describe('usePanResponder', () => {
       );
     };
 
-    const {getByTestId} = render(<TestComponentWithState />);
+    const {getByTestId} = await render(<TestComponentWithState />);
 
     const testComponent = getByTestId('test-component');
     const animatedView = getByTestId('animated-view');
@@ -82,7 +82,7 @@ describe('usePanResponder', () => {
     expect(animatedView).toBeTruthy();
   });
 
-  it('handles pan responder creation correctly on iOS', () => {
+  it('handles pan responder creation correctly on iOS', async () => {
     mockPlatform.OS = 'ios';
 
     const TestComponentWithHandlers = () => {
@@ -111,7 +111,7 @@ describe('usePanResponder', () => {
       );
     };
 
-    const {getByTestId} = render(<TestComponentWithHandlers />);
+    const {getByTestId} = await render(<TestComponentWithHandlers />);
 
     const testComponent = getByTestId('test-component');
     const animatedView = getByTestId('animated-view');
@@ -120,7 +120,7 @@ describe('usePanResponder', () => {
     expect(animatedView).toBeTruthy();
   });
 
-  it('returns empty object for pan handlers on Android', () => {
+  it('returns empty object for pan handlers on Android', async () => {
     mockPlatform.OS = 'android';
 
     const TestComponentWithHandlers = () => {
@@ -140,7 +140,7 @@ describe('usePanResponder', () => {
       );
     };
 
-    const {getByTestId} = render(<TestComponentWithHandlers />);
+    const {getByTestId} = await render(<TestComponentWithHandlers />);
 
     const testComponent = getByTestId('test-component');
     const animatedView = getByTestId('animated-view');
@@ -151,7 +151,7 @@ describe('usePanResponder', () => {
     expect(handlerKeysCount.props['data-value']).toBe(0);
   });
 
-  it('initializes positionY with zero value', () => {
+  it('initializes positionY with zero value', async () => {
     mockPlatform.OS = 'ios';
 
     const TestComponentWithValue = () => {
@@ -171,7 +171,7 @@ describe('usePanResponder', () => {
       );
     };
 
-    const {getByTestId} = render(<TestComponentWithValue />);
+    const {getByTestId} = await render(<TestComponentWithValue />);
 
     const testComponent = getByTestId('test-component');
     const animatedView = getByTestId('animated-view');
@@ -182,7 +182,7 @@ describe('usePanResponder', () => {
     expect(initialValue.props['data-value']).toBe(0);
   });
 
-  it('maintains same Animated.Value instance across re-renders', () => {
+  it('maintains same Animated.Value instance across re-renders', async () => {
     mockPlatform.OS = 'ios';
 
     const TestComponentWithRerender = () => {
@@ -210,7 +210,7 @@ describe('usePanResponder', () => {
       );
     };
 
-    const {getByTestId} = render(<TestComponentWithRerender />);
+    const {getByTestId} = await render(<TestComponentWithRerender />);
 
     const testComponent = getByTestId('test-component');
     const animatedView = getByTestId('animated-view');

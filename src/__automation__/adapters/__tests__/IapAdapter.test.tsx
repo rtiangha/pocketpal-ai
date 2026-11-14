@@ -14,17 +14,20 @@ describe('IapAdapter', () => {
     jest.clearAllMocks();
   });
 
-  it('renders the command surface', () => {
-    const {getByTestId} = render(<IapAdapter />);
+  it('renders the command surface', async () => {
+    const {getByTestId} = await render(<IapAdapter />);
     expect(getByTestId('iap-command-input')).toBeTruthy();
     expect(getByTestId('iap-command-result')).toBeTruthy();
   });
 
   it('runs a command and shows its result', async () => {
     (fakeStore.run as jest.Mock).mockResolvedValueOnce('{"next":"pending"}');
-    const {getByTestId} = render(<IapAdapter />);
+    const {getByTestId} = await render(<IapAdapter />);
 
-    fireEvent.changeText(getByTestId('iap-command-input'), 'next::pending');
+    await fireEvent.changeText(
+      getByTestId('iap-command-input'),
+      'next::pending',
+    );
 
     await waitFor(() => {
       expect(getByTestId('iap-command-result').props.accessibilityLabel).toBe(
@@ -36,9 +39,9 @@ describe('IapAdapter', () => {
 
   it('shows an error when a command fails', async () => {
     (fakeStore.run as jest.Mock).mockRejectedValueOnce(new Error('boom'));
-    const {getByTestId} = render(<IapAdapter />);
+    const {getByTestId} = await render(<IapAdapter />);
 
-    fireEvent.changeText(getByTestId('iap-command-input'), 'read');
+    await fireEvent.changeText(getByTestId('iap-command-input'), 'read');
 
     await waitFor(() => {
       expect(getByTestId('iap-command-result').props.accessibilityLabel).toBe(
@@ -47,9 +50,9 @@ describe('IapAdapter', () => {
     });
   });
 
-  it('ignores empty text', () => {
-    const {getByTestId} = render(<IapAdapter />);
-    fireEvent.changeText(getByTestId('iap-command-input'), '');
+  it('ignores empty text', async () => {
+    const {getByTestId} = await render(<IapAdapter />);
+    await fireEvent.changeText(getByTestId('iap-command-input'), '');
     expect(fakeStore.run).not.toHaveBeenCalled();
   });
 });

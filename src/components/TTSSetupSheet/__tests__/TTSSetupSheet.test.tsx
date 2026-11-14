@@ -9,8 +9,8 @@ import {ttsStore} from '../../../store';
 
 import {TTSSetupSheet} from '../TTSSetupSheet';
 
-const renderSheet = () =>
-  render(
+const renderSheet = async () =>
+  await render(
     <L10nContext.Provider value={l10n.en}>
       <TTSSetupSheet />
     </L10nContext.Provider>,
@@ -29,8 +29,8 @@ describe('TTSSetupSheet (voice-led, single view)', () => {
     });
   });
 
-  it('renders the unified voices view with the neural and system engine groups', () => {
-    const {getByTestId} = renderSheet();
+  it('renders the unified voices view with the neural and system engine groups', async () => {
+    const {getByTestId} = await renderSheet();
     expect(getByTestId('tts-voice-picker')).toBeTruthy();
     expect(getByTestId('tts-engine-group-kitten')).toBeTruthy();
     expect(getByTestId('tts-engine-group-kokoro')).toBeTruthy();
@@ -38,7 +38,7 @@ describe('TTSSetupSheet (voice-led, single view)', () => {
     expect(getByTestId('tts-engine-group-system')).toBeTruthy();
   });
 
-  it('shows hero strip + auto-speak when a voice is current', () => {
+  it('shows hero strip + auto-speak when a voice is current', async () => {
     runInAction(() => {
       ttsStore.kokoroDownloadState = 'ready';
       ttsStore.currentVoice = {
@@ -47,13 +47,13 @@ describe('TTSSetupSheet (voice-led, single view)', () => {
         engine: 'kokoro',
       };
     });
-    const {getByTestId} = renderSheet();
+    const {getByTestId} = await renderSheet();
     expect(getByTestId('tts-hero-row')).toBeTruthy();
     expect(getByTestId('tts-auto-speak-row')).toBeTruthy();
   });
 
-  it('hides hero strip + auto-speak when no voice is current', () => {
-    const {queryByTestId} = renderSheet();
+  it('hides hero strip + auto-speak when no voice is current', async () => {
+    const {queryByTestId} = await renderSheet();
     expect(queryByTestId('tts-hero-row')).toBeNull();
     expect(queryByTestId('tts-auto-speak-row')).toBeNull();
   });

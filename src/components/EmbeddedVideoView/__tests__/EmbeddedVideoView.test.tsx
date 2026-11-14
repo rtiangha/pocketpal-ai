@@ -69,8 +69,8 @@ describe('EmbeddedVideoView', () => {
     useCameraDevices.mockReturnValue([{id: 'mock-device', position: 'back'}]);
   });
 
-  it('renders correctly with camera permission', () => {
-    const {getByTestId} = render(
+  it('renders correctly with camera permission', async () => {
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -79,8 +79,8 @@ describe('EmbeddedVideoView', () => {
     expect(getByTestId('camera')).toBeTruthy();
   });
 
-  it('renders response text when provided', () => {
-    const {getByText} = render(
+  it('renders response text when provided', async () => {
+    const {getByText} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} responseText="Test response" />
       </L10nContext.Provider>,
@@ -89,8 +89,8 @@ describe('EmbeddedVideoView', () => {
     expect(getByText('Test response')).toBeTruthy();
   });
 
-  it('does not render response overlay when no response text', () => {
-    const {queryByText} = render(
+  it('does not render response overlay when no response text', async () => {
+    const {queryByText} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -108,7 +108,7 @@ describe('EmbeddedVideoView', () => {
       requestPermission: mockRequestPermission,
     });
 
-    render(
+    await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -131,7 +131,7 @@ describe('EmbeddedVideoView', () => {
       requestPermission: mockRequestPermission,
     });
 
-    render(
+    await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -161,7 +161,7 @@ describe('EmbeddedVideoView', () => {
       requestPermission: mockRequestPermission,
     });
 
-    render(
+    await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -184,7 +184,7 @@ describe('EmbeddedVideoView', () => {
     );
   });
 
-  it('toggles camera position when flip button is pressed', () => {
+  it('toggles camera position when flip button is pressed', async () => {
     // Mock camera permission as granted
     const {useCameraPermission} = require('react-native-vision-camera');
     useCameraPermission.mockReturnValue({
@@ -192,7 +192,7 @@ describe('EmbeddedVideoView', () => {
       requestPermission: jest.fn(),
     });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -202,13 +202,13 @@ describe('EmbeddedVideoView', () => {
 
     // Just verify the button exists and can be pressed
     expect(flipButton).toBeTruthy();
-    fireEvent.press(flipButton);
+    await fireEvent.press(flipButton);
 
     // The camera position toggle is internal state, so we just verify the button works
     expect(flipButton).toBeTruthy();
   });
 
-  it('selects the camera matching the requested position when several are available', () => {
+  it('selects the camera matching the requested position when several are available', async () => {
     const {
       useCameraPermission,
       useCameraDevices,
@@ -222,18 +222,18 @@ describe('EmbeddedVideoView', () => {
       {id: 'back', position: 'back'},
     ]);
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
     );
 
     expect(getByTestId('camera').props.device.id).toBe('back');
-    fireEvent.press(getByTestId('flip-camera-button'));
+    await fireEvent.press(getByTestId('flip-camera-button'));
     expect(getByTestId('camera').props.device.id).toBe('front');
   });
 
-  it('increases capture interval when increase button is pressed', () => {
+  it('increases capture interval when increase button is pressed', async () => {
     // Mock camera permission as granted
     const {useCameraPermission} = require('react-native-vision-camera');
     useCameraPermission.mockReturnValue({
@@ -241,19 +241,19 @@ describe('EmbeddedVideoView', () => {
       requestPermission: jest.fn(),
     });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} captureInterval={2000} />
       </L10nContext.Provider>,
     );
 
     const increaseButton = getByTestId('increase-interval-button');
-    fireEvent.press(increaseButton);
+    await fireEvent.press(increaseButton);
 
     expect(defaultProps.onCaptureIntervalChange).toHaveBeenCalledWith(2500);
   });
 
-  it('decreases capture interval when decrease button is pressed', () => {
+  it('decreases capture interval when decrease button is pressed', async () => {
     // Mock camera permission as granted
     const {useCameraPermission} = require('react-native-vision-camera');
     useCameraPermission.mockReturnValue({
@@ -261,19 +261,19 @@ describe('EmbeddedVideoView', () => {
       requestPermission: jest.fn(),
     });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} captureInterval={2000} />
       </L10nContext.Provider>,
     );
 
     const decreaseButton = getByTestId('decrease-interval-button');
-    fireEvent.press(decreaseButton);
+    await fireEvent.press(decreaseButton);
 
     expect(defaultProps.onCaptureIntervalChange).toHaveBeenCalledWith(1500);
   });
 
-  it('does not decrease interval below minimum', () => {
+  it('does not decrease interval below minimum', async () => {
     // Mock camera permission as granted
     const {useCameraPermission} = require('react-native-vision-camera');
     useCameraPermission.mockReturnValue({
@@ -281,19 +281,19 @@ describe('EmbeddedVideoView', () => {
       requestPermission: jest.fn(),
     });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} captureInterval={500} />
       </L10nContext.Provider>,
     );
 
     const decreaseButton = getByTestId('decrease-interval-button');
-    fireEvent.press(decreaseButton);
+    await fireEvent.press(decreaseButton);
 
     expect(defaultProps.onCaptureIntervalChange).toHaveBeenCalledWith(500); // Should stay at minimum
   });
 
-  it('does not increase interval above maximum', () => {
+  it('does not increase interval above maximum', async () => {
     // Mock camera permission as granted
     const {useCameraPermission} = require('react-native-vision-camera');
     useCameraPermission.mockReturnValue({
@@ -301,19 +301,19 @@ describe('EmbeddedVideoView', () => {
       requestPermission: jest.fn(),
     });
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} captureInterval={5000} />
       </L10nContext.Provider>,
     );
 
     const increaseButton = getByTestId('increase-interval-button');
-    fireEvent.press(increaseButton);
+    await fireEvent.press(increaseButton);
 
     expect(defaultProps.onCaptureIntervalChange).toHaveBeenCalledWith(5000); // Should stay at maximum
   });
 
-  it('calls onClose when close button is pressed', () => {
+  it('calls onClose when close button is pressed', async () => {
     // Mock camera permission as granted
     const {useCameraPermission} = require('react-native-vision-camera');
     useCameraPermission.mockReturnValue({
@@ -321,7 +321,7 @@ describe('EmbeddedVideoView', () => {
       requestPermission: jest.fn(),
     });
 
-    const {getByLabelText} = render(
+    const {getByLabelText} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -329,12 +329,12 @@ describe('EmbeddedVideoView', () => {
 
     const closeButton = getByLabelText(l10n.en.common.close);
     expect(closeButton.props.accessibilityRole).toBe('button');
-    fireEvent.press(closeButton);
+    await fireEvent.press(closeButton);
 
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
-  it('detects iOS simulator correctly', () => {
+  it('detects iOS simulator correctly', async () => {
     // Mock camera permission as granted
     const {
       useCameraPermission,
@@ -346,7 +346,7 @@ describe('EmbeddedVideoView', () => {
     });
     useCameraDevices.mockReturnValue([]);
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
@@ -360,7 +360,7 @@ describe('EmbeddedVideoView', () => {
     ).toBeTruthy();
   });
 
-  it('keeps a working close button in the iOS simulator state', () => {
+  it('keeps a working close button in the iOS simulator state', async () => {
     const {
       useCameraPermission,
       useCameraDevices,
@@ -371,13 +371,13 @@ describe('EmbeddedVideoView', () => {
     });
     useCameraDevices.mockReturnValue([]);
 
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <L10nContext.Provider value={l10n.en}>
         <EmbeddedVideoView {...defaultProps} />
       </L10nContext.Provider>,
     );
 
-    fireEvent.press(getByTestId('close-button'));
+    await fireEvent.press(getByTestId('close-button'));
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
@@ -393,7 +393,7 @@ describe('EmbeddedVideoView', () => {
       platformOS.mockReturnValue('ios');
     });
 
-    it('shows the no-device message with a working close button', () => {
+    it('shows the no-device message with a working close button', async () => {
       const {
         useCameraPermission,
         useCameraDevices,
@@ -404,7 +404,7 @@ describe('EmbeddedVideoView', () => {
       });
       useCameraDevices.mockReturnValue([]);
 
-      const {getByText, getByLabelText} = render(
+      const {getByText, getByLabelText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <EmbeddedVideoView {...defaultProps} />
         </L10nContext.Provider>,
@@ -413,11 +413,11 @@ describe('EmbeddedVideoView', () => {
       expect(getByText(l10n.en.video.noDevice)).toBeTruthy();
       const closeButton = getByLabelText(l10n.en.common.close);
       expect(closeButton.props.accessibilityRole).toBe('button');
-      fireEvent.press(closeButton);
+      await fireEvent.press(closeButton);
       expect(defaultProps.onClose).toHaveBeenCalled();
     });
 
-    it('falls back to the only available camera when it is front-facing', () => {
+    it('falls back to the only available camera when it is front-facing', async () => {
       const {
         useCameraPermission,
         useCameraDevices,
@@ -428,7 +428,7 @@ describe('EmbeddedVideoView', () => {
       });
       useCameraDevices.mockReturnValue([{id: 'front', position: 'front'}]);
 
-      const {getByTestId, queryByText} = render(
+      const {getByTestId, queryByText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <EmbeddedVideoView {...defaultProps} />
         </L10nContext.Provider>,

@@ -5,8 +5,8 @@ import {MessageContent} from '../MessageContent';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('MessageContent', () => {
-  it('defaults to testID=ui-message-content', () => {
-    const {getByTestId} = render(<MessageContent text="hello" />);
+  it('defaults to testID=ui-message-content', async () => {
+    const {getByTestId} = await render(<MessageContent text="hello" />);
     expect(getByTestId('ui-message-content')).toBeTruthy();
   });
 });

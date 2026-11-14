@@ -34,7 +34,7 @@ describe('MemoryRequirement', () => {
     });
   });
 
-  it('shows the estimate including the tier checkpoint budget for an SWA model', () => {
+  it('shows the estimate including the tier checkpoint budget for an SWA model', async () => {
     runInAction(() => {
       modelStore.deviceTier = 'low';
     });
@@ -54,7 +54,7 @@ describe('MemoryRequirement', () => {
       1,
     );
 
-    const {getByTestId} = render(<MemoryRequirement model={swaModel} />);
+    const {getByTestId} = await render(<MemoryRequirement model={swaModel} />);
 
     expect(withBudget).not.toBe(withoutBudget);
     expect(getByTestId('memory-requirement')).toHaveTextContent(withBudget, {

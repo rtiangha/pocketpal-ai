@@ -25,7 +25,7 @@ describe('DeviceInfoCard', () => {
   });
 
   it('renders basic device information correctly', async () => {
-    const {getByText, getByTestId, debug} = render(
+    const {getByText, getByTestId, debug} = await render(
       <DeviceInfoCard onDeviceInfo={mockOnDeviceInfo} />,
     );
 
@@ -42,7 +42,7 @@ describe('DeviceInfoCard', () => {
   });
 
   it('can be expanded and collapsed', async () => {
-    const {getByText, queryByText} = render(
+    const {getByText, queryByText} = await render(
       <DeviceInfoCard onDeviceInfo={mockOnDeviceInfo} />,
     );
 
@@ -55,7 +55,7 @@ describe('DeviceInfoCard', () => {
     expect(queryByText('Basic Info')).toBeNull();
 
     // Expand the card
-    fireEvent.press(getByText('Device Information'));
+    await fireEvent.press(getByText('Device Information'));
 
     // Now detailed info should be visible
     expect(getByText('Basic Info')).toBeTruthy();
@@ -65,14 +65,14 @@ describe('DeviceInfoCard', () => {
     expect(getByText('CPU Details')).toBeTruthy();
 
     // Collapse the card
-    fireEvent.press(getByText('Device Information'));
+    await fireEvent.press(getByText('Device Information'));
 
     // Detailed info should be hidden again
     expect(queryByText('Basic Info')).toBeNull();
   });
 
   it('calls onDeviceInfo with device information when loaded', async () => {
-    render(<DeviceInfoCard onDeviceInfo={mockOnDeviceInfo} />);
+    await render(<DeviceInfoCard onDeviceInfo={mockOnDeviceInfo} />);
 
     // Wait for device info to be loaded and callback to be called
     await waitFor(() => {
@@ -89,7 +89,7 @@ describe('DeviceInfoCard', () => {
   });
 
   it('allows specifying a custom testId', async () => {
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <DeviceInfoCard
         onDeviceInfo={mockOnDeviceInfo}
         testId="custom-device-info"

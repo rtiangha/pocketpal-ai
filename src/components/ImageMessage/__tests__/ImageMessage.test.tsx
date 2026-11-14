@@ -6,7 +6,7 @@ import {derivedImageMessage, size} from '../../../../jest/fixtures';
 import {ImageMessage} from '../ImageMessage';
 
 describe('image message', () => {
-  it('gets image size and renders', () => {
+  it('gets image size and renders', async () => {
     expect.assertions(5);
     const getSizeMock = jest.spyOn(Image, 'getSize');
     getSizeMock.mockImplementation(() => {});
@@ -15,7 +15,7 @@ describe('image message', () => {
       height: undefined,
       width: undefined,
     };
-    const {getByTestId} = render(
+    const {getByTestId} = await render(
       <ImageMessage message={message} messageWidth={440} />,
     );
     expect(getSizeMock).toHaveBeenCalledTimes(1);
@@ -23,12 +23,12 @@ describe('image message', () => {
     expect(getSizeArgs[0]).toBe(derivedImageMessage.uri);
     const success = getSizeArgs[1];
     const error = getSizeArgs[2];
-    act(() => {
+    await act(() => {
       success(size.width, size.height);
     });
     const successImageComponent = getByTestId('message-image');
     expect(successImageComponent.props).toHaveProperty('style.height', 440);
-    act(() => {
+    await act(() => {
       success(size.width, size.width * 10 + 1);
     });
     const successMinimizedImageComponent = getByTestId('message-image');
@@ -36,7 +36,7 @@ describe('image message', () => {
       'style.width',
       64,
     );
-    act(() => {
+    await act(() => {
       if (error) {
         error(new Error());
       }

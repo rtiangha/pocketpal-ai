@@ -75,7 +75,7 @@ describe('useChatSession', () => {
   });
 
   it('should send a message and update the chat session', async () => {
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -94,7 +94,7 @@ describe('useChatSession', () => {
       );
 
     it('marks the user row and the assistant turn as spoken', async () => {
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -115,7 +115,7 @@ describe('useChatSession', () => {
         row.id = `${row.type}-id`;
       });
       const onTurnCreated = jest.fn();
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -154,7 +154,7 @@ describe('useChatSession', () => {
         enable_thinking: true,
         reasoning: {enabled: true, effort: 'high'},
       });
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
       await act(async () => {
@@ -192,7 +192,7 @@ describe('useChatSession', () => {
     });
 
     it('a typed send carries no spoken flag', async () => {
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -209,7 +209,7 @@ describe('useChatSession', () => {
   it('should handle model not loaded scenario', async () => {
     modelStore.context = undefined;
     modelStore.engine = undefined;
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, assistant),
     );
 
@@ -236,7 +236,7 @@ describe('useChatSession', () => {
         .mockRejectedValueOnce(new Error(errorMessage));
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -261,7 +261,7 @@ describe('useChatSession', () => {
         .mockRejectedValueOnce(new Error('failed to create draft context'));
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -288,7 +288,7 @@ describe('useChatSession', () => {
         );
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -345,13 +345,17 @@ describe('useChatSession', () => {
       );
       return (error: Error) => release(error);
     };
-    const renderSession = (ref = {current: null}) =>
-      renderHook(() => useChatSession(ref, textMessage.author, mockAssistant))
-        .result;
-    const send = async (result = renderSession()) => {
+    const renderSession = async (ref = {current: null}) =>
+      (
+        await renderHook(() =>
+          useChatSession(ref, textMessage.author, mockAssistant),
+        )
+      ).result;
+    const send = async (result?: Awaited<ReturnType<typeof renderSession>>) => {
+      const session = result ?? (await renderSession());
       let undone: unknown;
       await act(async () => {
-        undone = await result.current.handleSendPress(textMessage);
+        undone = await session.current.handleSendPress(textMessage);
       });
       return undone;
     };
@@ -436,7 +440,7 @@ describe('useChatSession', () => {
       sessions = [];
       chatSessionStore.sessions = sessions as any;
       chatSessionStore.activeSessionId = null as any;
-      const result = renderSession();
+      const result = await renderSession();
       const second = {...textMessage, text: 'second'};
       failWith(new RemoteModelRequestWithdrawnError());
       await send(result);
@@ -468,6 +472,7 @@ describe('useChatSession', () => {
         assistantRow('a1', 'hi there'),
         userRow('u1', 'hello'),
       ];
+
       Object.defineProperty(chatSessionStore, 'currentSessionMessages', {
         get: jest.fn(() => [...sessions[0].messages]),
         configurable: true,
@@ -478,7 +483,7 @@ describe('useChatSession', () => {
         requests.push(params.messages!.map(m => ({...m})) as any);
         return completion(params, onData);
       });
-      const result = renderSession();
+      const result = await renderSession();
       failWith(new RemoteModelRequestWithdrawnError());
       await send(result);
 
@@ -520,7 +525,7 @@ describe('useChatSession', () => {
         chatSessionStore.updateSessionTitleBySessionId as jest.Mock
       ).mockRejectedValueOnce(new Error('db locked'));
       failWith(new RemoteModelRequestWithdrawnError());
-      const result = renderSession();
+      const result = await renderSession();
 
       await act(async () => {
         await result.current.handleSendPress(textMessage).catch(() => {});
@@ -534,10 +539,10 @@ describe('useChatSession', () => {
 
     it('deletes its own rows when a later send replaced the shared message info', async () => {
       const ref: {current: any} = {current: null};
-      const result = renderSession(ref);
+      const result = await renderSession(ref);
       const release = failWhenReleased();
       let sending!: Promise<unknown>;
-      act(() => {
+      await act(() => {
         sending = result.current.handleSendPress(textMessage);
       });
       await waitFor(() => expect(ref.current).not.toBeNull());
@@ -579,9 +584,9 @@ describe('useChatSession', () => {
 
     it("adds one message to the turn's chat with the server words set apart", async () => {
       const release = failWhenReleased();
-      const result = renderSession();
+      const result = await renderSession();
       let sending!: Promise<unknown>;
-      act(() => {
+      await act(() => {
         sending = result.current.handleSendPress(textMessage);
       });
       await waitFor(() => expect(sessions[0].messages).toHaveLength(2));
@@ -621,8 +626,8 @@ describe('useChatSession', () => {
     });
   });
 
-  it('should reset the conversation', () => {
-    const {result} = renderHook(() =>
+  it('should reset the conversation', async () => {
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -636,8 +641,8 @@ describe('useChatSession', () => {
     );
   });
 
-  it('should not stop completion when inferencing is false', () => {
-    const {result} = renderHook(() =>
+  it('should not stop completion when inferencing is false', async () => {
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -654,7 +659,7 @@ describe('useChatSession', () => {
           resolveCompletion = resolve;
         }),
     ) as any;
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -692,7 +697,7 @@ describe('useChatSession', () => {
         .mockImplementation(() => completionPromise);
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -748,7 +753,7 @@ describe('useChatSession', () => {
           });
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -792,6 +797,7 @@ describe('useChatSession', () => {
           required: true,
         },
       ],
+
       isSystemPromptChanged: false,
       useAIPrompt: false,
       source: 'local' as const,
@@ -826,7 +832,7 @@ describe('useChatSession', () => {
         });
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -848,7 +854,7 @@ describe('useChatSession', () => {
         .fn()
         .mockResolvedValue({text: 'ok', content: 'ok', timings: {}});
     }
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -874,6 +880,7 @@ describe('useChatSession', () => {
           remoteModelId: 'gemma-4-e2b',
         } as any,
       ];
+
       modelStore.activeModelId = 'srv-1/gemma-4-e2b';
       serverStore.remoteCaps = {'srv-1/gemma-4-e2b': {supportsVision: true}};
     });
@@ -883,7 +890,7 @@ describe('useChatSession', () => {
         .mockResolvedValue({text: 'ok', content: 'ok', timings: {}});
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
     await act(async () => {
@@ -959,7 +966,7 @@ describe('useChatSession', () => {
         });
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -1011,6 +1018,7 @@ describe('useChatSession', () => {
           settingsSource: 'pal' as const,
         },
       ];
+
       chatSessionStore.activeSessionId = 'search-session-id';
       return pal;
     };
@@ -1029,7 +1037,7 @@ describe('useChatSession', () => {
     };
 
     const send = async () => {
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
       await act(async () => {
@@ -1097,7 +1105,7 @@ describe('useChatSession', () => {
       await activateSearchTools();
       captureMessages();
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
       await act(async () => {
@@ -1123,7 +1131,7 @@ describe('useChatSession', () => {
         });
     }
 
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useChatSession({current: null}, textMessage.author, mockAssistant),
     );
 
@@ -1177,7 +1185,7 @@ describe('useChatSession', () => {
           });
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1232,7 +1240,7 @@ describe('useChatSession', () => {
           });
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1286,7 +1294,7 @@ describe('useChatSession', () => {
           });
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1332,7 +1340,7 @@ describe('useChatSession', () => {
           });
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1376,15 +1384,17 @@ describe('useChatSession', () => {
           });
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
-      await expect(
-        act(async () => {
-          await result.current.handleSendPress(textMessage);
-        }),
-      ).resolves.not.toThrow();
+      // RNTL v14 act() resolves to undefined, so expect().resolves cannot
+      // wrap it. Awaiting the act directly is the assertion: if
+      // handleSendPress let the onAssistantMessageComplete error bubble out,
+      // this await would reject and fail the test.
+      await act(async () => {
+        await result.current.handleSendPress(textMessage);
+      });
     });
 
     it('does NOT fire onAssistantMessageComplete on error paths', async () => {
@@ -1394,7 +1404,7 @@ describe('useChatSession', () => {
           .mockRejectedValueOnce(new Error('boom'));
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 
@@ -1429,7 +1439,7 @@ describe('useChatSession', () => {
           });
       }
 
-      const {result} = renderHook(() =>
+      const {result} = await renderHook(() =>
         useChatSession({current: null}, textMessage.author, mockAssistant),
       );
 

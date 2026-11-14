@@ -3,7 +3,7 @@ import {Keyboard} from 'react-native';
 import {runInAction} from 'mobx';
 
 import {textMessage, user} from '../../../../jest/fixtures';
-import {act, fireEvent, render} from '../../../../jest/test-utils';
+import {act, fireEvent, render, screen} from '../../../../jest/test-utils';
 import {l10n} from '../../../locales';
 import {asrStore, modelStore, voiceModeStore} from '../../../store';
 import * as micPerm from '../../../utils/asrMicPermission';
@@ -47,34 +47,38 @@ describe('ChatView voice-input append seam', () => {
     });
   });
 
-  const renderChat = (onSendPress = jest.fn()) =>
-    render(<ChatView messages={[]} onSendPress={onSendPress} user={user} />, {
-      withSafeArea: true,
-      withNavigation: true,
-      withBottomSheetProvider: true,
-    });
+  const renderChat = async (onSendPress = jest.fn()) =>
+    await render(
+      <ChatView messages={[]} onSendPress={onSendPress} user={user} />,
+      {
+        withSafeArea: true,
+        withNavigation: true,
+        withBottomSheetProvider: true,
+      },
+    );
 
-  it('appends a transcript onto existing typed text (does not overwrite)', () => {
-    const {getByTestId} = renderChat();
+  it('appends a transcript onto existing typed text (does not overwrite)', async () => {
+    const {getByTestId} = await renderChat();
 
     const input = getByTestId('chat-input');
-    fireEvent.changeText(input, 'note:');
+    await fireEvent.changeText(input, 'note:');
 
     expect(capturedOnTranscript).not.toBeNull();
-    act(() => capturedOnTranscript?.('buy milk'));
+    await act(() => capturedOnTranscript?.('buy milk'));
 
     expect(getByTestId('chat-input').props.value).toBe('note: buy milk');
   });
 
-  it('hides the mic for a video pal, whose composer shows promptText', () => {
+  it('hides the mic for a video pal, whose composer shows promptText', async () => {
     const videoPal = {id: 'video-pal', capabilities: {video: true}} as any;
-    const {queryByTestId} = render(
+    const {queryByTestId} = await render(
       <ChatView
         messages={[]}
         onSendPress={jest.fn()}
         user={user}
         activePal={videoPal}
       />,
+
       {withSafeArea: true, withNavigation: true, withBottomSheetProvider: true},
     );
 
@@ -82,69 +86,69 @@ describe('ChatView voice-input append seam', () => {
     expect(queryByTestId('mic-button-setup')).toBeNull();
   });
 
-  it('uses the transcript verbatim when the composer is empty', () => {
-    const {getByTestId} = renderChat();
+  it('uses the transcript verbatim when the composer is empty', async () => {
+    const {getByTestId} = await renderChat();
 
     expect(capturedOnTranscript).not.toBeNull();
-    act(() => capturedOnTranscript?.('buy milk'));
+    await act(() => capturedOnTranscript?.('buy milk'));
 
     expect(getByTestId('chat-input').props.value).toBe('buy milk');
   });
 
-  it('does not auto-send the transcript', () => {
+  it('does not auto-send the transcript', async () => {
     const onSendPress = jest.fn();
-    const {getByTestId} = renderChat(onSendPress);
+    const {getByTestId} = await renderChat(onSendPress);
 
-    act(() => capturedOnTranscript?.('buy milk'));
+    await act(() => capturedOnTranscript?.('buy milk'));
 
     expect(onSendPress).not.toHaveBeenCalled();
     expect(getByTestId('chat-input').props.value).toBe('buy milk');
   });
 
-  it('appends a second transcript onto a prior one (space-joined)', () => {
-    const {getByTestId} = renderChat();
+  it('appends a second transcript onto a prior one (space-joined)', async () => {
+    const {getByTestId} = await renderChat();
 
-    act(() => capturedOnTranscript?.('buy milk'));
-    act(() => capturedOnTranscript?.('and eggs'));
+    await act(() => capturedOnTranscript?.('buy milk'));
+    await act(() => capturedOnTranscript?.('and eggs'));
 
     expect(getByTestId('chat-input').props.value).toBe('buy milk and eggs');
   });
 
-  it('starts a capture from the mic', () => {
-    const {getByTestId} = renderChat();
+  it('starts a capture from the mic', async () => {
+    const {getByTestId} = await renderChat();
 
-    fireEvent.press(getByTestId('mic-button'));
+    await fireEvent.press(getByTestId('mic-button'));
 
     expect(mockStart).toHaveBeenCalledTimes(1);
   });
 
-  it('replaces the control row with the recording bar while recording', () => {
-    const {getByTestId, queryByTestId} = renderChat();
+  it('replaces the control row with the recording bar while recording', async () => {
+    const {getByTestId, queryByTestId} = await renderChat();
     expect(queryByTestId('voice-recording-bar')).toBeNull();
 
-    act(() => {
+    await act(() => {
       asrStore.setCaptureState('recording');
     });
 
     expect(getByTestId('voice-recording-bar')).toBeTruthy();
     expect(queryByTestId('mic-button')).toBeNull();
     expect(queryByTestId('send-button')).toBeNull();
-    fireEvent.press(getByTestId('voice-stop-button'));
+    await fireEvent.press(getByTestId('voice-stop-button'));
     expect(mockStop).toHaveBeenCalledTimes(1);
-    fireEvent.press(getByTestId('voice-cancel-button'));
+    await fireEvent.press(getByTestId('voice-cancel-button'));
     expect(mockCancel).toHaveBeenCalledTimes(1);
 
-    act(() => {
+    await act(() => {
       asrStore.resetCapture();
     });
     expect(queryByTestId('voice-recording-bar')).toBeNull();
     expect(getByTestId('mic-button')).toBeTruthy();
   });
 
-  it('surfaces a capture error in a transient snackbar', () => {
-    const {getByTestId, getByText} = renderChat();
+  it('surfaces a capture error in a transient snackbar', async () => {
+    const {getByTestId, getByText} = await renderChat();
 
-    act(() => {
+    await act(() => {
       asrStore.setError('transcribe_failed');
     });
 
@@ -152,10 +156,10 @@ describe('ChatView voice-input append seam', () => {
     expect(getByText("Couldn't transcribe — please try again.")).toBeTruthy();
   });
 
-  it('explains a refusal for lack of memory', () => {
-    const {getByText} = renderChat();
+  it('explains a refusal for lack of memory', async () => {
+    const {getByText} = await renderChat();
 
-    act(() => {
+    await act(() => {
       asrStore.setError('insufficient_memory');
     });
 
@@ -166,10 +170,10 @@ describe('ChatView voice-input append seam', () => {
     ).toBeTruthy();
   });
 
-  it('explains a microphone that delivers no audio', () => {
-    const {getByText} = renderChat();
+  it('explains a microphone that delivers no audio', async () => {
+    const {getByText} = await renderChat();
 
-    act(() => {
+    await act(() => {
       asrStore.setError('mic_unavailable');
     });
 
@@ -180,10 +184,10 @@ describe('ChatView voice-input append seam', () => {
     ).toBeTruthy();
   });
 
-  it('tells the user when part of a dictation was dropped', () => {
-    const {getByText} = renderChat();
+  it('tells the user when part of a dictation was dropped', async () => {
+    const {getByText} = await renderChat();
 
-    act(() => {
+    await act(() => {
       asrStore.setError('transcript_partial');
     });
 
@@ -192,31 +196,32 @@ describe('ChatView voice-input append seam', () => {
     ).toBeTruthy();
   });
 
-  it('offers an open-Settings action when permission is blocked', () => {
-    const {getByText} = renderChat();
+  it('offers an open-Settings action when permission is blocked', async () => {
+    const {getByText} = await renderChat();
 
-    act(() => {
+    await act(() => {
       asrStore.setError('permission_blocked');
     });
 
     const action = getByText('Open Settings');
     expect(action).toBeTruthy();
-    act(() => {
-      fireEvent.press(action);
+    await act(async () => {
+      await fireEvent.press(action);
     });
     expect(mockOpenMicSettings).toHaveBeenCalled();
   });
 });
 
 describe('ChatView voice mode', () => {
-  const renderChat = (onVoiceModePress = jest.fn()) =>
-    render(
+  const renderChat = async (onVoiceModePress = jest.fn()) =>
+    await render(
       <ChatView
         messages={[]}
         onSendPress={jest.fn()}
         onVoiceModePress={onVoiceModePress}
         user={user}
       />,
+
       {withSafeArea: true, withNavigation: true, withBottomSheetProvider: true},
     );
 
@@ -229,11 +234,11 @@ describe('ChatView voice mode', () => {
     });
   });
 
-  it('hands the voice button ways to open the model picker and focus the composer', () => {
+  it('hands the voice button ways to open the model picker and focus the composer', async () => {
     const onVoiceModePress = jest.fn();
-    const {getByTestId} = renderChat(onVoiceModePress);
+    const {getByTestId} = await renderChat(onVoiceModePress);
 
-    fireEvent.press(getByTestId('voice-mode-button'));
+    await fireEvent.press(getByTestId('voice-mode-button'));
 
     expect(onVoiceModePress).toHaveBeenCalledWith({
       openModelPicker: expect.any(Function),
@@ -241,12 +246,12 @@ describe('ChatView voice mode', () => {
     });
   });
 
-  it('closes the keyboard before voice mode opens a sheet over the chat', () => {
+  it('closes the keyboard before voice mode opens a sheet over the chat', async () => {
     const dismiss = jest.spyOn(Keyboard, 'dismiss');
     const onVoiceModePress = jest.fn();
-    const {getByTestId} = renderChat(onVoiceModePress);
+    const {getByTestId} = await renderChat(onVoiceModePress);
 
-    fireEvent.press(getByTestId('voice-mode-button'));
+    await fireEvent.press(getByTestId('voice-mode-button'));
 
     expect(dismiss).toHaveBeenCalled();
     expect(dismiss.mock.invocationCallOrder[0]).toBeLessThan(
@@ -255,12 +260,12 @@ describe('ChatView voice mode', () => {
     dismiss.mockRestore();
   });
 
-  it('keeps the composer where no voice controls are wired', () => {
+  it('keeps the composer where no voice controls are wired', async () => {
     runInAction(() => {
       voiceModeStore.phase = 'listening';
       voiceModeStore.presentation = 'bar';
     });
-    const {getByTestId, queryByTestId} = render(
+    const {getByTestId, queryByTestId} = await render(
       <ChatView messages={[]} onSendPress={jest.fn()} user={user} />,
       {withSafeArea: true, withNavigation: true, withBottomSheetProvider: true},
     );
@@ -269,12 +274,12 @@ describe('ChatView voice mode', () => {
     expect(queryByTestId('voice-bar')).toBeNull();
   });
 
-  it('puts the voice bar in the composer slot while voice mode is open', () => {
+  it('puts the voice bar in the composer slot while voice mode is open', async () => {
     runInAction(() => {
       voiceModeStore.phase = 'listening';
       voiceModeStore.presentation = 'bar';
     });
-    const {getByTestId, queryByTestId} = renderChat();
+    const {getByTestId, queryByTestId} = await renderChat();
 
     expect(getByTestId('voice-bar')).toBeTruthy();
     expect(queryByTestId('chat-input')).toBeNull();
@@ -302,14 +307,15 @@ describe('ChatView voice mode', () => {
       return undefined;
     };
 
-    const openMenu = (message: typeof textMessage) => {
-      const view = render(
+    const openMenu = async (message: typeof textMessage) => {
+      const view = await render(
         <ChatView
           messages={[message]}
           onSendPress={jest.fn()}
           onVoiceModePress={jest.fn()}
           user={user}
         />,
+
         {
           withSafeArea: true,
           withNavigation: true,
@@ -318,17 +324,17 @@ describe('ChatView voice mode', () => {
       );
       const point = {nativeEvent: {pageX: 0, pageY: 0}};
       if (message.author.id === user.id) {
-        const userRow = view.UNSAFE_root.find(
+        const userRow = screen.container.queryAll(
           (node: any) =>
             typeof node.type === 'string' &&
             typeof node.props.onTouchCancel === 'function',
-        );
-        fireEvent(userRow, 'touchStart', point);
-        act(() => {
+        )[0];
+        await fireEvent(userRow, 'touchStart', point);
+        await act(() => {
           jest.advanceTimersByTime(500);
         });
       } else {
-        fireEvent.press(view.getByTestId('message-menu-button'), point);
+        await fireEvent.press(view.getByTestId('message-menu-button'), point);
       }
       return view;
     };
@@ -351,15 +357,16 @@ describe('ChatView voice mode', () => {
         answer,
         [menuLabels.regenerate, menuLabels.regenerateWith],
       ],
+
       ['a user row', textMessage, [menuLabels.edit]],
     ])(
       'disables the items that generate on %s while voice mode is open',
-      (_row, message, generating) => {
+      async (_row, message, generating) => {
         runInAction(() => {
           voiceModeStore.phase = 'listening';
           voiceModeStore.presentation = 'bar';
         });
-        const {getByText} = openMenu(message);
+        const {getByText} = await openMenu(message);
 
         for (const label of generating) {
           expect(isDisabled(label, getByText)).toBe(true);
@@ -368,8 +375,8 @@ describe('ChatView voice mode', () => {
       },
     );
 
-    it('keeps Regenerate enabled once voice mode is closed', () => {
-      const {getByText} = openMenu(answer);
+    it('keeps Regenerate enabled once voice mode is closed', async () => {
+      const {getByText} = await openMenu(answer);
 
       expect(isDisabled(menuLabels.regenerate, getByText)).toBe(false);
     });
@@ -382,8 +389,8 @@ describe('ChatView voice mode', () => {
       greeting: {text: '', suggestedPrompts: ['Tell me a joke']},
     } as any;
 
-    const renderWithPal = () =>
-      render(
+    const renderWithPal = async () =>
+      await render(
         <ChatView
           messages={[]}
           activePal={pal}
@@ -391,6 +398,7 @@ describe('ChatView voice mode', () => {
           onVoiceModePress={jest.fn()}
           user={user}
         />,
+
         {
           withSafeArea: true,
           withNavigation: true,
@@ -410,18 +418,18 @@ describe('ChatView voice mode', () => {
       });
     });
 
-    it('hides them while voice mode is open', () => {
+    it('hides them while voice mode is open', async () => {
       runInAction(() => {
         voiceModeStore.phase = 'listening';
         voiceModeStore.presentation = 'bar';
       });
-      const {queryByTestId} = renderWithPal();
+      const {queryByTestId} = await renderWithPal();
 
       expect(queryByTestId('suggested-prompts-row')).toBeNull();
     });
 
-    it('shows them once voice mode is closed', () => {
-      const {getByTestId} = renderWithPal();
+    it('shows them once voice mode is closed', async () => {
+      const {getByTestId} = await renderWithPal();
 
       expect(getByTestId('suggested-prompts-row')).toBeTruthy();
     });

@@ -23,8 +23,8 @@ describe('useTheme', () => {
     uiStore.setLanguage('en');
   });
 
-  it('should return light theme when colorScheme is light', () => {
-    const {result} = renderHook(() => useTheme());
+  it('should return light theme when colorScheme is light', async () => {
+    const {result} = await renderHook(() => useTheme());
 
     expect(result.current).toEqual(
       expect.objectContaining({
@@ -36,7 +36,7 @@ describe('useTheme', () => {
   it('should return dark theme when colorScheme is dark', async () => {
     uiStore.setColorScheme('dark');
 
-    const {result} = renderHook(() => useTheme());
+    const {result} = await renderHook(() => useTheme());
 
     // Wait for the theme change to be applied
     await waitFor(() => {
@@ -54,29 +54,29 @@ describe('useTheme', () => {
   // This is the hook-level reactivity gate (component-level reactivity
   // is provided by `observer`-wrapping in real call sites).
   describe('mode swap reactivity', () => {
-    it('rerender after setColorScheme("dark") yields dark background', () => {
-      const {result, rerender} = renderHook(() => useTheme());
+    it('rerender after setColorScheme("dark") yields dark background', async () => {
+      const {result, rerender} = await renderHook(() => useTheme());
       expect(result.current.colors.background).toBe(
         lightTheme.colors.background,
       );
 
       uiStore.setColorScheme('dark');
-      rerender({});
+      await rerender({});
 
       expect(result.current.colors.background).toBe(
         darkTheme.colors.background,
       );
     });
 
-    it('rerender after toggling colorScheme back to light restores light surface', () => {
+    it('rerender after toggling colorScheme back to light restores light surface', async () => {
       uiStore.setColorScheme('dark');
-      const {result, rerender} = renderHook(() => useTheme());
+      const {result, rerender} = await renderHook(() => useTheme());
       expect(result.current.colors.background).toBe(
         darkTheme.colors.background,
       );
 
       uiStore.setColorScheme('light');
-      rerender({});
+      await rerender({});
 
       expect(result.current.colors.background).toBe(
         lightTheme.colors.background,
@@ -88,46 +88,46 @@ describe('useTheme', () => {
   // Hook-level: changing uiStore.language and rerendering produces a Theme
   // whose Fraunces typography token resolves to Inter on the next render.
   describe('language swap reactivity', () => {
-    it('headlineH1 swaps Fraunces → Inter when language changes to fa', () => {
-      const {result, rerender} = renderHook(() => useTheme());
+    it('headlineH1 swaps Fraunces → Inter when language changes to fa', async () => {
+      const {result, rerender} = await renderHook(() => useTheme());
       expect(result.current.typography.headlineH1.fontFamily).toBe(
         FONT_FAMILIES.FRAUNCES_MEDIUM,
       );
 
       uiStore.setLanguage('fa');
-      rerender({});
+      await rerender({});
 
       expect(result.current.typography.headlineH1.fontFamily).toBe(
         FONT_FAMILIES.INTER_MEDIUM,
       );
     });
 
-    it('headlineH1 swaps Fraunces → Inter for Cyrillic locales (ru, uk)', () => {
+    it('headlineH1 swaps Fraunces → Inter for Cyrillic locales (ru, uk)', async () => {
       // Bundled Fraunces subset is Latin-only — ru/uk must use Inter.
       for (const lang of ['ru', 'uk'] as const) {
         uiStore.setLanguage(lang);
-        const {result} = renderHook(() => useTheme());
+        const {result} = await renderHook(() => useTheme());
         expect(result.current.typography.headlineH1.fontFamily).toBe(
           FONT_FAMILIES.INTER_MEDIUM,
         );
       }
     });
 
-    it('headlineH1 swaps for every Fraunces-fallback locale', () => {
+    it('headlineH1 swaps for every Fraunces-fallback locale', async () => {
       // Derived, not hand-listed — a hardcoded copy silently rots when a
       // locale joins the fallback set (as pl did).
       for (const lang of NON_LATIN_LOCALES) {
         uiStore.setLanguage(lang);
-        const {result} = renderHook(() => useTheme());
+        const {result} = await renderHook(() => useTheme());
         expect(result.current.typography.headlineH1.fontFamily).toBe(
           FONT_FAMILIES.INTER_MEDIUM,
         );
       }
     });
 
-    it('codeM stays JetBrainsMono for non-Latin locales (locale-agnostic)', () => {
+    it('codeM stays JetBrainsMono for non-Latin locales (locale-agnostic)', async () => {
       uiStore.setLanguage('ja');
-      const {result} = renderHook(() => useTheme());
+      const {result} = await renderHook(() => useTheme());
       expect(result.current.typography.codeM.fontFamily).toBe(
         FONT_FAMILIES.JETBRAINS_MONO_REGULAR,
       );
@@ -141,7 +141,7 @@ describe('useTheme', () => {
   // NON-observer child even behind a `React.memo` boundary (mimicking
   // navigator-memoized screens) WITHOUT the test rerendering it manually.
   describe('non-observer consumer subscription', () => {
-    it('updates a memoized non-observer child when colorScheme flips', () => {
+    it('updates a memoized non-observer child when colorScheme flips', async () => {
       const Leaf = () => {
         const theme = useTheme();
         return <Text testID="leaf-bg">{theme.colors.background}</Text>;
@@ -159,13 +159,13 @@ describe('useTheme', () => {
         );
       });
 
-      act(() => {
+      await act(() => {
         uiStore.setColorScheme('light');
       });
-      const screen = render(<Harness />);
+      const screen = await render(<Harness />);
       const lightBg = screen.getByTestId('leaf-bg').props.children;
 
-      act(() => {
+      await act(() => {
         uiStore.setColorScheme('dark');
       });
       const darkBg = screen.getByTestId('leaf-bg').props.children;

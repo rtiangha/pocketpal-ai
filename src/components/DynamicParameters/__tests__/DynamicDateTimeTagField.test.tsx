@@ -23,8 +23,8 @@ describe('DynamicDateTimeTagField', () => {
     description: 'Insert current date and time',
   };
 
-  it('should render with label and description', () => {
-    const {getByText} = render(
+  it('should render with label and description', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={mockParameter} />
       </TestWrapper>,
@@ -34,10 +34,10 @@ describe('DynamicDateTimeTagField', () => {
     expect(getByText('Insert current date and time')).toBeTruthy();
   });
 
-  it('should show required indicator when required', () => {
+  it('should show required indicator when required', async () => {
     const requiredParameter = {...mockParameter, required: true};
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={requiredParameter} />
       </TestWrapper>,
@@ -46,8 +46,8 @@ describe('DynamicDateTimeTagField', () => {
     expect(getByText('Test DateTime*')).toBeTruthy();
   });
 
-  it('should show placeholder text when no value', () => {
-    const {getByText} = render(
+  it('should show placeholder text when no value', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={mockParameter} />
       </TestWrapper>,
@@ -56,13 +56,13 @@ describe('DynamicDateTimeTagField', () => {
     expect(getByText('Tap to insert date/time')).toBeTruthy();
   });
 
-  it('should show default placeholder when no custom placeholder', () => {
+  it('should show default placeholder when no custom placeholder', async () => {
     const parameterWithoutPlaceholder = {
       ...mockParameter,
       placeholder: undefined,
     };
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={parameterWithoutPlaceholder} />
       </TestWrapper>,
@@ -71,15 +71,15 @@ describe('DynamicDateTimeTagField', () => {
     expect(getByText('Tap to insert current date & time tag')).toBeTruthy();
   });
 
-  it('should insert datetime tag when button is pressed', () => {
-    const {getByTestId, getByText} = render(
+  it('should insert datetime tag when button is pressed', async () => {
+    const {getByTestId, getByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={mockParameter} />
       </TestWrapper>,
     );
 
     const button = getByTestId('dynamic-datetime-testDateTime');
-    fireEvent.press(button);
+    await fireEvent.press(button);
 
     expect(getByText('Current Date & Time Tag')).toBeTruthy();
     expect(
@@ -87,8 +87,8 @@ describe('DynamicDateTimeTagField', () => {
     ).toBeTruthy();
   });
 
-  it('should show tag info when value is {{datetime}}', () => {
-    const {getByText} = render(
+  it('should show tag info when value is {{datetime}}', async () => {
+    const {getByText} = await render(
       <TestWrapper defaultValues={{testDateTime: '{{datetime}}'}}>
         <DynamicDateTimeTagField parameter={mockParameter} />
       </TestWrapper>,
@@ -100,8 +100,8 @@ describe('DynamicDateTimeTagField', () => {
     ).toBeTruthy();
   });
 
-  it('should be disabled when disabled prop is true', () => {
-    const {getByTestId} = render(
+  it('should be disabled when disabled prop is true', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={mockParameter} disabled={true} />
       </TestWrapper>,
@@ -111,22 +111,22 @@ describe('DynamicDateTimeTagField', () => {
     expect(button.props.accessibilityState.disabled).toBe(true);
   });
 
-  it('should not insert tag when disabled', () => {
-    const {getByTestId, queryByText} = render(
+  it('should not insert tag when disabled', async () => {
+    const {getByTestId, queryByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={mockParameter} disabled={true} />
       </TestWrapper>,
     );
 
     const button = getByTestId('dynamic-datetime-testDateTime');
-    fireEvent.press(button);
+    await fireEvent.press(button);
 
     // Should still show placeholder, not the tag
     expect(queryByText('Current Date & Time Tag')).toBeNull();
   });
 
-  it('should display error message when provided', () => {
-    const {getByText} = render(
+  it('should display error message when provided', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField
           parameter={mockParameter}
@@ -138,13 +138,13 @@ describe('DynamicDateTimeTagField', () => {
     expect(getByText('This field is required')).toBeTruthy();
   });
 
-  it('should render without description when not provided', () => {
+  it('should render without description when not provided', async () => {
     const parameterWithoutDescription = {
       ...mockParameter,
       description: undefined,
     };
 
-    const {queryByText} = render(
+    const {queryByText} = await render(
       <TestWrapper>
         <DynamicDateTimeTagField parameter={parameterWithoutDescription} />
       </TestWrapper>,

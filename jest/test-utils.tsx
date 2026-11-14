@@ -73,7 +73,7 @@ export const createWrapper = ({
   return Wrapper;
 };
 
-const customRender = (
+const customRender = async (
   ui: React.ReactElement,
   options: CustomRenderOptions = {},
 ) => render(ui, {wrapper: createWrapper(options)});

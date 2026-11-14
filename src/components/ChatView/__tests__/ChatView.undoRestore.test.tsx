@@ -17,7 +17,7 @@ jest.mock('../../ChatEmptyPlaceholder', () => ({
 const sentText = 'u2';
 const sentImages = ['file:///a.jpg'];
 
-const renderChat = () => {
+const renderChat = async () => {
   let settle!: (undone: UndoneSend | undefined) => void;
   const onSendPress = jest.fn(
     () =>
@@ -25,15 +25,15 @@ const renderChat = () => {
         settle = resolve;
       }),
   );
-  const screen = render(
+  const screen = await render(
     <ChatView messages={[textMessage]} onSendPress={onSendPress} user={user} />,
     {withNavigation: true, withBottomSheetProvider: true},
   );
   const input = () =>
     screen.getByPlaceholderText(l10n.en.components.chatInput.inputPlaceholder);
-  const send = () => {
-    fireEvent.changeText(input(), sentText);
-    fireEvent.press(
+  const send = async () => {
+    await fireEvent.changeText(input(), sentText);
+    await fireEvent.press(
       screen.getByLabelText(l10n.en.components.sendButton.accessibilityLabel),
     );
   };
@@ -70,8 +70,8 @@ describe('a send that comes back undone', () => {
   });
 
   it('puts the text and images back in an empty composer', async () => {
-    const chat = renderChat();
-    chat.send();
+    const chat = await renderChat();
+    await chat.send();
     expect(chat.input().props.value).toBe('');
 
     await chat.settleWith(undoneIn('session-1'));
@@ -81,9 +81,9 @@ describe('a send that comes back undone', () => {
   });
 
   it('puts the text before anything typed while waiting', async () => {
-    const chat = renderChat();
-    chat.send();
-    fireEvent.changeText(chat.input(), 'typed');
+    const chat = await renderChat();
+    await chat.send();
+    await fireEvent.changeText(chat.input(), 'typed');
 
     await chat.settleWith(undoneIn('session-1'));
 
@@ -91,8 +91,8 @@ describe('a send that comes back undone', () => {
   });
 
   it('puts the text in the draft of a chat that is not showing', async () => {
-    const chat = renderChat();
-    chat.send();
+    const chat = await renderChat();
+    await chat.send();
 
     await chat.settleWith(undoneIn('session-2'));
 
@@ -104,8 +104,8 @@ describe('a send that comes back undone', () => {
   });
 
   it('restores nothing for a chat deleted while waiting', async () => {
-    const chat = renderChat();
-    chat.send();
+    const chat = await renderChat();
+    await chat.send();
 
     await chat.settleWith(undoneIn('deleted'));
 
@@ -117,8 +117,8 @@ describe('a send that comes back undone', () => {
   });
 
   it('leaves the composer empty after a send that went through', async () => {
-    const chat = renderChat();
-    chat.send();
+    const chat = await renderChat();
+    await chat.send();
 
     await chat.settleWith(undefined);
 

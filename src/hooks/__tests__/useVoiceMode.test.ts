@@ -69,8 +69,8 @@ jest.spyOn(AppState, 'addEventListener').mockImplementation(((
     },
   };
 }) as any);
-const setAppState = (state: string) =>
-  act(() => {
+const setAppState = async (state: string) =>
+  await act(() => {
     [...appStateHandlers].forEach(handler => handler(state));
   });
 
@@ -126,17 +126,17 @@ const micListener = () => {
   const calls = (AudioRecord.on as jest.Mock).mock.calls;
   return calls[calls.length - 1][1] as (chunk: string) => void;
 };
-const speak = (ms: number, chunk = VOICED) => {
+const speak = async (ms: number, chunk = VOICED) => {
   const listener = micListener();
-  act(() => {
+  await act(() => {
     for (let i = 0; i < ms / 50; i++) {
       listener(chunk);
     }
   });
 };
-const flush = () => act(async () => {});
-const settleMic = () =>
-  act(
+const flush = async () => await act(async () => {});
+const settleMic = async () =>
+  await act(
     () =>
       new Promise<void>(resolve =>
         setTimeout(resolve, VOICE_CAPTURE_SETTLE_MS + 20),
@@ -149,9 +149,14 @@ const openModelPicker = jest.fn();
 const focusInput = jest.fn();
 const actions = {openModelPicker, focusInput};
 
-function renderVoiceMode() {
+async function renderVoiceMode() {
   const {engine, turns} = makeEngine();
-  const hook = renderHook(() => useVoiceMode({port, engine: engine as any}));
+  const hook = await renderHook(() =>
+    useVoiceMode({port, engine: engine as any}),
+  );
+  // RNTL v14 sets result.current in a useEffect; flush once so it is set
+  // before enter() (or any test) reads it.
+  await act(async () => {});
   const enter = async () => {
     await act(async () => {
       await hook.result.current.requestEntry(actions);
@@ -211,7 +216,7 @@ describe('useVoiceMode', () => {
   describe('entry', () => {
     it('shows the teaser, not the paywall, when voice mode is locked', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, engine, hook} = renderVoiceMode();
+      const {enter, engine, hook} = await renderVoiceMode();
 
       await enter();
 
@@ -225,7 +230,7 @@ describe('useVoiceMode', () => {
 
     it('starts no engine, mic, speech or keep-awake while the teaser shows', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, engine} = renderVoiceMode();
+      const {enter, engine} = await renderVoiceMode();
 
       await enter();
 
@@ -239,10 +244,10 @@ describe('useVoiceMode', () => {
 
     it('Get Plus closes the teaser and opens the paywall once', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
 
-      act(() => hook.result.current.getPlus());
+      await act(() => hook.result.current.getPlus());
 
       expect(hook.result.current.sheet).toBeNull();
       expect(
@@ -252,15 +257,15 @@ describe('useVoiceMode', () => {
 
     it('Keep typing closes the teaser, then focuses the composer', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
       jest.useFakeTimers();
 
-      act(() => hook.result.current.keepTyping());
+      await act(() => hook.result.current.keepTyping());
 
       expect(hook.result.current.sheet).toBeNull();
       expect(focusInput).not.toHaveBeenCalled();
-      act(() => jest.runOnlyPendingTimers());
+      await act(() => jest.runOnlyPendingTimers());
       jest.useRealTimers();
       expect(focusInput).toHaveBeenCalledTimes(1);
       expect(
@@ -270,21 +275,21 @@ describe('useVoiceMode', () => {
 
     it('leaving the screen closes the teaser', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
       expect(hook.result.current.sheet).toEqual({kind: 'teaser'});
 
-      act(() => mockBlur?.());
+      await act(() => mockBlur?.());
 
       expect(hook.result.current.sheet).toBeNull();
     });
 
     it('closing the teaser leaves the composer alone', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
 
-      act(() => hook.result.current.dismissSheet('teaser'));
+      await act(() => hook.result.current.dismissSheet('teaser'));
 
       expect(hook.result.current.sheet).toBeNull();
       expect(focusInput).not.toHaveBeenCalled();
@@ -295,12 +300,12 @@ describe('useVoiceMode', () => {
 
     it('an unlock that arrives after the chat screen is gone starts nothing', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, engine, hook} = renderVoiceMode();
+      const {enter, engine, hook} = await renderVoiceMode();
       await enter();
-      act(() => hook.result.current.getPlus());
+      await act(() => hook.result.current.getPlus());
       const [{onUnlocked}] = (voiceEntitlement as any).defaultSource.openPaywall
         .mock.calls[0];
-      hook.unmount();
+      await hook.unmount();
 
       voiceModeStore.setUnlockOverride(true);
       await act(async () => {
@@ -314,9 +319,9 @@ describe('useVoiceMode', () => {
 
     it('resumes entry when the paywall reports an unlock', async () => {
       voiceModeStore.setUnlockOverride(false);
-      const {enter, engine, hook} = renderVoiceMode();
+      const {enter, engine, hook} = await renderVoiceMode();
       await enter();
-      act(() => hook.result.current.getPlus());
+      await act(() => hook.result.current.getPlus());
       const [{onUnlocked}] = (voiceEntitlement as any).defaultSource.openPaywall
         .mock.calls[0];
 
@@ -334,9 +339,9 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         model.activeModelId = undefined;
       });
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
-      act(() => hook.result.current.getPlus());
+      await act(() => hook.result.current.getPlus());
       const [{onUnlocked}] = (voiceEntitlement as any).defaultSource.openPaywall
         .mock.calls[0];
 
@@ -353,7 +358,7 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         model.activeModelId = undefined;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
 
       await enter();
 
@@ -367,7 +372,7 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         model.isContextLoading = true;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
 
       await enter();
 
@@ -382,12 +387,14 @@ describe('useVoiceMode', () => {
           asrStore.downloadStates.base = 'not_installed';
         },
       ],
+
       [
         'the voice is the system voice',
         () => {
           tts.currentVoice = {id: 's', name: 's', engine: 'system'};
         },
       ],
+
       ['there is no voice', () => (tts.currentVoice = null)],
       [
         'the voice is Phonon on a device that does not support it',
@@ -395,13 +402,14 @@ describe('useVoiceMode', () => {
           tts.currentVoice = {id: 'Zoey', name: 'Zoey', engine: 'phonon'};
         },
       ],
+
       [
         'the microphone is not granted',
         () => (check as jest.Mock).mockResolvedValue('denied'),
       ],
     ])('opens the setup sheet when %s', async (_case, arrange) => {
       runInAction(arrange);
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
 
       await enter();
 
@@ -414,7 +422,7 @@ describe('useVoiceMode', () => {
         tts.currentVoice = {id: 'Zoey', name: 'Zoey', engine: 'phonon'};
         tts.phononSupported = true;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
 
       await enter();
 
@@ -424,7 +432,7 @@ describe('useVoiceMode', () => {
 
     it("opens the setup sheet when the voice's file is missing", async () => {
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
 
       await enter();
 
@@ -438,7 +446,7 @@ describe('useVoiceMode', () => {
     it("returns to the setup sheet when the voice's file is gone after setup", async () => {
       Platform.OS = 'android';
       (hasVoiceFile as jest.Mock).mockResolvedValue(false);
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
       const readMemory = DeviceInfo.getTotalMemory as jest.Mock;
       readMemory.mockClear();
@@ -456,11 +464,11 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         asrStore.downloadStates.base = 'not_installed';
       });
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
       expect(hook.result.current.sheet).toEqual({kind: 'setup'});
 
-      act(() => mockBlur?.());
+      await act(() => mockBlur?.());
 
       expect(hook.result.current.sheet).toEqual({kind: 'setup'});
     });
@@ -469,7 +477,7 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         asrStore.downloadStates.base = 'not_installed';
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
 
       runInAction(() => {
@@ -498,7 +506,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           asrStore.downloadStates.base = 'not_installed';
         });
-        const {enter, hook, engine} = renderVoiceMode();
+        const {enter, hook, engine} = await renderVoiceMode();
         await enter();
 
         runInAction(() => {
@@ -526,7 +534,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           asrStore.downloadStates.base = 'not_installed';
         });
-        const rendered = renderVoiceMode();
+        const rendered = await renderVoiceMode();
         await rendered.enter();
         expect(rendered.hook.result.current.sheet).toEqual({kind: 'setup'});
         runInAction(() => {
@@ -536,10 +544,10 @@ describe('useVoiceMode', () => {
         return rendered;
       };
       const startSetupDone = async (
-        hook: ReturnType<typeof renderVoiceMode>['hook'],
+        hook: Awaited<ReturnType<typeof renderVoiceMode>>['hook'],
       ) => {
         let done!: Promise<void>;
-        act(() => {
+        await act(() => {
           done = hook.result.current.setupDone();
         });
         await flush();
@@ -651,7 +659,8 @@ describe('useVoiceMode', () => {
         ['the screen is left', () => mockBlur?.()],
         [
           'the screen is gone',
-          (hook: ReturnType<typeof renderVoiceMode>['hook']) => hook.unmount(),
+          async (hook: Awaited<ReturnType<typeof renderVoiceMode>>['hook']) =>
+            await hook.unmount(),
         ],
       ])(
         'shows nothing when %s before the model loads',
@@ -660,7 +669,7 @@ describe('useVoiceMode', () => {
           startLoading();
 
           const {done} = await startSetupDone(hook);
-          act(() => leave(hook));
+          await act(() => leave(hook));
           finishLoad(tightBytes);
           await act(async () => {
             await done;
@@ -674,7 +683,7 @@ describe('useVoiceMode', () => {
 
       it('shows nothing when setup completes after the screen was left', async () => {
         const {hook, engine} = await openSetup();
-        act(() => mockBlur?.());
+        await act(() => mockBlur?.());
 
         await act(async () => {
           await hook.result.current.setupDone();
@@ -691,7 +700,7 @@ describe('useVoiceMode', () => {
         jest.useFakeTimers();
 
         const {done} = await startSetupDone(hook);
-        act(() => mockBlur?.());
+        await act(() => mockBlur?.());
         await act(async () => {
           jest.advanceTimersByTime(VOICE_START_TIMEOUT_MS);
         });
@@ -770,14 +779,14 @@ describe('useVoiceMode', () => {
         startLoading();
 
         const {done} = await startSetupDone(hook);
-        act(() => mockBlur?.());
+        await act(() => mockBlur?.());
         finishLoad(tightBytes);
         await act(async () => {
           await done;
         });
         expect(hook.result.current.sheet).toBeNull();
 
-        act(() => mockFocus?.());
+        await act(() => mockFocus?.());
         await enter();
 
         expect(hook.result.current.sheet).toMatchObject({
@@ -842,7 +851,7 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         asrStore.downloadStates.base = 'not_installed';
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
 
       runInAction(() => {
@@ -858,7 +867,7 @@ describe('useVoiceMode', () => {
     });
 
     it('enters a local model with a held first chunk, a keep-awake hold and an open mic', async () => {
-      const {enter, engine} = renderVoiceMode();
+      const {enter, engine} = await renderVoiceMode();
 
       await enter();
 
@@ -874,7 +883,7 @@ describe('useVoiceMode', () => {
     });
 
     it('shows the starting state at once, while speech recognition loads', async () => {
-      const {engine, hook} = renderVoiceMode();
+      const {engine, hook} = await renderVoiceMode();
       let loaded!: () => void;
       engine.prepare.mockReturnValueOnce(
         new Promise<void>(resolve => {
@@ -883,7 +892,7 @@ describe('useVoiceMode', () => {
       );
 
       let entering!: Promise<void>;
-      act(() => {
+      await act(() => {
         entering = hook.result.current.requestEntry(actions);
       });
       await flush();
@@ -899,7 +908,7 @@ describe('useVoiceMode', () => {
     });
 
     it('a failed load closes the session and releases everything, without the mic', async () => {
-      const {engine, enter} = renderVoiceMode();
+      const {engine, enter} = await renderVoiceMode();
       engine.prepare.mockRejectedValueOnce(new Error('load'));
       jest.spyOn(console, 'warn').mockImplementationOnce(() => {});
 
@@ -917,7 +926,7 @@ describe('useVoiceMode', () => {
     });
 
     it('End while loading keeps the session closed and the mic off once the load finishes', async () => {
-      const {engine, hook} = renderVoiceMode();
+      const {engine, hook} = await renderVoiceMode();
       let loaded!: () => void;
       engine.prepare.mockReturnValueOnce(
         new Promise<void>(resolve => {
@@ -925,7 +934,7 @@ describe('useVoiceMode', () => {
         }),
       );
       let entering!: Promise<void>;
-      act(() => {
+      await act(() => {
         entering = hook.result.current.requestEntry(actions);
       });
       await flush();
@@ -945,11 +954,11 @@ describe('useVoiceMode', () => {
 
     it('gives up with a warning when loading takes too long', async () => {
       jest.useFakeTimers();
-      const {engine, hook} = renderVoiceMode();
+      const {engine, hook} = await renderVoiceMode();
       engine.prepare.mockReturnValueOnce(new Promise<void>(() => {}));
       jest.spyOn(console, 'warn').mockImplementationOnce(() => {});
 
-      act(() => {
+      await act(() => {
         hook.result.current.requestEntry(actions);
       });
       await act(async () => {});
@@ -972,7 +981,7 @@ describe('useVoiceMode', () => {
         model.models = [...modelsList, remote];
         model.activeModelId = 'remote';
       });
-      const {enter} = renderVoiceMode();
+      const {enter} = await renderVoiceMode();
 
       await enter();
 
@@ -988,7 +997,7 @@ describe('useVoiceMode', () => {
           ASR_TIERS.base.runtimeBytes -
           TTS_ENGINE_RUNTIME_BYTES.supertonic / 2;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
 
       await enter();
       expect(hook.result.current.sheet).toMatchObject({
@@ -1013,7 +1022,7 @@ describe('useVoiceMode', () => {
           ASR_TIERS.base.runtimeBytes -
           TTS_ENGINE_RUNTIME_BYTES.supertonic / 2;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
       expect(hook.result.current.sheet).toEqual({kind: 'setup'});
 
@@ -1023,7 +1032,7 @@ describe('useVoiceMode', () => {
       await act(async () => {
         await hook.result.current.setupDone();
       });
-      act(() => hook.result.current.dismissSheet('setup'));
+      await act(() => hook.result.current.dismissSheet('setup'));
 
       expect(hook.result.current.sheet).toMatchObject({
         kind: 'memory',
@@ -1050,7 +1059,7 @@ describe('useVoiceMode', () => {
       });
 
       it('prepares Small', async () => {
-        const {enter, engine} = renderVoiceMode();
+        const {enter, engine} = await renderVoiceMode();
         await enter();
         expect(engine.prepare).toHaveBeenCalledWith('small');
       });
@@ -1059,7 +1068,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           asrStore.downloadStates.small = 'not_installed';
         });
-        const {enter, hook, engine} = renderVoiceMode();
+        const {enter, hook, engine} = await renderVoiceMode();
         await enter();
         expect(hook.result.current.sheet).toEqual({kind: 'setup'});
         expect(engine.prepare).not.toHaveBeenCalled();
@@ -1069,7 +1078,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           model.loadedModelBytes = tightFor('small');
         });
-        const {enter, hook} = renderVoiceMode();
+        const {enter, hook} = await renderVoiceMode();
         await enter();
         expect(hook.result.current.sheet).toMatchObject({
           kind: 'memory',
@@ -1085,7 +1094,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           model.loadedModelBytes = tightFor('small');
         });
-        const {enter, hook, engine} = renderVoiceMode();
+        const {enter, hook, engine} = await renderVoiceMode();
         await enter();
         runInAction(() => {
           asrStore.downloadStates['large-turbo'] = 'ready';
@@ -1107,7 +1116,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           model.loadedModelBytes = tightFor('small');
         });
-        const {enter, hook, engine} = renderVoiceMode();
+        const {enter, hook, engine} = await renderVoiceMode();
         await enter();
         runInAction(() => {
           asrStore.downloadStates.small = 'not_installed';
@@ -1125,7 +1134,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           model.loadedModelBytes = tightFor('small');
         });
-        const {enter, hook} = renderVoiceMode();
+        const {enter, hook} = await renderVoiceMode();
         await enter();
         runInAction(() => {
           asrStore.downloadStates.small = 'not_installed';
@@ -1134,7 +1143,7 @@ describe('useVoiceMode', () => {
           await hook.result.current.continueAnyway();
         });
 
-        act(() => hook.result.current.dismissSheet('memory'));
+        await act(() => hook.result.current.dismissSheet('memory'));
 
         expect(hook.result.current.sheet).toEqual({kind: 'setup'});
       });
@@ -1143,7 +1152,7 @@ describe('useVoiceMode', () => {
         runInAction(() => {
           model.loadedModelBytes = tightFor('small');
         });
-        const {enter, hook, engine} = renderVoiceMode();
+        const {enter, hook, engine} = await renderVoiceMode();
         await enter();
 
         await act(async () => {
@@ -1163,7 +1172,7 @@ describe('useVoiceMode', () => {
             ASR_TIERS.base.runtimeBytes -
             TTS_ENGINE_RUNTIME_BYTES.supertonic / 2;
         });
-        const rendered = renderVoiceMode();
+        const rendered = await renderVoiceMode();
         await rendered.enter();
         expect(rendered.hook.result.current.sheet).toMatchObject({
           fit: {status: 'tight'},
@@ -1210,7 +1219,7 @@ describe('useVoiceMode', () => {
           ASR_TIERS.base.runtimeBytes -
           TTS_ENGINE_RUNTIME_BYTES.supertonic / 2;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       engine.prepare.mockRejectedValueOnce(new Error('load'));
       jest.spyOn(console, 'warn').mockImplementationOnce(() => {});
 
@@ -1234,7 +1243,7 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         model.loadedModelBytes = 8e9;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
 
       await enter();
       expect(hook.result.current.sheet).toMatchObject({
@@ -1254,10 +1263,10 @@ describe('useVoiceMode', () => {
           ASR_TIERS.base.runtimeBytes -
           TTS_ENGINE_RUNTIME_BYTES.supertonic / 2;
       });
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
 
-      act(() => hook.result.current.chooseSmallerModel());
+      await act(() => hook.result.current.chooseSmallerModel());
 
       expect(openModelPicker).toHaveBeenCalledTimes(1);
       expect(hook.result.current.sheet).toBeNull();
@@ -1267,20 +1276,20 @@ describe('useVoiceMode', () => {
 
   describe('a turn', () => {
     it('endpoints after speech and a pause, with the mic stopped until the turn ends', async () => {
-      const {enter, engine, turns} = renderVoiceMode();
+      const {enter, engine, turns} = await renderVoiceMode();
       await enter();
 
-      speak(500);
-      speak(600, SILENT);
+      await speak(500);
+      await speak(600, SILENT);
 
       expect(voiceModeStore.phase).toBe('transcribing');
       expect(AudioRecord.stop).toHaveBeenCalledTimes(1);
       expect(engine.runTurn).toHaveBeenCalledTimes(1);
       expect(turns[0].utterance.length).toBeGreaterThan(0);
 
-      act(() => turns[0].on.transcribed('hi'));
+      await act(() => turns[0].on.transcribed('hi'));
       expect(voiceModeStore.phase).toBe('thinking');
-      act(() => turns[0].on.speechStarted());
+      await act(() => turns[0].on.speechStarted());
       expect(voiceModeStore.phase).toBe('speaking');
       expect(AudioRecord.start).toHaveBeenCalledTimes(1);
 
@@ -1294,10 +1303,10 @@ describe('useVoiceMode', () => {
     });
 
     it('after an empty turn, starts the mic again only once the old one has settled', async () => {
-      const {enter, turns} = renderVoiceMode();
+      const {enter, turns} = await renderVoiceMode();
       await enter();
-      speak(500);
-      speak(600, SILENT);
+      await speak(500);
+      await speak(600, SILENT);
       expect(AudioRecord.init).toHaveBeenCalledTimes(1);
 
       turns[0].finish('empty');
@@ -1316,10 +1325,10 @@ describe('useVoiceMode', () => {
     });
 
     it('shows the failure and listens again', async () => {
-      const {enter, turns} = renderVoiceMode();
+      const {enter, turns} = await renderVoiceMode();
       await enter();
-      speak(500);
-      speak(600, SILENT);
+      await speak(500);
+      await speak(600, SILENT);
 
       turns[0].finish('reply_failed');
       await flush();
@@ -1329,27 +1338,27 @@ describe('useVoiceMode', () => {
     });
 
     it('a tap while listening ends the utterance only after speech', async () => {
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
 
-      speak(200, SILENT);
-      act(() => hook.result.current.tapCloud());
+      await speak(200, SILENT);
+      await act(() => hook.result.current.tapCloud());
       expect(engine.runTurn).not.toHaveBeenCalled();
 
-      speak(400);
-      act(() => hook.result.current.tapCloud());
+      await speak(400);
+      await act(() => hook.result.current.tapCloud());
       expect(engine.runTurn).toHaveBeenCalledTimes(1);
     });
 
     it('a tap while speaking interrupts the reply and listens again', async () => {
-      const {enter, hook, turns} = renderVoiceMode();
+      const {enter, hook, turns} = await renderVoiceMode();
       await enter();
-      speak(500);
-      speak(600, SILENT);
-      act(() => turns[0].on.transcribed('hi'));
-      act(() => turns[0].on.speechStarted());
+      await speak(500);
+      await speak(600, SILENT);
+      await act(() => turns[0].on.transcribed('hi'));
+      await act(() => turns[0].on.speechStarted());
 
-      act(() => hook.result.current.tapCloud());
+      await act(() => hook.result.current.tapCloud());
 
       expect(turns[0].interrupt).toHaveBeenCalledTimes(1);
       await flush();
@@ -1359,16 +1368,16 @@ describe('useVoiceMode', () => {
     it.each(['transcribing', 'thinking'] as const)(
       'a tap while %s cancels the turn and listens again',
       async phase => {
-        const {enter, hook, turns} = renderVoiceMode();
+        const {enter, hook, turns} = await renderVoiceMode();
         await enter();
-        speak(500);
-        speak(600, SILENT);
+        await speak(500);
+        await speak(600, SILENT);
         if (phase === 'thinking') {
-          act(() => turns[0].on.transcribed('hi'));
+          await act(() => turns[0].on.transcribed('hi'));
         }
         expect(voiceModeStore.phase).toBe(phase);
 
-        act(() => hook.result.current.tapCloud());
+        await act(() => hook.result.current.tapCloud());
 
         expect(turns[0].interrupt).toHaveBeenCalledTimes(1);
         await flush();
@@ -1377,9 +1386,9 @@ describe('useVoiceMode', () => {
     );
 
     it('a phase forced from outside starts no capture', async () => {
-      renderVoiceMode();
+      await renderVoiceMode();
 
-      act(() => {
+      await act(() => {
         runInAction(() => {
           voiceModeStore.phase = 'listening';
         });
@@ -1392,14 +1401,14 @@ describe('useVoiceMode', () => {
 
   describe('mute', () => {
     it('stops the mic while listening and resumes on unmute', async () => {
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
 
-      act(() => hook.result.current.toggleMute());
+      await act(() => hook.result.current.toggleMute());
       expect(voiceModeStore.micMuted).toBe(true);
       expect(AudioRecord.stop).toHaveBeenCalledTimes(1);
 
-      act(() => hook.result.current.tapCloud());
+      await act(() => hook.result.current.tapCloud());
       expect(engine.runTurn).not.toHaveBeenCalled();
 
       await act(async () => hook.result.current.toggleMute());
@@ -1408,7 +1417,7 @@ describe('useVoiceMode', () => {
     });
 
     const enterSlowly = async () => {
-      const voice = renderVoiceMode();
+      const voice = await renderVoiceMode();
       let loaded!: () => void;
       voice.engine.prepare.mockReturnValueOnce(
         new Promise<void>(resolve => {
@@ -1416,13 +1425,13 @@ describe('useVoiceMode', () => {
         }),
       );
       let entering!: Promise<void>;
-      act(() => {
+      await act(() => {
         entering = voice.hook.result.current.requestEntry(actions);
       });
       await flush();
       expect(voiceModeStore.phase).toBe('starting');
-      const finishLoading = () =>
-        act(async () => {
+      const finishLoading = async () =>
+        await act(async () => {
           loaded();
           await entering;
         });
@@ -1432,7 +1441,7 @@ describe('useVoiceMode', () => {
     it('muted while starting, listens with the mic off once loaded', async () => {
       const {hook, finishLoading} = await enterSlowly();
 
-      act(() => hook.result.current.toggleMute());
+      await act(() => hook.result.current.toggleMute());
       await finishLoading();
 
       expect(voiceModeStore.phase).toBe('listening');
@@ -1443,8 +1452,8 @@ describe('useVoiceMode', () => {
     it('muted then unmuted while starting, opens the mic once loaded', async () => {
       const {hook, finishLoading} = await enterSlowly();
 
-      act(() => hook.result.current.toggleMute());
-      act(() => hook.result.current.toggleMute());
+      await act(() => hook.result.current.toggleMute());
+      await act(() => hook.result.current.toggleMute());
       await finishLoading();
 
       expect(voiceModeStore.micMuted).toBe(false);
@@ -1452,13 +1461,13 @@ describe('useVoiceMode', () => {
     });
 
     it('while speaking leaves the mic off after the turn', async () => {
-      const {enter, hook, turns} = renderVoiceMode();
+      const {enter, hook, turns} = await renderVoiceMode();
       await enter();
-      speak(500);
-      speak(600, SILENT);
-      act(() => turns[0].on.speechStarted());
+      await speak(500);
+      await speak(600, SILENT);
+      await act(() => turns[0].on.speechStarted());
 
-      act(() => hook.result.current.toggleMute());
+      await act(() => hook.result.current.toggleMute());
       turns[0].finish('answered');
       await flush();
 
@@ -1480,40 +1489,46 @@ describe('useVoiceMode', () => {
     it.each([
       [
         'End',
-        (h: any) =>
-          act(() => {
+        async (h: any) =>
+          await act(() => {
             h.result.current.end();
           }),
       ],
-      ['the app going to the background', () => setAppState('background')],
-      ['leaving the screen', () => act(() => mockBlur?.())],
+
+      [
+        'the app going to the background',
+        async () => await setAppState('background'),
+      ],
+      ['leaving the screen', async () => await act(() => mockBlur?.())],
       [
         'a chat switch',
-        () =>
-          act(() => {
+        async () =>
+          await act(() => {
             chatSessionStore.activeSessionId = 'session-2';
           }),
       ],
+
       [
         'a model change',
-        () =>
-          act(() => {
+        async () =>
+          await act(() => {
             runInAction(() => {
               model.activeModelId = modelsList[1].id;
             });
           }),
       ],
-      ['unmount', (h: any) => h.unmount()],
+
+      ['unmount', async (h: any) => await h.unmount()],
     ])(
       '%s while speaking interrupts the turn and releases everything',
       async (_case, trigger) => {
-        const {enter, hook, engine, turns} = renderVoiceMode();
+        const {enter, hook, engine, turns} = await renderVoiceMode();
         await enter();
-        speak(500);
-        speak(600, SILENT);
-        act(() => turns[0].on.speechStarted());
+        await speak(500);
+        await speak(600, SILENT);
+        await act(() => turns[0].on.speechStarted());
 
-        trigger(hook);
+        await trigger(hook);
         await flush();
 
         expect(turns[0].interrupt).toHaveBeenCalledTimes(1);
@@ -1526,16 +1541,16 @@ describe('useVoiceMode', () => {
       [
         'thinking',
         'thinking',
-        (turn: FakeTurn) => act(() => turn.on.transcribed('hello')),
+        async (turn: FakeTurn) => await act(() => turn.on.transcribed('hello')),
       ],
     ])(
       'End while %s interrupts the turn and releases everything',
       async (_case, phase, arrange) => {
-        const {enter, hook, engine, turns} = renderVoiceMode();
+        const {enter, hook, engine, turns} = await renderVoiceMode();
         await enter();
-        speak(500);
-        speak(600, SILENT);
-        arrange(turns[0]);
+        await speak(500);
+        await speak(600, SILENT);
+        await arrange(turns[0]);
         expect(voiceModeStore.phase).toBe(phase);
 
         await act(async () => {
@@ -1552,10 +1567,10 @@ describe('useVoiceMode', () => {
       const original = (global as any).requestIdleCallback;
       (global as any).requestIdleCallback = (callback: () => void) =>
         idle.push(callback);
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
 
-      act(() => {
+      await act(() => {
         hook.result.current.end();
       });
       await flush();
@@ -1577,11 +1592,11 @@ describe('useVoiceMode', () => {
       runInAction(() => {
         tts.autoSpeakEnabled = false;
       });
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
       expect(ttsStore.streamsReplies).toBe(true);
 
-      act(() => {
+      await act(() => {
         hook.result.current.end();
       });
       await flush();
@@ -1601,16 +1616,16 @@ describe('useVoiceMode', () => {
         idle.push(callback);
       Platform.OS = 'android';
       (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValue(16e9);
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
-      act(() => {
+      await act(() => {
         hook.result.current.end();
       });
       await flush();
       (DeviceInfo.getTotalMemory as jest.Mock).mockClear();
 
       let reentering!: Promise<void>;
-      act(() => {
+      await act(() => {
         reentering = hook.result.current.requestEntry(actions);
       });
       await flush();
@@ -1626,7 +1641,7 @@ describe('useVoiceMode', () => {
     });
 
     it('End while listening stops the mic', async () => {
-      const {enter, hook, engine} = renderVoiceMode();
+      const {enter, hook, engine} = await renderVoiceMode();
       await enter();
 
       await act(async () => {
@@ -1640,7 +1655,7 @@ describe('useVoiceMode', () => {
     it('a microphone that fails ends the session', async () => {
       (AudioRecord.init as jest.Mock).mockRejectedValueOnce(new Error('mic'));
       jest.spyOn(console, 'warn').mockImplementationOnce(() => {});
-      const {enter, engine} = renderVoiceMode();
+      const {enter, engine} = await renderVoiceMode();
 
       await enter();
       await flush();
@@ -1655,10 +1670,10 @@ describe('useVoiceMode', () => {
     });
 
     it('keeps the voice hold through a turn', async () => {
-      const {enter, turns} = renderVoiceMode();
+      const {enter, turns} = await renderVoiceMode();
       await enter();
-      speak(500);
-      speak(600, SILENT);
+      await speak(500);
+      await speak(600, SILENT);
       turns[0].finish('answered');
       await flush();
 
@@ -1671,10 +1686,10 @@ describe('useVoiceMode', () => {
     runInAction(() => {
       chatSessionStore.activeSessionId = undefined as any;
     });
-    const {enter, engine, turns} = renderVoiceMode();
+    const {enter, engine, turns} = await renderVoiceMode();
     await enter();
-    speak(500);
-    speak(600, SILENT);
+    await speak(500);
+    await speak(600, SILENT);
     expect(turns).toHaveLength(1);
     port.send.mockImplementationOnce(
       (_text: string, onTurnCreated: (id: string) => void) =>
@@ -1684,7 +1699,7 @@ describe('useVoiceMode', () => {
         }),
     );
 
-    act(() => {
+    await act(() => {
       turns[0].port.send('hello', jest.fn());
     });
     await flush();
@@ -1698,13 +1713,13 @@ describe('useVoiceMode', () => {
     runInAction(() => {
       chatSessionStore.activeSessionId = undefined as any;
     });
-    const {enter, engine, turns} = renderVoiceMode();
+    const {enter, engine, turns} = await renderVoiceMode();
     await enter();
-    speak(500);
-    speak(600, SILENT);
+    await speak(500);
+    await speak(600, SILENT);
     expect(voiceModeStore.phase).toBe('transcribing');
 
-    act(() => {
+    await act(() => {
       chatSessionStore.activeSessionId = 'session-1';
     });
     await flush();
@@ -1719,10 +1734,10 @@ describe('useVoiceMode', () => {
     runInAction(() => {
       chatSessionStore.activeSessionId = undefined as any;
     });
-    const {enter, turns} = renderVoiceMode();
+    const {enter, turns} = await renderVoiceMode();
     await enter();
-    speak(500);
-    speak(600, SILENT);
+    await speak(500);
+    await speak(600, SILENT);
     port.send.mockImplementationOnce(
       (_text: string, onTurnCreated: (id: string) => void) =>
         new Promise<void>(() => {
@@ -1730,12 +1745,12 @@ describe('useVoiceMode', () => {
           onTurnCreated('turn-1');
         }),
     );
-    act(() => {
+    await act(() => {
       turns[0].port.send('hello', jest.fn());
     });
     await flush();
 
-    act(() => {
+    await act(() => {
       chatSessionStore.activeSessionId = 'session-1';
     });
     await flush();
@@ -1748,10 +1763,10 @@ describe('useVoiceMode', () => {
     runInAction(() => {
       chatSessionStore.activeSessionId = undefined as any;
     });
-    const {enter, engine} = renderVoiceMode();
+    const {enter, engine} = await renderVoiceMode();
     await enter();
 
-    act(() => {
+    await act(() => {
       chatSessionStore.activeSessionId = 'session-2';
     });
     await flush();
@@ -1766,12 +1781,12 @@ describe('useVoiceMode', () => {
       tts.userTTSOverride = false;
       (asrStore as any).userASROverride = false;
     });
-    const {enter, hook, turns} = renderVoiceMode();
+    const {enter, hook, turns} = await renderVoiceMode();
     await enter();
-    speak(500);
-    speak(600, SILENT);
-    act(() => turns[0].on.transcribed('hello'));
-    act(() => turns[0].on.speechStarted());
+    await speak(500);
+    await speak(600, SILENT);
+    await act(() => turns[0].on.transcribed('hello'));
+    await act(() => turns[0].on.speechStarted());
     turns[0].finish('answered');
     await flush();
     await act(async () => {
@@ -1795,14 +1810,14 @@ describe('useVoiceMode', () => {
       jest.useRealTimers();
     });
 
-    const advance = (ms: number) =>
-      act(async () => {
+    const advance = async (ms: number) =>
+      await act(async () => {
         jest.advanceTimersByTime(ms);
       });
 
     it('is restarted once, then voice mode ends with a warning', async () => {
       jest.useFakeTimers();
-      const {enter, engine} = renderVoiceMode();
+      const {enter, engine} = await renderVoiceMode();
       await enter();
 
       await advance(2500);
@@ -1823,13 +1838,13 @@ describe('useVoiceMode', () => {
 
     it('gets a fresh restart after the user mutes and unmutes', async () => {
       jest.useFakeTimers();
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
       await advance(VOICE_MIC_WATCHDOG_MS);
       await advance(VOICE_CAPTURE_SETTLE_MS);
       expect(AudioRecord.init).toHaveBeenCalledTimes(2);
 
-      act(() => hook.result.current.toggleMute());
+      await act(() => hook.result.current.toggleMute());
       await act(async () => hook.result.current.toggleMute());
       await advance(VOICE_CAPTURE_SETTLE_MS);
       expect(AudioRecord.init).toHaveBeenCalledTimes(3);
@@ -1842,10 +1857,10 @@ describe('useVoiceMode', () => {
 
     it('is left alone once audio arrives', async () => {
       jest.useFakeTimers();
-      const {enter} = renderVoiceMode();
+      const {enter} = await renderVoiceMode();
       await enter();
 
-      speak(100, SILENT);
+      await speak(100, SILENT);
       await advance(VOICE_MIC_WATCHDOG_MS * 3);
 
       expect(AudioRecord.init).toHaveBeenCalledTimes(1);
@@ -1854,19 +1869,19 @@ describe('useVoiceMode', () => {
   });
 
   describe('audio interruptions', () => {
-    const interruption = (type: 'began' | 'ended') => {
+    const interruption = async (type: 'began' | 'ended') => {
       const calls = (onAudioInterruption as jest.Mock).mock.calls;
-      act(() => calls[calls.length - 1][0]({type}));
+      await act(() => calls[calls.length - 1][0]({type}));
     };
 
     it('stop the mic while listening and restart it when they end', async () => {
-      const {enter} = renderVoiceMode();
+      const {enter} = await renderVoiceMode();
       await enter();
 
-      interruption('began');
+      await interruption('began');
       expect(AudioRecord.stop).toHaveBeenCalledTimes(1);
 
-      interruption('ended');
+      await interruption('ended');
       await settleMic();
       expect(AudioRecord.start).toHaveBeenCalledTimes(2);
       expect(voiceModeStore.phase).toBe('listening');
@@ -1875,9 +1890,9 @@ describe('useVoiceMode', () => {
     it('while listening, pause with the mic off and no watchdog until ended', async () => {
       jest.useFakeTimers();
       try {
-        const {enter} = renderVoiceMode();
+        const {enter} = await renderVoiceMode();
         await enter();
-        interruption('began');
+        await interruption('began');
         expect(voiceModeStore.micMuted).toBe(true);
 
         await act(async () => {
@@ -1886,7 +1901,7 @@ describe('useVoiceMode', () => {
         expect(AudioRecord.init).toHaveBeenCalledTimes(1);
         expect(voiceModeStore.phase).toBe('listening');
 
-        interruption('ended');
+        await interruption('ended');
         await act(async () => {
           jest.advanceTimersByTime(VOICE_CAPTURE_SETTLE_MS);
         });
@@ -1901,18 +1916,18 @@ describe('useVoiceMode', () => {
     it('a began while the mic is reopening keeps it closed until the next ended', async () => {
       jest.useFakeTimers();
       try {
-        const {enter} = renderVoiceMode();
+        const {enter} = await renderVoiceMode();
         await enter();
-        interruption('began');
-        interruption('ended');
-        interruption('began');
+        await interruption('began');
+        await interruption('ended');
+        await interruption('began');
         await act(async () => {
           jest.advanceTimersByTime(VOICE_MIC_WATCHDOG_MS * 3);
         });
         expect(AudioRecord.init).toHaveBeenCalledTimes(1);
         expect(voiceModeStore.phase).toBe('listening');
 
-        interruption('ended');
+        await interruption('ended');
         await act(async () => {
           jest.advanceTimersByTime(VOICE_CAPTURE_SETTLE_MS);
         });
@@ -1923,12 +1938,12 @@ describe('useVoiceMode', () => {
     });
 
     it('two restarts that overlap open the mic once', async () => {
-      const {enter} = renderVoiceMode();
+      const {enter} = await renderVoiceMode();
       await enter();
-      interruption('began');
+      await interruption('began');
 
-      interruption('ended');
-      interruption('ended');
+      await interruption('ended');
+      await interruption('ended');
       await settleMic();
       await flush();
 
@@ -1940,20 +1955,20 @@ describe('useVoiceMode', () => {
       'while %s',
       phase => {
         const interruptTurn = async () => {
-          const rendered = renderVoiceMode();
+          const rendered = await renderVoiceMode();
           await rendered.enter();
-          speak(500);
-          speak(600, SILENT);
+          await speak(500);
+          await speak(600, SILENT);
           const [turn] = rendered.turns;
           if (phase !== 'transcribing') {
-            act(() => turn.on.transcribed('hi'));
+            await act(() => turn.on.transcribed('hi'));
           }
           if (phase === 'speaking') {
-            act(() => turn.on.speechStarted());
+            await act(() => turn.on.speechStarted());
           }
           expect(voiceModeStore.phase).toBe(phase);
 
-          interruption('began');
+          await interruption('began');
           await flush();
           await settleMic();
           return rendered;
@@ -1972,7 +1987,7 @@ describe('useVoiceMode', () => {
         it('reopen the mic when they end', async () => {
           await interruptTurn();
 
-          interruption('ended');
+          await interruption('ended');
           await settleMic();
 
           expect(voiceModeStore.micMuted).toBe(false);
@@ -1982,7 +1997,7 @@ describe('useVoiceMode', () => {
         it('reopen the mic on a cloud tap', async () => {
           const {hook, engine} = await interruptTurn();
 
-          act(() => hook.result.current.tapCloud());
+          await act(() => hook.result.current.tapCloud());
           await settleMic();
 
           expect(voiceModeStore.micMuted).toBe(false);
@@ -1993,7 +2008,7 @@ describe('useVoiceMode', () => {
         it('reopen the mic when the app becomes active', async () => {
           await interruptTurn();
 
-          setAppState('active');
+          await setAppState('active');
           await settleMic();
 
           expect(voiceModeStore.micMuted).toBe(false);
@@ -2003,15 +2018,15 @@ describe('useVoiceMode', () => {
     );
 
     it('while speaking, one that ends before the turn finishes opens the mic once it does', async () => {
-      const {enter, turns} = renderVoiceMode();
+      const {enter, turns} = await renderVoiceMode();
       await enter();
-      speak(500);
-      speak(600, SILENT);
-      act(() => turns[0].on.speechStarted());
+      await speak(500);
+      await speak(600, SILENT);
+      await act(() => turns[0].on.speechStarted());
       turns[0].interrupt.mockImplementation(async () => {});
 
-      interruption('began');
-      interruption('ended');
+      await interruption('began');
+      await interruption('ended');
       await settleMic();
       expect(AudioRecord.start).toHaveBeenCalledTimes(1);
 
@@ -2023,15 +2038,15 @@ describe('useVoiceMode', () => {
     });
 
     it('while speaking with the mic muted, leave it muted after they end', async () => {
-      const {enter, hook, turns} = renderVoiceMode();
+      const {enter, hook, turns} = await renderVoiceMode();
       await enter();
-      speak(500);
-      speak(600, SILENT);
-      act(() => turns[0].on.speechStarted());
-      act(() => hook.result.current.toggleMute());
+      await speak(500);
+      await speak(600, SILENT);
+      await act(() => turns[0].on.speechStarted());
+      await act(() => hook.result.current.toggleMute());
 
-      interruption('began');
-      interruption('ended');
+      await interruption('began');
+      await interruption('ended');
       await flush();
       await settleMic();
 
@@ -2041,9 +2056,9 @@ describe('useVoiceMode', () => {
     });
 
     it('while listening with no ended event, unmuting opens the mic again', async () => {
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
-      interruption('began');
+      await interruption('began');
 
       await act(async () => hook.result.current.toggleMute());
       await settleMic();
@@ -2052,12 +2067,12 @@ describe('useVoiceMode', () => {
     });
 
     it('while listening with no ended event, returning to the app opens the mic again', async () => {
-      const {enter} = renderVoiceMode();
+      const {enter} = await renderVoiceMode();
       await enter();
-      interruption('began');
+      await interruption('began');
 
-      setAppState('inactive');
-      setAppState('active');
+      await setAppState('inactive');
+      await setAppState('active');
       await settleMic();
 
       expect(AudioRecord.start).toHaveBeenCalledTimes(2);
@@ -2065,22 +2080,22 @@ describe('useVoiceMode', () => {
     });
 
     it('while listening with no ended event, the app becoming active opens the mic again', async () => {
-      const {enter} = renderVoiceMode();
+      const {enter} = await renderVoiceMode();
       await enter();
-      interruption('began');
+      await interruption('began');
 
-      setAppState('active');
+      await setAppState('active');
       await settleMic();
 
       expect(AudioRecord.start).toHaveBeenCalledTimes(2);
     });
 
     it('while listening with no ended event, a cloud tap opens the mic again', async () => {
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
-      interruption('began');
+      await interruption('began');
 
-      act(() => hook.result.current.tapCloud());
+      await act(() => hook.result.current.tapCloud());
       await settleMic();
 
       expect(AudioRecord.start).toHaveBeenCalledTimes(2);
@@ -2089,11 +2104,11 @@ describe('useVoiceMode', () => {
     });
 
     it('a muted mic stays off when one ends', async () => {
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
-      act(() => hook.result.current.toggleMute());
-      interruption('began');
-      interruption('ended');
+      await act(() => hook.result.current.toggleMute());
+      await interruption('began');
+      await interruption('ended');
       await settleMic();
 
       expect(voiceModeStore.micMuted).toBe(true);
@@ -2101,14 +2116,14 @@ describe('useVoiceMode', () => {
     });
 
     it('ending voice mode while paused closes it', async () => {
-      const {enter, hook} = renderVoiceMode();
+      const {enter, hook} = await renderVoiceMode();
       await enter();
-      interruption('began');
+      await interruption('began');
 
       await act(async () => {
         await hook.result.current.end();
       });
-      interruption('ended');
+      await interruption('ended');
       await settleMic();
 
       expect(voiceModeStore.phase).toBe('closed');
@@ -2116,8 +2131,8 @@ describe('useVoiceMode', () => {
       expect(AudioRecord.start).toHaveBeenCalledTimes(1);
     });
 
-    const enterSlowly = () => {
-      const {engine, hook} = renderVoiceMode();
+    const enterSlowly = async () => {
+      const {engine, hook} = await renderVoiceMode();
       let loaded!: () => void;
       engine.prepare.mockReturnValueOnce(
         new Promise<void>(resolve => {
@@ -2125,11 +2140,11 @@ describe('useVoiceMode', () => {
         }),
       );
       let entering!: Promise<void>;
-      act(() => {
+      await act(() => {
         entering = hook.result.current.requestEntry(actions);
       });
-      const finishLoading = () =>
-        act(async () => {
+      const finishLoading = async () =>
+        await act(async () => {
           loaded();
           await entering;
         });
@@ -2139,10 +2154,10 @@ describe('useVoiceMode', () => {
     it('during starting, pause; once loaded stay listening with the mic off until ended', async () => {
       jest.useFakeTimers();
       try {
-        const {finishLoading} = enterSlowly();
+        const {finishLoading} = await enterSlowly();
         await flush();
 
-        interruption('began');
+        await interruption('began');
         await finishLoading();
 
         expect(voiceModeStore.phase).toBe('listening');
@@ -2155,7 +2170,7 @@ describe('useVoiceMode', () => {
         expect(voiceModeStore.phase).toBe('listening');
         expect(AudioRecord.start).not.toHaveBeenCalled();
 
-        interruption('ended');
+        await interruption('ended');
         await act(async () => {
           jest.advanceTimersByTime(VOICE_CAPTURE_SETTLE_MS);
         });
@@ -2168,11 +2183,11 @@ describe('useVoiceMode', () => {
     });
 
     it('began and ended both during starting open the mic once loaded', async () => {
-      const {finishLoading} = enterSlowly();
+      const {finishLoading} = await enterSlowly();
       await flush();
 
-      interruption('began');
-      interruption('ended');
+      await interruption('began');
+      await interruption('ended');
       await finishLoading();
       await settleMic();
 
@@ -2182,20 +2197,20 @@ describe('useVoiceMode', () => {
     });
 
     it('are not followed once the chat screen is gone', async () => {
-      const {hook} = renderVoiceMode();
+      const {hook} = await renderVoiceMode();
       const subscription = (onAudioInterruption as jest.Mock).mock.results[0]
         .value;
-      hook.unmount();
+      await hook.unmount();
       expect(subscription.remove).toHaveBeenCalledTimes(1);
     });
   });
 
   it('restarts capture on return from inactive while listening', async () => {
-    const {enter} = renderVoiceMode();
+    const {enter} = await renderVoiceMode();
     await enter();
 
-    setAppState('inactive');
-    setAppState('active');
+    await setAppState('inactive');
+    await setAppState('active');
     await settleMic();
 
     expect(voiceModeStore.phase).toBe('listening');

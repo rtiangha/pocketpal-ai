@@ -1,10 +1,11 @@
 import React from 'react';
+import {StyleSheet} from 'react-native';
 import {act, fireEvent, waitFor, within} from '@testing-library/react-native';
 
-import {render} from '../../../../jest/test-utils';
+import {render, screen} from '../../../../jest/test-utils';
 
 import {PalsScreen} from '../PalsScreen';
-import {PalGridRow} from '../components';
+import {styles as palGridRowStyles} from '../components/PalGridRow/styles';
 
 import {authService, syncService} from '../../../services';
 import {palStore} from '../../../store';
@@ -55,8 +56,8 @@ describe('PalsScreen', () => {
     palStore.userCreatedPals = [];
   });
 
-  it('should render without crashing', () => {
-    render(<PalsScreen />, {
+  it('should render without crashing', async () => {
+    await render(<PalsScreen />, {
       withNavigation: true,
       withSafeArea: true,
       withBottomSheetProvider: true,
@@ -74,7 +75,7 @@ describe('PalsScreen', () => {
     authService.isAuthenticated = true;
     (syncService.needsSync as jest.Mock).mockResolvedValue(true);
 
-    render(<PalsScreen />, {
+    await render(<PalsScreen />, {
       withNavigation: true,
       withSafeArea: true,
       withBottomSheetProvider: true,
@@ -93,7 +94,7 @@ describe('PalsScreen', () => {
     // Set up the mock before rendering
     authService.isAuthenticated = false;
 
-    render(<PalsScreen />, {
+    await render(<PalsScreen />, {
       withNavigation: true,
       withSafeArea: true,
       withBottomSheetProvider: true,
@@ -116,7 +117,7 @@ describe('PalsScreen', () => {
       new Error('Sync failed'),
     );
 
-    render(<PalsScreen />, {
+    await render(<PalsScreen />, {
       withNavigation: true,
       withSafeArea: true,
       withBottomSheetProvider: true,
@@ -176,7 +177,7 @@ describe('PalsScreen', () => {
     });
 
     it('should display all pals when "all" filter is active', async () => {
-      const {getByText} = render(<PalsScreen />, {
+      const {getByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -190,7 +191,7 @@ describe('PalsScreen', () => {
     });
 
     it('should filter local pals when "local" filter is pressed', async () => {
-      const {getByText, queryByText} = render(<PalsScreen />, {
+      const {getByText, queryByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -203,7 +204,7 @@ describe('PalsScreen', () => {
 
       // Press the "Local" filter chip
       const localFilter = getByText('Local');
-      fireEvent.press(localFilter);
+      await fireEvent.press(localFilter);
 
       await waitFor(() => {
         // Local pals should be visible
@@ -216,7 +217,7 @@ describe('PalsScreen', () => {
     });
 
     it('should filter video pals when "video" filter is pressed', async () => {
-      const {getByText, queryByText} = render(<PalsScreen />, {
+      const {getByText, queryByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -229,7 +230,7 @@ describe('PalsScreen', () => {
 
       // Press the "Video" filter chip
       const videoFilter = getByText('Video');
-      fireEvent.press(videoFilter);
+      await fireEvent.press(videoFilter);
 
       await waitFor(() => {
         // Video pals should be visible
@@ -241,7 +242,7 @@ describe('PalsScreen', () => {
     });
 
     it('should filter free pals when "free" filter is pressed', async () => {
-      const {getByText, queryByText} = render(<PalsScreen />, {
+      const {getByText, queryByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -254,7 +255,7 @@ describe('PalsScreen', () => {
 
       // Press the "Free" filter chip
       const freeFilter = getByText('Free');
-      fireEvent.press(freeFilter);
+      await fireEvent.press(freeFilter);
 
       await waitFor(() => {
         // Free pals should be visible (local + free hub pals)
@@ -266,11 +267,14 @@ describe('PalsScreen', () => {
     });
 
     it('should filter premium pals when "premium" filter is pressed', async () => {
-      const {getByText, queryByText, getByTestId} = render(<PalsScreen />, {
-        withNavigation: true,
-        withSafeArea: true,
-        withBottomSheetProvider: true,
-      });
+      const {getByText, queryByText, getByTestId} = await render(
+        <PalsScreen />,
+        {
+          withNavigation: true,
+          withSafeArea: true,
+          withBottomSheetProvider: true,
+        },
+      );
 
       // Wait for initial render
       await waitFor(() => {
@@ -279,7 +283,7 @@ describe('PalsScreen', () => {
 
       // Press the "Premium" filter chip
       const premiumFilter = getByTestId('filter-chip-premium');
-      fireEvent.press(premiumFilter);
+      await fireEvent.press(premiumFilter);
 
       await waitFor(() => {
         // Premium pals should be visible
@@ -292,10 +296,10 @@ describe('PalsScreen', () => {
   });
 
   describe('Authentication State', () => {
-    it('should show auth bar when user is not authenticated', () => {
+    it('should show auth bar when user is not authenticated', async () => {
       authService.isAuthenticated = false;
 
-      const {getByTestId} = render(<PalsScreen />, {
+      const {getByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -304,10 +308,10 @@ describe('PalsScreen', () => {
       expect(getByTestId('compact-auth-bar')).toBeTruthy();
     });
 
-    it('should not show auth bar when user is authenticated', () => {
+    it('should not show auth bar when user is authenticated', async () => {
       authService.isAuthenticated = true;
 
-      const {queryByTestId} = render(<PalsScreen />, {
+      const {queryByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -319,7 +323,7 @@ describe('PalsScreen', () => {
     it('should dismiss auth bar when dismiss button is pressed', async () => {
       authService.isAuthenticated = false;
 
-      const {getByTestId, queryByTestId} = render(<PalsScreen />, {
+      const {getByTestId, queryByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -330,7 +334,7 @@ describe('PalsScreen', () => {
 
       // Find and press the dismiss button
       const dismissButton = getByTestId('dismiss-auth-bar');
-      fireEvent.press(dismissButton);
+      await fireEvent.press(dismissButton);
 
       await waitFor(() => {
         // Auth bar should be hidden
@@ -344,13 +348,14 @@ describe('PalsScreen', () => {
       palStore.pals = [
         createPal({id: 'local-1', name: 'Local Test Pal', source: 'local'}),
       ];
+
       palStore.cachedPalsHubPals = [
         createPalsHubPal({id: 'hub-1', title: 'Hub Test Pal', price_cents: 0}),
       ];
     });
 
     it('should open pal sheet when local pal is pressed', async () => {
-      const {getByText} = render(<PalsScreen />, {
+      const {getByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -362,7 +367,7 @@ describe('PalsScreen', () => {
 
       // Press the local pal card
       const palCard = getByText('Local Test Pal');
-      fireEvent.press(palCard);
+      await fireEvent.press(palCard);
 
       // PalSheet should open (we can't easily test this without mocking the sheet)
       // But we can verify the press handler was called without errors
@@ -370,7 +375,7 @@ describe('PalsScreen', () => {
     });
 
     it('should open pal detail sheet when PalsHub pal is pressed', async () => {
-      const {getByText} = render(<PalsScreen />, {
+      const {getByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -382,7 +387,7 @@ describe('PalsScreen', () => {
 
       // Press the hub pal card
       const palCard = getByText('Hub Test Pal');
-      fireEvent.press(palCard);
+      await fireEvent.press(palCard);
 
       // PalDetailSheet should open
       expect(palCard).toBeTruthy();
@@ -394,7 +399,7 @@ describe('PalsScreen', () => {
       palStore.pals = [];
       palStore.cachedPalsHubPals = [];
 
-      const {getByText} = render(<PalsScreen />, {
+      const {getByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -411,7 +416,7 @@ describe('PalsScreen', () => {
         createPalsHubPal({id: 'hub-1', title: 'Hub Pal', price_cents: 0}),
       ];
 
-      const {getByText} = render(<PalsScreen />, {
+      const {getByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -419,7 +424,7 @@ describe('PalsScreen', () => {
 
       // Press the "Local" filter
       const localFilter = getByText('Local');
-      fireEvent.press(localFilter);
+      await fireEvent.press(localFilter);
 
       await waitFor(() => {
         expect(getByText(/Create your first Pal/i)).toBeTruthy();
@@ -433,7 +438,7 @@ describe('PalsScreen', () => {
         createPal({id: 'local-1', name: 'Test Pal', source: 'local'}),
       ];
 
-      const {getByTestId} = render(<PalsScreen />, {
+      const {getByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -450,7 +455,7 @@ describe('PalsScreen', () => {
 
   describe('Bottom Action Bar', () => {
     it('should toggle search when search button is pressed', async () => {
-      const {getByTestId, queryByTestId} = render(<PalsScreen />, {
+      const {getByTestId, queryByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -461,7 +466,7 @@ describe('PalsScreen', () => {
 
       // Press search button
       const searchButton = getByTestId('bottom-action-search');
-      fireEvent.press(searchButton);
+      await fireEvent.press(searchButton);
 
       // Search should expand
       await waitFor(() => {
@@ -472,7 +477,7 @@ describe('PalsScreen', () => {
     it('should show auth sheet when profile button is pressed and user is not authenticated', async () => {
       authService.isAuthenticated = false;
 
-      const {getByTestId} = render(<PalsScreen />, {
+      const {getByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -480,7 +485,7 @@ describe('PalsScreen', () => {
 
       // Press profile button
       const profileButton = getByTestId('bottom-action-profile');
-      fireEvent.press(profileButton);
+      await fireEvent.press(profileButton);
 
       // Auth sheet should open (we can verify the button was pressed without errors)
       expect(profileButton).toBeTruthy();
@@ -489,7 +494,7 @@ describe('PalsScreen', () => {
     it('should show profile sheet when profile button is pressed and user is authenticated', async () => {
       authService.isAuthenticated = true;
 
-      const {getByTestId} = render(<PalsScreen />, {
+      const {getByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -497,7 +502,7 @@ describe('PalsScreen', () => {
 
       // Press profile button
       const profileButton = getByTestId('bottom-action-profile');
-      fireEvent.press(profileButton);
+      await fireEvent.press(profileButton);
 
       // Profile sheet should open (we can verify the button was pressed without errors)
       expect(profileButton).toBeTruthy();
@@ -509,11 +514,12 @@ describe('PalsScreen', () => {
       palStore.pals = [
         createPal({id: 'local-1', name: 'Test Pal', source: 'local'}),
       ];
+
       palStore.cachedPalsHubPals = [
         createPalsHubPal({id: 'hub-1', title: 'Hub Pal', price_cents: 0}),
       ];
 
-      const {getByText} = render(<PalsScreen />, {
+      const {getByText} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -530,11 +536,12 @@ describe('PalsScreen', () => {
       palStore.pals = [
         createPal({id: 'local-1', name: 'Local Pal', source: 'local'}),
       ];
+
       palStore.userLibrary = [
         createPalsHubPal({id: 'lib-1', title: 'Library Pal', price_cents: 0}),
       ];
 
-      const {getByText, queryByTestId} = render(<PalsScreen />, {
+      const {getByText, queryByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -554,7 +561,7 @@ describe('PalsScreen', () => {
         createPal({id: 'local-1', name: 'Local Pal', source: 'local'}),
       ];
 
-      const {getByText, getByTestId} = render(<PalsScreen />, {
+      const {getByText, getByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -574,32 +581,48 @@ describe('PalsScreen', () => {
       createPal({id, name: `Grid Pal ${id}`, source: 'local'}),
     );
 
-    const renderScreen = () =>
-      render(<PalsScreen />, {
+    const renderScreen = async () =>
+      await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
       });
 
-    afterEach(() => {
-      act(() => {
+    afterEach(async () => {
+      await act(() => {
         setWindowWidth(750);
       });
     });
 
-    it('reflows the flat list on a width change without remounting it', () => {
+    // PalGridRow renders a host View with the row style; each cell is a host
+    // View whose style array starts with the cell style and whose flattened
+    // width is the card width (same pattern as PalGridRow.test.tsx).
+    const gridRows = () =>
+      screen.container.queryAll(
+        (n: any) => n.type === 'View' && n.props.style === palGridRowStyles.row,
+      );
+    const rowCells = (row: any) =>
+      row.queryAll(
+        (n: any) =>
+          n.type === 'View' &&
+          Array.isArray(n.props.style) &&
+          n.props.style[0] === palGridRowStyles.cell,
+      );
+    const rowCardWidth = (row: any) =>
+      StyleSheet.flatten(rowCells(row)[0].props.style).width;
+
+    it('reflows the flat list on a width change without remounting it', async () => {
       palStore.pals = fiveLocalPals;
       setWindowWidth(360);
 
-      const {getByTestId, UNSAFE_getAllByType} = renderScreen();
-      const firstRowSize = () =>
-        UNSAFE_getAllByType(PalGridRow)[0].props.row.items.length;
+      const {getByTestId} = await renderScreen();
+      const firstRowSize = () => rowCells(gridRows()[0]).length;
 
       const flatList = getByTestId('pals-flat-list');
       expect(flatList.props.numColumns).toBeUndefined();
       expect(firstRowSize()).toBe(2);
 
-      act(() => {
+      await act(() => {
         setWindowWidth(800);
       });
 
@@ -613,23 +636,22 @@ describe('PalsScreen', () => {
       palStore.cachedPalsHubPals = [
         createPalsHubPal({id: 'hub-1', title: 'Hub Pal', price_cents: 0}),
       ];
+
       setWindowWidth(800);
 
-      const {getByText, UNSAFE_getAllByType} = renderScreen();
+      const {getByText} = await renderScreen();
 
-      const sectionedRows = UNSAFE_getAllByType(PalGridRow);
-      expect(sectionedRows[0].props.row.items).toHaveLength(4);
-      expect(sectionedRows[1].props.row.items).toHaveLength(1);
-      sectionedRows.forEach(row =>
-        expect(row.props.cardWidth).toBeCloseTo(180),
-      );
+      const sectionedRows = gridRows();
+      expect(rowCells(sectionedRows[0])).toHaveLength(4);
+      expect(rowCells(sectionedRows[1])).toHaveLength(1);
+      sectionedRows.forEach(row => expect(rowCardWidth(row)).toBeCloseTo(180));
 
-      fireEvent.press(getByText('Local'));
+      await fireEvent.press(getByText('Local'));
 
       await waitFor(() => {
-        const flatRows = UNSAFE_getAllByType(PalGridRow);
-        expect(flatRows.map(row => row.props.row.items.length)).toEqual([4, 1]);
-        flatRows.forEach(row => expect(row.props.cardWidth).toBeCloseTo(180));
+        const flatRows = gridRows();
+        expect(flatRows.map(row => rowCells(row).length)).toEqual([4, 1]);
+        flatRows.forEach(row => expect(rowCardWidth(row)).toBeCloseTo(180));
       });
     });
   });
@@ -642,26 +664,26 @@ describe('PalsScreen', () => {
       runInAction(() => purchaseStore.reset());
     });
 
-    it('shows Restore purchases as the list footer when billing is ready', () => {
+    it('shows Restore purchases as the list footer when billing is ready', async () => {
       runInAction(() => {
         purchaseStore.availability = 'ready';
       });
-      const {getByTestId} = render(<PalsScreen />, {
+      const {getByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
       });
-      fireEvent.press(getByTestId('restore-purchases-row'));
+      await fireEvent.press(getByTestId('restore-purchases-row'));
       expect(purchaseStore.restore).toHaveBeenCalled();
     });
 
     it.each(['initializing', 'unavailable'])(
       'hides the restore row while billing is %s',
-      availability => {
+      async availability => {
         runInAction(() => {
           purchaseStore.availability = availability;
         });
-        const {queryByTestId} = render(<PalsScreen />, {
+        const {queryByTestId} = await render(<PalsScreen />, {
           withNavigation: true,
           withSafeArea: true,
           withBottomSheetProvider: true,
@@ -670,7 +692,7 @@ describe('PalsScreen', () => {
       },
     );
 
-    it('lists a store-owned Pal that is not installed while signed out', () => {
+    it('lists a store-owned Pal that is not installed while signed out', async () => {
       runInAction(() => {
         purchaseStore.records['store-pal'] = {
           palId: 'store-pal',
@@ -682,7 +704,7 @@ describe('PalsScreen', () => {
           updatedAt: 1,
         };
       });
-      const {getByTestId} = render(<PalsScreen />, {
+      const {getByTestId} = await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -709,8 +731,8 @@ describe('PalsScreen', () => {
       return out;
     };
 
-    const renderSections = () =>
-      render(<PalsScreen />, {
+    const renderSections = async () =>
+      await render(<PalsScreen />, {
         withNavigation: true,
         withSafeArea: true,
         withBottomSheetProvider: true,
@@ -721,9 +743,11 @@ describe('PalsScreen', () => {
         palStore.pals = [
           createPal({id: 'mine', name: 'Mine', source: 'local'}),
         ];
+
         palStore.cachedPalsHubPals = [
           createPalsHubPal({id: 'hub-listed', title: 'Listed'}),
         ];
+
         purchaseStore.records['store-pal'] = {
           palId: 'store-pal',
           source: 'store',
@@ -735,9 +759,9 @@ describe('PalsScreen', () => {
         };
       });
 
-    it('keeps store purchases out of the account library section when signed out', () => {
+    it('keeps store purchases out of the account library section when signed out', async () => {
       addStorePurchase();
-      const {getByText, queryByText, toJSON} = renderSections();
+      const {getByText, queryByText, toJSON} = await renderSections();
 
       expect(getByText('My Pals (local)')).toBeTruthy();
       expect(queryByText('My Library (palshub.ai)')).toBeNull();
@@ -747,7 +771,7 @@ describe('PalsScreen', () => {
       );
     });
 
-    it('lists only account Pals under the library section when signed in', () => {
+    it('lists only account Pals under the library section when signed in', async () => {
       authService.isAuthenticated = true;
       addStorePurchase();
       runInAction(() => {
@@ -755,7 +779,7 @@ describe('PalsScreen', () => {
           createPalsHubPal({id: 'lib-pal', title: 'Library Pal'}),
         ];
       });
-      const {getByText, toJSON} = renderSections();
+      const {getByText, toJSON} = await renderSections();
 
       expect(getByText('My Library (palshub.ai)')).toBeTruthy();
       const tree = flatten(toJSON());
@@ -779,6 +803,7 @@ describe('PalsScreen', () => {
               palshub_id: 'store-pal',
             }),
           ];
+
           palStore.cachedPalsHubPals = listed
             ? [createPalsHubPal({id: 'store-pal', title: 'Listed title'})]
             : [];
@@ -800,10 +825,10 @@ describe('PalsScreen', () => {
 
       it('opens the detail sheet with the listing Pal', async () => {
         withPendingUpdate(true);
-        const {getByTestId, getAllByText} = renderSections();
+        const {getByTestId, getAllByText} = await renderSections();
         const before = getAllByText('Listed title').length;
 
-        fireEvent.press(
+        await fireEvent.press(
           within(getByTestId('local-pal-card-local-store')).getByTestId(
             'pal-badge-update',
           ),
@@ -816,10 +841,10 @@ describe('PalsScreen', () => {
 
       it('opens the detail sheet from the card update accessibility action', async () => {
         withPendingUpdate(true);
-        const {getByTestId, getAllByText} = renderSections();
+        const {getByTestId, getAllByText} = await renderSections();
         const before = getAllByText('Listed title').length;
 
-        fireEvent(
+        await fireEvent(
           getByTestId('local-pal-card-local-store'),
           'accessibilityAction',
           {
@@ -834,10 +859,10 @@ describe('PalsScreen', () => {
 
       it('opens the detail sheet with the pending Pal when the listing lacks it', async () => {
         withPendingUpdate(false);
-        const {getByTestId, queryByText, getAllByText} = renderSections();
+        const {getByTestId, queryByText, getAllByText} = await renderSections();
         expect(queryByText('New title')).toBeNull();
 
-        fireEvent.press(getByTestId('pal-badge-update'));
+        await fireEvent.press(getByTestId('pal-badge-update'));
 
         await waitFor(() =>
           expect(getAllByText('New title').length).toBeGreaterThan(0),

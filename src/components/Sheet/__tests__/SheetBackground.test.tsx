@@ -8,8 +8,8 @@ import {SheetBackground} from '../SheetBackground';
 const sharedValue = {value: 0} as SharedValue<number>;
 
 describe('SheetBackground', () => {
-  it('keeps touches gorhom would pass through, so a tap inside the sheet never reaches the backdrop', () => {
-    const {getByLabelText} = render(
+  it('keeps touches gorhom would pass through, so a tap inside the sheet never reaches the backdrop', async () => {
+    const {getByLabelText} = await render(
       <SheetBackground
         pointerEvents="none"
         style={{backgroundColor: 'red'}}
@@ -21,8 +21,8 @@ describe('SheetBackground', () => {
     expect(getByLabelText('Bottom Sheet').props.pointerEvents).toBeUndefined();
   });
 
-  it("matches gorhom's default background, with the caller's style on top", () => {
-    const {getByLabelText} = render(
+  it("matches gorhom's default background, with the caller's style on top", async () => {
+    const {getByLabelText} = await render(
       <SheetBackground
         style={{backgroundColor: 'red'}}
         animatedIndex={sharedValue}

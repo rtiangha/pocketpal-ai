@@ -5,8 +5,8 @@ import {Label} from '../Label';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('Label', () => {
-  it('defaults to testID=ui-label and role=text', () => {
-    const {getByTestId} = render(<Label label="Beta" />);
+  it('defaults to testID=ui-label and role=text', async () => {
+    const {getByTestId} = await render(<Label label="Beta" />);
     expect(getByTestId('ui-label').props.accessibilityRole).toBe('text');
   });
 });

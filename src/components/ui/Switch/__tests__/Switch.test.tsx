@@ -5,15 +5,15 @@ import {Switch} from '../Switch';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('Switch', () => {
-  it('defaults to testID=ui-switch', () => {
-    const {getByTestId} = render(
+  it('defaults to testID=ui-switch', async () => {
+    const {getByTestId} = await render(
       <Switch value={false} onValueChange={() => {}} accessibilityLabel="x" />,
     );
     expect(getByTestId('ui-switch')).toBeTruthy();
   });
 
-  it('forwards accessibilityLabel to Paper Switch', () => {
-    const {getByLabelText} = render(
+  it('forwards accessibilityLabel to Paper Switch', async () => {
+    const {getByLabelText} = await render(
       <Switch
         value
         onValueChange={() => {}}

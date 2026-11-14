@@ -10,8 +10,8 @@ jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => {
 });
 
 describe('ToolErrorBlock', () => {
-  it('renders the error block with name + message when message provided', () => {
-    const {getByTestId, getByText} = render(
+  it('renders the error block with name + message when message provided', async () => {
+    const {getByTestId, getByText} = await render(
       <ToolErrorBlock toolName="render_html" errorMessage="invalid markup" />,
     );
     expect(getByTestId('tool-error-block')).toBeTruthy();
@@ -20,16 +20,16 @@ describe('ToolErrorBlock', () => {
     expect(getByText('alert-circle-outline')).toBeTruthy();
   });
 
-  it('renders the error block without a message line when errorMessage missing', () => {
-    const {getByText, queryByTestId} = render(
+  it('renders the error block without a message line when errorMessage missing', async () => {
+    const {getByText, queryByTestId} = await render(
       <ToolErrorBlock toolName="datetime" />,
     );
     expect(getByText('datetime failed')).toBeTruthy();
     expect(queryByTestId('tool-error-block-message')).toBeNull();
   });
 
-  it('renders nothing when toolName is empty', () => {
-    const {queryByTestId} = render(<ToolErrorBlock toolName="" />);
+  it('renders nothing when toolName is empty', async () => {
+    const {queryByTestId} = await render(<ToolErrorBlock toolName="" />);
     expect(queryByTestId('tool-error-block')).toBeNull();
   });
 });

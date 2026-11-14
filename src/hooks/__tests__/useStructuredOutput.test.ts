@@ -1,4 +1,4 @@
-import {renderHook, act} from '@testing-library/react-hooks';
+import {renderHook, act} from '@testing-library/react-native';
 import {useStructuredOutput} from '../useStructuredOutput';
 import {modelStore} from '../../store';
 import {GenerationSlot} from '../../store/generationLease';
@@ -51,7 +51,7 @@ describe('useStructuredOutput', () => {
     const mockResponse = {text: '{"key": "value"}'};
     store.engine.completion.mockResolvedValueOnce(mockResponse);
 
-    const {result} = renderHook(() => useStructuredOutput());
+    const {result} = await renderHook(() => useStructuredOutput());
 
     const prompt = 'test prompt';
     const schema = {type: 'object', properties: {key: {type: 'string'}}};
@@ -86,7 +86,7 @@ describe('useStructuredOutput', () => {
     const mockResponse = {text: '{"key": "value"}'};
     store.engine.completion.mockResolvedValueOnce(mockResponse);
 
-    const {result} = renderHook(() => useStructuredOutput());
+    const {result} = await renderHook(() => useStructuredOutput());
 
     const options = {
       temperature: 0.5,
@@ -112,7 +112,7 @@ describe('useStructuredOutput', () => {
     const mockResponse = {text: 'invalid json'};
     store.engine.completion.mockResolvedValueOnce(mockResponse);
 
-    const {result} = renderHook(() => useStructuredOutput());
+    const {result} = await renderHook(() => useStructuredOutput());
 
     let output;
     await act(async () => {
@@ -126,7 +126,7 @@ describe('useStructuredOutput', () => {
   it('rejects with modelNotInitialized when there is no engine and nothing runs', async () => {
     store.engine = undefined;
 
-    const {result} = renderHook(() => useStructuredOutput());
+    const {result} = await renderHook(() => useStructuredOutput());
 
     let error: any;
     await act(async () => {
@@ -147,7 +147,7 @@ describe('useStructuredOutput', () => {
     const errorMessage = 'Completion failed';
     store.engine.completion.mockRejectedValueOnce(new Error(errorMessage));
 
-    const {result} = renderHook(() => useStructuredOutput());
+    const {result} = await renderHook(() => useStructuredOutput());
 
     let error: any;
     await act(async () => {
@@ -172,9 +172,9 @@ describe('useStructuredOutput', () => {
       const pending = deferred<{text: string}>();
       const granted = store.engine;
       granted.completion.mockReturnValueOnce(pending.promise);
-      const hook = renderHook(() => useStructuredOutput());
+      const hook = await renderHook(() => useStructuredOutput());
       let output: Promise<unknown>;
-      act(() => {
+      await act(() => {
         output = hook.result.current.generate('test', {});
       });
       return {hook, granted, pending, output: () => output};
@@ -187,7 +187,7 @@ describe('useStructuredOutput', () => {
 
       const swapped = makeEngine();
       store.engine = swapped;
-      act(() => hook.result.current.stop());
+      await act(() => hook.result.current.stop());
       expect(granted.stopCompletion).toHaveBeenCalledTimes(1);
       expect(swapped.stopCompletion).not.toHaveBeenCalled();
 
@@ -207,7 +207,7 @@ describe('useStructuredOutput', () => {
     it('stop() ends the completion once and keeps the partial result', async () => {
       const {hook, granted, pending, output} = await startGeneration();
 
-      act(() => hook.result.current.stop());
+      await act(() => hook.result.current.stop());
       let result: unknown;
       await act(async () => {
         pending.resolve({text: '{"prompt": "partial"}'});
@@ -221,7 +221,7 @@ describe('useStructuredOutput', () => {
     it('cancel() ends the completion once and returns nothing', async () => {
       const {hook, granted, pending, output} = await startGeneration();
 
-      act(() => hook.result.current.cancel());
+      await act(() => hook.result.current.cancel());
       let result: unknown = 'unset';
       await act(async () => {
         pending.resolve({text: '{"prompt": "partial"}'});
@@ -235,7 +235,7 @@ describe('useStructuredOutput', () => {
     it('unmounting ends the completion once and returns nothing', async () => {
       const {hook, granted, pending, output} = await startGeneration();
 
-      hook.unmount();
+      await hook.unmount();
       pending.resolve({text: '{"prompt": "partial"}'});
       const result = await output();
 
@@ -264,7 +264,7 @@ describe('useStructuredOutput', () => {
         throw new Error('Context not found');
       });
 
-      expect(() => act(() => hook.result.current.stop())).not.toThrow();
+      await act(() => hook.result.current.stop());
       expect(() => modelStore.abortActiveGeneration()).not.toThrow();
 
       await act(async () => {
@@ -276,7 +276,7 @@ describe('useStructuredOutput', () => {
 
     it('generates nothing while another generation holds the lease', async () => {
       const held = modelStore.tryAcquireGeneration();
-      const {result} = renderHook(() => useStructuredOutput());
+      const {result} = await renderHook(() => useStructuredOutput());
 
       let output: unknown = 'unset';
       await act(async () => {
@@ -289,16 +289,16 @@ describe('useStructuredOutput', () => {
       expect(result.current.isBusy).toBe(true);
       expect(result.current.isGenerating).toBe(false);
 
-      act(() => result.current.cancel());
+      await act(() => result.current.cancel());
       expect(result.current.isBusy).toBe(false);
       held?.end();
     });
 
     it('cancel() with nothing running does not swallow the next result', async () => {
       store.engine.completion.mockResolvedValueOnce({text: '{"prompt": "p"}'});
-      const {result} = renderHook(() => useStructuredOutput());
+      const {result} = await renderHook(() => useStructuredOutput());
 
-      act(() => result.current.cancel());
+      await act(() => result.current.cancel());
       let output: unknown;
       await act(async () => {
         output = await result.current.generate('test', {});

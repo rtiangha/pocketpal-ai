@@ -81,7 +81,7 @@ describe('useVoiceCapture', () => {
   });
 
   async function startRecording(onTranscript = jest.fn()) {
-    const hook = renderHook(() => useVoiceCapture({onTranscript}));
+    const hook = await renderHook(() => useVoiceCapture({onTranscript}));
     await act(async () => {
       hook.result.current.start();
     });
@@ -93,7 +93,7 @@ describe('useVoiceCapture', () => {
     const {result, onTranscript} = await startRecording();
 
     const chunk = loudPcmChunkBase64();
-    act(() => {
+    await act(() => {
       dataCallback?.(chunk);
     });
     await act(async () => {
@@ -116,7 +116,7 @@ describe('useVoiceCapture', () => {
 
   it('refuses to record when the models need more than total RAM', async () => {
     mockMemoryFit.mockResolvedValue({status: 'wont_fit', neededBytes: 9e9});
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
 
@@ -147,7 +147,9 @@ describe('useVoiceCapture', () => {
     });
 
     async function openAlert() {
-      const hook = renderHook(() => useVoiceCapture({onTranscript: jest.fn()}));
+      const hook = await renderHook(() =>
+        useVoiceCapture({onTranscript: jest.fn()}),
+      );
       await act(async () => {
         hook.result.current.start();
       });
@@ -253,7 +255,7 @@ describe('useVoiceCapture', () => {
     it('Try anyway after unmount starts nothing', async () => {
       const {buttons, unmount} = await openAlert();
 
-      unmount();
+      await unmount();
       await act(async () => {
         buttons[1].onPress?.();
       });
@@ -270,7 +272,7 @@ describe('useVoiceCapture', () => {
     mockTranscribe.mockResolvedValue(said('hallo', 'de'));
     const first = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -279,10 +281,10 @@ describe('useVoiceCapture', () => {
     await waitFor(() => expect(first.onTranscript).toHaveBeenCalled());
     expect(mockTranscribe.mock.calls[0][1]).toEqual({tier: 'small'});
     expect(asrStore.setSpokenLanguage).toHaveBeenCalledWith('de');
-    first.unmount();
+    await first.unmount();
 
     const second = await startRecording();
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -302,7 +304,7 @@ describe('useVoiceCapture', () => {
     });
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -322,7 +324,7 @@ describe('useVoiceCapture', () => {
     mockTranscribe.mockResolvedValue(said('', 'ja'));
     const {result} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -338,7 +340,7 @@ describe('useVoiceCapture', () => {
     modelStore.context = {gpu: false} as any;
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -349,7 +351,7 @@ describe('useVoiceCapture', () => {
     expect(asrStore.captureState).toBe('transcribing');
     expect(mockTranscribe).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(() => {
       modelStore.inferencing = false;
     });
 
@@ -364,7 +366,7 @@ describe('useVoiceCapture', () => {
     modelStore.context = {gpu: true} as any;
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -382,7 +384,7 @@ describe('useVoiceCapture', () => {
     modelStore.context = {gpu: false} as any;
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -390,10 +392,10 @@ describe('useVoiceCapture', () => {
     });
     await waitFor(() => expect(asrStore.waitingForChat).toBe(true));
 
-    act(() => {
+    await act(() => {
       result.current.cancel();
     });
-    act(() => {
+    await act(() => {
       modelStore.inferencing = false;
     });
 
@@ -410,7 +412,7 @@ describe('useVoiceCapture', () => {
       .mockResolvedValueOnce(said('second part'));
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(longSpeechPcmBase64());
       dataCallback?.(silentPcmChunkBase64());
     });
@@ -422,7 +424,7 @@ describe('useVoiceCapture', () => {
       prompt: undefined,
     });
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -445,14 +447,14 @@ describe('useVoiceCapture', () => {
     mockTranscribe.mockRejectedValueOnce(new Error('decode failed'));
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(longSpeechPcmBase64());
       dataCallback?.(silentPcmChunkBase64());
     });
     await waitFor(() => expect(mockTranscribe).toHaveBeenCalledTimes(1));
     expect(asrStore.setError).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -469,7 +471,7 @@ describe('useVoiceCapture', () => {
   it('releases the model on cancel', async () => {
     const {result} = await startRecording();
 
-    act(() => {
+    await act(() => {
       result.current.cancel();
     });
 
@@ -479,11 +481,11 @@ describe('useVoiceCapture', () => {
   it('publishes the peak loudness of every two captured chunks', async () => {
     await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     expect(asrStore.pushInputLevel).not.toHaveBeenCalled();
-    act(() => {
+    await act(() => {
       dataCallback?.(silentPcmChunkBase64());
     });
 
@@ -519,7 +521,7 @@ describe('useVoiceCapture', () => {
     it('reports mic_unavailable and releases capture', async () => {
       await startRecording();
 
-      act(() => {
+      await act(() => {
         jest.advanceTimersByTime(ASR_NO_AUDIO_MS);
       });
 
@@ -530,7 +532,7 @@ describe('useVoiceCapture', () => {
     it('stays quiet once silent audio arrives', async () => {
       await startRecording();
 
-      act(() => {
+      await act(() => {
         dataCallback?.(silentPcmChunkBase64());
         jest.advanceTimersByTime(ASR_NO_AUDIO_MS);
       });
@@ -544,7 +546,7 @@ describe('useVoiceCapture', () => {
     mockTranscribe.mockResolvedValue(said(''));
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -560,11 +562,11 @@ describe('useVoiceCapture', () => {
   it('discards the capture on cancel while recording', async () => {
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     mockAudioStop.mockClear();
-    act(() => {
+    await act(() => {
       result.current.cancel();
     });
 
@@ -589,7 +591,7 @@ describe('useVoiceCapture', () => {
     );
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -597,7 +599,7 @@ describe('useVoiceCapture', () => {
     });
     expect(asrStore.captureState).toBe('transcribing');
 
-    act(() => {
+    await act(() => {
       result.current.cancel();
     });
     expect(mockCancelTranscription).toHaveBeenCalled();
@@ -618,14 +620,14 @@ describe('useVoiceCapture', () => {
           resolvePerm = resolve;
         }),
     );
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
 
     await act(async () => {
       result.current.start();
     });
-    act(() => {
+    await act(() => {
       result.current.cancel();
     });
     await act(async () => {
@@ -639,7 +641,7 @@ describe('useVoiceCapture', () => {
   it('routes to error and never records when permission is denied', async () => {
     mockEnsureMicPermission.mockResolvedValue('denied');
     const onTranscript = jest.fn();
-    const {result} = renderHook(() => useVoiceCapture({onTranscript}));
+    const {result} = await renderHook(() => useVoiceCapture({onTranscript}));
 
     await act(async () => {
       result.current.start();
@@ -653,7 +655,7 @@ describe('useVoiceCapture', () => {
 
   it('maps a blocked permission to permission_blocked', async () => {
     mockEnsureMicPermission.mockResolvedValue('blocked');
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
 
@@ -669,7 +671,7 @@ describe('useVoiceCapture', () => {
 
   it('does not start capture when the gate is closed', async () => {
     asrStore.userASROverride = false;
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
 
@@ -695,7 +697,7 @@ describe('useVoiceCapture', () => {
 
   it('re-arms and records on a start right after an error', async () => {
     mockEnsureMicPermission.mockResolvedValueOnce('denied');
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
 
@@ -714,7 +716,7 @@ describe('useVoiceCapture', () => {
 
   it('aborts cleanly when audio init rejects', async () => {
     mockAudioInit.mockRejectedValueOnce(new Error('init failed'));
-    const {result} = renderHook(() =>
+    const {result} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
 
@@ -732,7 +734,7 @@ describe('useVoiceCapture', () => {
     mockTranscribe.mockRejectedValueOnce(new Error('decode failed'));
     const {result, onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -755,11 +757,11 @@ describe('useVoiceCapture', () => {
       });
     const {onTranscript} = await startRecording();
 
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     mockAudioStop.mockClear();
-    act(() => {
+    await act(() => {
       appStateHandler?.('background');
     });
 
@@ -774,7 +776,7 @@ describe('useVoiceCapture', () => {
     const {unmount} = await startRecording();
     mockAudioStop.mockClear();
 
-    unmount();
+    await unmount();
     expect(mockAudioStop).toHaveBeenCalled();
   });
 
@@ -786,7 +788,7 @@ describe('useVoiceCapture', () => {
           resolvePerm = resolve;
         }),
     );
-    const {result, unmount} = renderHook(() =>
+    const {result, unmount} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
     await act(async () => {
@@ -794,7 +796,7 @@ describe('useVoiceCapture', () => {
     });
     expect(asrStore.captureState).toBe('requesting_perm');
 
-    unmount();
+    await unmount();
     expect(asrStore.resetCapture).toHaveBeenCalled();
     await act(async () => {
       resolvePerm?.('granted');
@@ -813,14 +815,14 @@ describe('useVoiceCapture', () => {
           resolveFit = resolve;
         }),
     );
-    const {result, unmount} = renderHook(() =>
+    const {result, unmount} = await renderHook(() =>
       useVoiceCapture({onTranscript: jest.fn()}),
     );
     await act(async () => {
       result.current.start();
     });
 
-    unmount();
+    await unmount();
     await act(async () => {
       resolveFit?.({status: 'tight', neededBytes: 5e9});
     });
@@ -833,7 +835,7 @@ describe('useVoiceCapture', () => {
   it('unmount while transcribing stops whisper and rests the mic', async () => {
     mockTranscribe.mockImplementation(() => new Promise(() => {}));
     const {result, unmount} = await startRecording();
-    act(() => {
+    await act(() => {
       dataCallback?.(loudPcmChunkBase64());
     });
     await act(async () => {
@@ -841,17 +843,19 @@ describe('useVoiceCapture', () => {
     });
     expect(asrStore.captureState).toBe('transcribing');
 
-    unmount();
+    await unmount();
 
     expect(mockCancelTranscription).toHaveBeenCalled();
     expect(asrStore.captureState).toBe('idle');
   });
 
   it("unmounting another instance leaves this one's capture alone", async () => {
-    const other = renderHook(() => useVoiceCapture({onTranscript: jest.fn()}));
+    const other = await renderHook(() =>
+      useVoiceCapture({onTranscript: jest.fn()}),
+    );
     await startRecording();
 
-    other.unmount();
+    await other.unmount();
 
     expect(asrStore.resetCapture).not.toHaveBeenCalled();
     expect(asrStore.captureState).toBe('recording');
@@ -859,13 +863,13 @@ describe('useVoiceCapture', () => {
 
   it('an instance whose capture ended does not cancel a newer one on unmount', async () => {
     const first = await startRecording();
-    act(() => {
+    await act(() => {
       first.result.current.cancel();
     });
     await startRecording();
     (asrStore.resetCapture as jest.Mock).mockClear();
 
-    first.unmount();
+    await first.unmount();
 
     expect(asrStore.resetCapture).not.toHaveBeenCalled();
     expect(asrStore.captureState).toBe('recording');

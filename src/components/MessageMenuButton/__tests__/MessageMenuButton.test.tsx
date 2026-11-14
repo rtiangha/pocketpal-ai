@@ -1,7 +1,7 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
 
-import {fireEvent, render} from '../../../../jest/test-utils';
+import {fireEvent, render, screen} from '../../../../jest/test-utils';
 import {l10n} from '../../../locales';
 
 import {MessageMenuButton} from '../MessageMenuButton';
@@ -11,8 +11,8 @@ const FOOTPRINT_WIDTH = 25;
 const FOOTPRINT_HEIGHT = 16;
 
 describe('MessageMenuButton', () => {
-  it('is an accessible button with a localized label', () => {
-    const {getByTestId} = render(<MessageMenuButton />);
+  it('is an accessible button with a localized label', async () => {
+    const {getByTestId} = await render(<MessageMenuButton />);
     const button = getByTestId('message-menu-button');
 
     expect(button.props.accessibilityRole).toBe('button');
@@ -21,8 +21,8 @@ describe('MessageMenuButton', () => {
     );
   });
 
-  it('is a 44 dp layout box that keeps the 25 x 16 dp footprint', () => {
-    const {getByTestId} = render(<MessageMenuButton />);
+  it('is a 44 dp layout box that keeps the 25 x 16 dp footprint', async () => {
+    const {getByTestId} = await render(<MessageMenuButton />);
     const button = getByTestId('message-menu-button');
     const style = StyleSheet.flatten(button.props.style) ?? {};
 
@@ -44,36 +44,55 @@ describe('MessageMenuButton', () => {
     expect(button.props.hitSlop).toBeUndefined();
   });
 
-  it('calls onPress at the press point', () => {
+  it('calls onPress at the press point', async () => {
     const onPress = jest.fn();
-    const {getByTestId} = render(<MessageMenuButton onPress={onPress} />);
+    const {getByTestId} = await render(<MessageMenuButton onPress={onPress} />);
 
-    fireEvent.press(getByTestId('message-menu-button'), {
+    await fireEvent.press(getByTestId('message-menu-button'), {
       nativeEvent: {pageX: 1, pageY: 2},
     });
 
     expect(onPress).toHaveBeenCalledWith({nativeEvent: {pageX: 1, pageY: 2}});
   });
 
+  // RNTL v14 fireEvent.press deep-merges a default touch event with
+  // pageX/pageY 0, so the no-point cases must set them to undefined
+  // explicitly to exercise the measure fallback.
   it.each([
-    ['an empty click event', {nativeEvent: {}}],
-    ['no event', undefined],
+    [
+      'an empty click event',
+      {nativeEvent: {pageX: undefined, pageY: undefined}},
+    ],
+    ['no event', {nativeEvent: {pageX: undefined, pageY: undefined}}],
   ])(
     'calls onPress at the button centre for %s (TalkBack, Switch Access, keyboard)',
-    (_case, event) => {
+    async (_case, event) => {
       const onPress = jest.fn();
-      const {UNSAFE_root, getByTestId} = render(
+      const {getByTestId} = await render(
         <MessageMenuButton onPress={onPress} />,
       );
-      const native = UNSAFE_root.find(
-        (n: any) =>
-          typeof n.instance?.measure === 'function' &&
-          n.props.testID === 'message-menu-button',
-      ).instance;
+      // RNTL v14 TestInstance has no `.instance`. The ref target (the
+      // object with `measure`) is the nearest ancestor fiber whose
+      // stateNode has one — for a TouchableOpacity that is the
+      // Animated.View class instance above the host View.
+      const native = (() => {
+        const found = screen.container.queryAll(
+          (n: any) => n.props.testID === 'message-menu-button',
+        )[0] as any;
+        let fiber = found?.unstable_fiber;
+        while (fiber) {
+          const sn = fiber.stateNode;
+          if (sn && typeof sn.measure === 'function') {
+            return sn;
+          }
+          fiber = fiber.return;
+        }
+        return undefined;
+      })();
       native.measure = (cb: (...args: number[]) => void) =>
         cb(0, 0, 44, 44, 300, 500);
 
-      fireEvent.press(getByTestId('message-menu-button'), event);
+      await fireEvent.press(getByTestId('message-menu-button'), event);
 
       expect(onPress).toHaveBeenCalledWith({
         nativeEvent: {pageX: 322, pageY: 522},

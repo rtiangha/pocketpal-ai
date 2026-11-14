@@ -6,20 +6,22 @@ import {Header} from '../Header';
 import {runSnapshotMatrix} from '../../__tests__/helpers/snapshotMatrix';
 
 describe('Header', () => {
-  it('defaults to testID=ui-header and accessibilityRole=header', () => {
-    const {getByTestId} = render(<Header title="Hello" />);
+  it('defaults to testID=ui-header and accessibilityRole=header', async () => {
+    const {getByTestId} = await render(<Header title="Hello" />);
     const el = getByTestId('ui-header');
     expect(el.props.accessibilityRole).toBe('header');
   });
 
-  it('renders title and subtitle when both are provided', () => {
-    const {getByText} = render(<Header title="Title" subtitle="Subtitle" />);
+  it('renders title and subtitle when both are provided', async () => {
+    const {getByText} = await render(
+      <Header title="Title" subtitle="Subtitle" />,
+    );
     expect(getByText('Title')).toBeTruthy();
     expect(getByText('Subtitle')).toBeTruthy();
   });
 
-  it('renders leading and trailing slots', () => {
-    const {getByText} = render(
+  it('renders leading and trailing slots', async () => {
+    const {getByText} = await render(
       <Header
         title="Title"
         leading={<Text>L</Text>}

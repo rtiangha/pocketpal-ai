@@ -17,14 +17,15 @@ describe('ModelNotAvailable', () => {
     modelStore.models = modelsList;
   });
 
-  it('should show message when no models are downloaded', () => {
+  it('should show message when no models are downloaded', async () => {
     modelStore.models = [];
-    const {getByText} = render(
+    const {getByText} = await render(
       <ModelNotAvailable
         model={undefined}
         currentlySelectedModel={undefined}
         closeSheet={mockCloseSheet}
       />,
+
       {withNavigation: true},
     );
 
@@ -36,13 +37,14 @@ describe('ModelNotAvailable', () => {
     expect(getByText('Download a model')).toBeTruthy();
   });
 
-  it('should show download button when specific model is not downloaded', () => {
-    const {getByText} = render(
+  it('should show download button when specific model is not downloaded', async () => {
+    const {getByText} = await render(
       <ModelNotAvailable
         model={basicModel}
         currentlySelectedModel={undefined}
         closeSheet={mockCloseSheet}
       />,
+
       {withNavigation: true},
     );
 
@@ -54,13 +56,14 @@ describe('ModelNotAvailable', () => {
     expect(getByText('Download')).toBeTruthy();
   });
 
-  it('should show progress bar when model is being downloaded', () => {
-    const {getByTestId, getByText} = render(
+  it('should show progress bar when model is being downloaded', async () => {
+    const {getByTestId, getByText} = await render(
       <ModelNotAvailable
         model={downloadingModel}
         currentlySelectedModel={undefined}
         closeSheet={mockCloseSheet}
       />,
+
       {withNavigation: true},
     );
 
@@ -68,47 +71,50 @@ describe('ModelNotAvailable', () => {
     expect(getByText('Cancel download')).toBeTruthy();
   });
 
-  it('should call cancelDownload when cancel button is pressed', () => {
-    const {getByText} = render(
+  it('should call cancelDownload when cancel button is pressed', async () => {
+    const {getByText} = await render(
       <ModelNotAvailable
         model={downloadingModel}
         currentlySelectedModel={undefined}
         closeSheet={mockCloseSheet}
       />,
+
       {withNavigation: true},
     );
 
-    fireEvent.press(getByText('Cancel download'));
+    await fireEvent.press(getByText('Cancel download'));
     expect(modelStore.cancelDownload).toHaveBeenCalledWith(downloadingModel.id);
   });
 
-  it('should call checkSpaceAndDownload when download button is pressed', () => {
-    const {getByText} = render(
+  it('should call checkSpaceAndDownload when download button is pressed', async () => {
+    const {getByText} = await render(
       <ModelNotAvailable
         model={basicModel}
         currentlySelectedModel={undefined}
         closeSheet={mockCloseSheet}
       />,
+
       {withNavigation: true},
     );
 
-    fireEvent.press(getByText('Download'));
+    await fireEvent.press(getByText('Download'));
     expect(modelStore.checkSpaceAndDownload).toHaveBeenCalledWith(
       basicModel.id,
     );
   });
 
-  it('should handle HF model download when model has hfModel property', () => {
-    const {getByText} = render(
+  it('should handle HF model download when model has hfModel property', async () => {
+    const {getByText} = await render(
       <ModelNotAvailable
         model={hfModel1}
         currentlySelectedModel={undefined}
         closeSheet={mockCloseSheet}
       />,
+
       {withNavigation: true},
     );
 
-    fireEvent.press(getByText('Download'));
+    await fireEvent.press(getByText('Download'));
     expect(modelStore.downloadHFModel).toHaveBeenCalledWith(
       hfModel1.hfModel,
       hfModel1.hfModelFile,
@@ -116,7 +122,7 @@ describe('ModelNotAvailable', () => {
     );
   });
 
-  it('should hide warning when a downloaded model is currently selected', () => {
+  it('should hide warning when a downloaded model is currently selected', async () => {
     // Mock that the currently selected model is downloaded
     const downloadedModel = {...basicModel, isDownloaded: true};
     modelStore.isModelAvailable = jest.fn().mockImplementation(id => {
@@ -129,12 +135,13 @@ describe('ModelNotAvailable', () => {
       return false;
     });
 
-    const {queryByText} = render(
+    const {queryByText} = await render(
       <ModelNotAvailable
         model={basicModel} // Default model is not downloaded
         currentlySelectedModel={downloadedModel} // But currently selected model is downloaded
         closeSheet={mockCloseSheet}
       />,
+
       {withNavigation: true},
     );
 

@@ -23,8 +23,8 @@ describe('DynamicTextField', () => {
     description: 'This is a test field',
   };
 
-  it('should render with label and description', () => {
-    const {getByText} = render(
+  it('should render with label and description', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicTextField parameter={mockParameter} />
       </TestWrapper>,
@@ -34,10 +34,10 @@ describe('DynamicTextField', () => {
     expect(getByText('This is a test field')).toBeTruthy();
   });
 
-  it('should show required indicator when required', () => {
+  it('should show required indicator when required', async () => {
     const requiredParameter = {...mockParameter, required: true};
 
-    const {getByText} = render(
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicTextField parameter={requiredParameter} />
       </TestWrapper>,
@@ -46,8 +46,8 @@ describe('DynamicTextField', () => {
     expect(getByText('Test Field*')).toBeTruthy();
   });
 
-  it('should render input field with placeholder', () => {
-    const {getByPlaceholderText} = render(
+  it('should render input field with placeholder', async () => {
+    const {getByPlaceholderText} = await render(
       <TestWrapper>
         <DynamicTextField parameter={mockParameter} />
       </TestWrapper>,
@@ -56,21 +56,21 @@ describe('DynamicTextField', () => {
     expect(getByPlaceholderText('Enter test value')).toBeTruthy();
   });
 
-  it('should handle text input changes', () => {
-    const {getByTestId} = render(
+  it('should handle text input changes', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicTextField parameter={mockParameter} />
       </TestWrapper>,
     );
 
     const input = getByTestId('dynamic-field-testField');
-    fireEvent.changeText(input, 'New value');
+    await fireEvent.changeText(input, 'New value');
 
     expect(input.props.value).toBe('New value');
   });
 
-  it('should display error message when provided', () => {
-    const {getByText} = render(
+  it('should display error message when provided', async () => {
+    const {getByText} = await render(
       <TestWrapper>
         <DynamicTextField
           parameter={mockParameter}
@@ -82,8 +82,8 @@ describe('DynamicTextField', () => {
     expect(getByText('This field is required')).toBeTruthy();
   });
 
-  it('should be disabled when disabled prop is true', () => {
-    const {getByTestId} = render(
+  it('should be disabled when disabled prop is true', async () => {
+    const {getByTestId} = await render(
       <TestWrapper>
         <DynamicTextField parameter={mockParameter} disabled={true} />
       </TestWrapper>,
@@ -93,13 +93,13 @@ describe('DynamicTextField', () => {
     expect(input.props.editable).toBe(false);
   });
 
-  it('should render without description when not provided', () => {
+  it('should render without description when not provided', async () => {
     const parameterWithoutDescription = {
       ...mockParameter,
       description: undefined,
     };
 
-    const {queryByText} = render(
+    const {queryByText} = await render(
       <TestWrapper>
         <DynamicTextField parameter={parameterWithoutDescription} />
       </TestWrapper>,
@@ -108,8 +108,8 @@ describe('DynamicTextField', () => {
     expect(queryByText('This is a test field')).toBeNull();
   });
 
-  it('should use default value from form context', () => {
-    const {getByTestId} = render(
+  it('should use default value from form context', async () => {
+    const {getByTestId} = await render(
       <TestWrapper defaultValues={{testField: 'Initial value'}}>
         <DynamicTextField parameter={mockParameter} />
       </TestWrapper>,

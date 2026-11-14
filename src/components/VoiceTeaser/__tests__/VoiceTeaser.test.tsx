@@ -18,8 +18,8 @@ const onGetPlus = jest.fn();
 const onKeepTyping = jest.fn();
 const onClose = jest.fn();
 
-const renderTeaser = () =>
-  render(
+const renderTeaser = async () =>
+  await render(
     <VoiceTeaser
       onGetPlus={onGetPlus}
       onKeepTyping={onKeepTyping}
@@ -32,9 +32,9 @@ describe('VoiceTeaser', () => {
     jest.clearAllMocks();
   });
 
-  it('shows the voice view at rest with the Plus copy', () => {
+  it('shows the voice view at rest with the Plus copy', async () => {
     const withRepeat = jest.spyOn(Reanimated, 'withRepeat');
-    const {getByText, getByTestId} = renderTeaser();
+    const {getByText, getByTestId} = await renderTeaser();
 
     expect(getByText(strings.teaserTitle)).toBeTruthy();
     expect(getByText(strings.teaserBody)).toBeTruthy();
@@ -45,24 +45,24 @@ describe('VoiceTeaser', () => {
     withRepeat.mockRestore();
   });
 
-  it('Get Plus and Keep typing each call their own handler', () => {
-    const {getByTestId} = renderTeaser();
+  it('Get Plus and Keep typing each call their own handler', async () => {
+    const {getByTestId} = await renderTeaser();
 
-    fireEvent.press(getByTestId('voice-teaser-get-plus'));
+    await fireEvent.press(getByTestId('voice-teaser-get-plus'));
     expect(onGetPlus).toHaveBeenCalledTimes(1);
 
-    fireEvent.press(getByTestId('voice-teaser-keep-typing'));
+    await fireEvent.press(getByTestId('voice-teaser-keep-typing'));
     expect(onKeepTyping).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('closes from the close button, Android back and the escape gesture', () => {
+  it('closes from the close button, Android back and the escape gesture', async () => {
     const addListener = jest.spyOn(BackHandler, 'addEventListener');
-    const {getByTestId} = renderTeaser();
+    const {getByTestId} = await renderTeaser();
 
-    fireEvent.press(getByTestId('voice-teaser-close'));
+    await fireEvent.press(getByTestId('voice-teaser-close'));
     expect(addListener.mock.calls[0][1]({} as any)).toBe(true);
-    fireEvent(getByTestId('voice-teaser'), 'accessibilityEscape');
+    await fireEvent(getByTestId('voice-teaser'), 'accessibilityEscape');
 
     expect(onClose).toHaveBeenCalledTimes(3);
     expect(onKeepTyping).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe('VoiceTeaser', () => {
     ['closes on a quick flick down', 30, 1200, 1],
     ['stays on a short, slow pull down', 30, 100, 0],
   ])('%s', async (_name, translationY, velocityY, times) => {
-    renderTeaser();
+    await renderTeaser();
 
     fireGestureHandler(getByGestureTestId('voice-teaser-pull'), [
       {state: State.BEGAN, translationY: 0, velocityY: 0},
@@ -88,7 +88,7 @@ describe('VoiceTeaser', () => {
 
   it('is a modal that moves screen reader focus to its title', async () => {
     const send = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent');
-    const {getByTestId, getByText} = renderTeaser();
+    const {getByTestId, getByText} = await renderTeaser();
 
     expect(getByTestId('voice-teaser').props.accessibilityViewIsModal).toBe(
       true,

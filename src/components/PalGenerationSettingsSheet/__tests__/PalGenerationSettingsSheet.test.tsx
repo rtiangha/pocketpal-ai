@@ -28,7 +28,7 @@ jest.mock('../../Sheet/Sheet', () => {
     }
     return (
       <View testID="sheet">
-        <View testID="sheet-title">{title}</View>
+        <View testID="sheet-title" title={title} />
         <Button title="Close" onPress={onClose} testID="sheet-close-button" />
         {children}
       </View>
@@ -37,9 +37,11 @@ jest.mock('../../Sheet/Sheet', () => {
   MockSheet.ScrollView = ({children}: any) => (
     <View testID="sheet-scroll-view">{children}</View>
   );
+
   MockSheet.Actions = ({children}: any) => (
     <View testID="sheet-actions">{children}</View>
   );
+
   return {Sheet: MockSheet};
 });
 
@@ -70,8 +72,8 @@ describe('PalGenerationSettingsSheet', () => {
   });
 
   describe('Rendering', () => {
-    it('renders correctly when visible', () => {
-      const {getByTestId} = render(
+    it('renders correctly when visible', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
@@ -81,7 +83,7 @@ describe('PalGenerationSettingsSheet', () => {
       expect(getByTestId('completion-settings')).toBeTruthy();
     });
 
-    it("never offers the active server's defaults, which govern another model", () => {
+    it("never offers the active server's defaults, which govern another model", async () => {
       runInAction(() => {
         modelStore.models = [
           {
@@ -90,6 +92,7 @@ describe('PalGenerationSettingsSheet', () => {
             serverId: 'srv',
           } as any,
         ];
+
         modelStore.activeModelId = 'srv/m';
         modelStore.activeRemoteBinding = {
           modelId: 'srv/m',
@@ -107,7 +110,7 @@ describe('PalGenerationSettingsSheet', () => {
         min_p: 0.05,
       });
 
-      const {queryAllByTestId} = render(
+      const {queryAllByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -130,8 +133,8 @@ describe('PalGenerationSettingsSheet', () => {
       });
     });
 
-    it('does not render when not visible', () => {
-      const {queryByTestId} = render(
+    it('does not render when not visible', async () => {
+      const {queryByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} isVisible={false} />
         </L10nContext.Provider>,
@@ -140,19 +143,19 @@ describe('PalGenerationSettingsSheet', () => {
       expect(queryByTestId('sheet')).toBeNull();
     });
 
-    it('displays correct title with pal name', () => {
-      const {getByTestId} = render(
+    it('displays correct title with pal name', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
       );
 
       const title = getByTestId('sheet-title');
-      expect(title.props.children).toContain('Test Pal');
+      expect(title.props.title).toContain('Test Pal');
     });
 
-    it('shows inherited settings indicator when no custom settings', () => {
-      const {getByText} = render(
+    it('shows inherited settings indicator when no custom settings', async () => {
+      const {getByText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
@@ -168,8 +171,8 @@ describe('PalGenerationSettingsSheet', () => {
       ).toBeTruthy();
     });
 
-    it('shows custom settings indicator when custom settings exist', () => {
-      const {getByText} = render(
+    it('shows custom settings indicator when custom settings exist', async () => {
+      const {getByText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -189,8 +192,8 @@ describe('PalGenerationSettingsSheet', () => {
   });
 
   describe('Settings Modification', () => {
-    it('allows changing settings via slider', () => {
-      const {getByTestId} = render(
+    it('allows changing settings via slider', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
@@ -199,12 +202,12 @@ describe('PalGenerationSettingsSheet', () => {
       const temperatureSlider = getByTestId('temperature-slider');
 
       // Simulate slider change
-      act(() => {
-        fireEvent(temperatureSlider, 'valueChange', 0.9);
+      await act(async () => {
+        await fireEvent(temperatureSlider, 'valueChange', 0.9);
       });
 
       // Advance timers to handle debounce
-      act(() => {
+      await act(() => {
         jest.advanceTimersByTime(300);
       });
 
@@ -213,8 +216,8 @@ describe('PalGenerationSettingsSheet', () => {
       expect(temperatureInput.props.value).toBe('0.9');
     });
 
-    it('initializes with provided completion settings', () => {
-      const {getByTestId} = render(
+    it('initializes with provided completion settings', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -229,8 +232,8 @@ describe('PalGenerationSettingsSheet', () => {
       );
     });
 
-    it('initializes with default settings when no custom settings provided', () => {
-      const {getByTestId} = render(
+    it('initializes with default settings when no custom settings provided', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
@@ -245,7 +248,7 @@ describe('PalGenerationSettingsSheet', () => {
 
   describe('Save Functionality', () => {
     it('saves settings when save button is pressed', async () => {
-      const {getByText, getByTestId} = render(
+      const {getByText, getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
@@ -253,18 +256,18 @@ describe('PalGenerationSettingsSheet', () => {
 
       // Change a setting via slider
       const temperatureSlider = getByTestId('temperature-slider');
-      act(() => {
-        fireEvent(temperatureSlider, 'valueChange', 0.9);
+      await act(async () => {
+        await fireEvent(temperatureSlider, 'valueChange', 0.9);
       });
 
       // Advance timers to handle debounce
-      act(() => {
+      await act(() => {
         jest.advanceTimersByTime(300);
       });
 
       // Save
       const saveButton = getByText(l10n.en.common.save);
-      fireEvent.press(saveButton);
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(defaultProps.onUpdateSettings).toHaveBeenCalledWith(
@@ -277,14 +280,14 @@ describe('PalGenerationSettingsSheet', () => {
     });
 
     it('validates settings before saving', async () => {
-      const {getByText} = render(
+      const {getByText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
       );
 
       const saveButton = getByText(l10n.en.common.save);
-      fireEvent.press(saveButton);
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(validateCompletionSettings).toHaveBeenCalled();
@@ -296,14 +299,14 @@ describe('PalGenerationSettingsSheet', () => {
         errors: {temperature: 'Invalid temperature'},
       });
 
-      const {getByText} = render(
+      const {getByText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
       );
 
       const saveButton = getByText(l10n.en.common.save);
-      fireEvent.press(saveButton);
+      await fireEvent.press(saveButton);
 
       await waitFor(() => {
         expect(Alert.alert).toHaveBeenCalledWith(
@@ -319,7 +322,7 @@ describe('PalGenerationSettingsSheet', () => {
 
   describe('Reset Functionality', () => {
     it('resets to global settings when reset to global is selected', async () => {
-      const {getByText} = render(
+      const {getByText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -329,20 +332,20 @@ describe('PalGenerationSettingsSheet', () => {
       );
 
       const resetButton = getByText(l10n.en.common.reset);
-      fireEvent.press(resetButton);
+      await fireEvent.press(resetButton);
 
       const resetToGlobalButton = getByText(
         l10n.en.components.palGenerationSettingsSheet.resetToGlobal,
       );
-      fireEvent.press(resetToGlobalButton);
+      await fireEvent.press(resetToGlobalButton);
 
       await waitFor(() => {
         expect(chatSessionStore.resolveCompletionSettings).toHaveBeenCalled();
       });
     });
 
-    it('resets to system defaults when reset to system is selected', () => {
-      const {getByText, getByTestId} = render(
+    it('resets to system defaults when reset to system is selected', async () => {
+      const {getByText, getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -352,12 +355,12 @@ describe('PalGenerationSettingsSheet', () => {
       );
 
       const resetButton = getByText(l10n.en.common.reset);
-      fireEvent.press(resetButton);
+      await fireEvent.press(resetButton);
 
       const resetToSystemButton = getByText(
         l10n.en.components.palGenerationSettingsSheet.resetToSystem,
       );
-      fireEvent.press(resetToSystemButton);
+      await fireEvent.press(resetToSystemButton);
 
       const temperatureSlider = getByTestId('temperature-slider');
       expect(temperatureSlider.props.value).toBe(
@@ -365,8 +368,8 @@ describe('PalGenerationSettingsSheet', () => {
       );
     });
 
-    it('clears pal-specific settings when reset to default is selected', () => {
-      const {getByText} = render(
+    it('clears pal-specific settings when reset to default is selected', async () => {
+      const {getByText} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -376,20 +379,20 @@ describe('PalGenerationSettingsSheet', () => {
       );
 
       const resetButton = getByText(l10n.en.common.reset);
-      fireEvent.press(resetButton);
+      await fireEvent.press(resetButton);
 
       const clearButton = getByText(
         l10n.en.components.palGenerationSettingsSheet.clearPalSettings,
       );
-      fireEvent.press(clearButton);
+      await fireEvent.press(clearButton);
 
       expect(defaultProps.onUpdateSettings).toHaveBeenCalledWith(undefined);
     });
   });
 
   describe('Close Behavior', () => {
-    it('resets to original settings when closed without saving', () => {
-      const {getByTestId} = render(
+    it('resets to original settings when closed without saving', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -400,12 +403,12 @@ describe('PalGenerationSettingsSheet', () => {
 
       // Change a setting via slider
       const temperatureSlider = getByTestId('temperature-slider');
-      act(() => {
-        fireEvent(temperatureSlider, 'valueChange', 0.9);
+      await act(async () => {
+        await fireEvent(temperatureSlider, 'valueChange', 0.9);
       });
 
       // Advance timers to handle debounce
-      act(() => {
+      await act(() => {
         jest.advanceTimersByTime(300);
       });
 
@@ -415,32 +418,32 @@ describe('PalGenerationSettingsSheet', () => {
 
       // Close without saving
       const closeButton = getByTestId('sheet-close-button');
-      fireEvent.press(closeButton);
+      await fireEvent.press(closeButton);
 
       expect(defaultProps.onClose).toHaveBeenCalled();
       expect(defaultProps.onUpdateSettings).not.toHaveBeenCalled();
     });
 
-    it('calls onClose when sheet is closed', () => {
-      const {getByTestId} = render(
+    it('calls onClose when sheet is closed', async () => {
+      const {getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet {...defaultProps} />
         </L10nContext.Provider>,
       );
 
       const closeButton = getByTestId('sheet-close-button');
-      fireEvent.press(closeButton);
+      await fireEvent.press(closeButton);
 
       expect(defaultProps.onClose).toHaveBeenCalled();
     });
   });
 
   describe('Settings Update on Props Change', () => {
-    it('updates settings when completionSettings prop changes', () => {
+    it('updates settings when completionSettings prop changes', async () => {
       const customSettings1 = {...mockCompletionParams, temperature: 0.7};
       const customSettings2 = {...mockCompletionParams, temperature: 0.9};
 
-      const {rerender, getByTestId} = render(
+      const {rerender, getByTestId} = await render(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}
@@ -453,7 +456,7 @@ describe('PalGenerationSettingsSheet', () => {
       expect(temperatureSlider.props.value).toBe(0.7);
 
       // Update props
-      rerender(
+      await rerender(
         <L10nContext.Provider value={l10n.en}>
           <PalGenerationSettingsSheet
             {...defaultProps}

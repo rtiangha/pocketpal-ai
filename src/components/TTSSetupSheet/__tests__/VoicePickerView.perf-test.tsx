@@ -52,9 +52,11 @@ describe('VoicePickerView render performance', () => {
           screen.getByTestId('tts-voice-row-system-en-us-x-sfg-local'),
         ).toBeTruthy();
 
-        fireEvent.press(screen.getByTestId('tts-system-language-button'));
+        await fireEvent.press(screen.getByTestId('tts-system-language-button'));
         await flushTimers();
-        fireEvent.press(screen.getByTestId('tts-system-language-option-es'));
+        await fireEvent.press(
+          screen.getByTestId('tts-system-language-option-es'),
+        );
         await flushTimers();
         expect(screen.getByTestId('tts-system-section-es-es')).toBeTruthy();
         expect(screen.queryByTestId('tts-system-section-en-us')).toBeNull();

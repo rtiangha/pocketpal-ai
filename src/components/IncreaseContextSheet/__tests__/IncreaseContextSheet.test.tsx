@@ -58,10 +58,10 @@ const model = {
   ggufMetadata: {context_length: 32768},
 } as unknown as Model;
 
-const renderSheet = (
+const renderSheet = async (
   props: Partial<React.ComponentProps<typeof IncreaseContextSheet>> = {},
 ) =>
-  render(
+  await render(
     <L10nContext.Provider value={l10n.en}>
       <IncreaseContextSheet
         isVisible
@@ -101,10 +101,10 @@ describe('IncreaseContextSheet', () => {
   describe('confirm path (restore-on-failure preserved)', () => {
     it('reloads at the chosen n_ctx on confirm', async () => {
       const onReloadResult = jest.fn();
-      const {getByTestId} = renderSheet({onReloadResult});
+      const {getByTestId} = await renderSheet({onReloadResult});
       // Default pick is the smallest fitting stop above current (6144 with the
       // 8 GB ceiling).
-      fireEvent.press(getByTestId('increase-context-confirm'));
+      await fireEvent.press(getByTestId('increase-context-confirm'));
       await waitFor(() =>
         expect(onReloadResult).toHaveBeenCalledWith(true, 6144),
       );
@@ -117,8 +117,8 @@ describe('IncreaseContextSheet', () => {
         .mockRejectedValueOnce(new Error('cancelled'))
         .mockResolvedValueOnce(undefined);
       const onReloadResult = jest.fn();
-      const {getByTestId} = renderSheet({onReloadResult});
-      fireEvent.press(getByTestId('increase-context-confirm'));
+      const {getByTestId} = await renderSheet({onReloadResult});
+      await fireEvent.press(getByTestId('increase-context-confirm'));
 
       await waitFor(() =>
         expect(onReloadResult).toHaveBeenCalledWith(false, 6144),
@@ -133,8 +133,8 @@ describe('IncreaseContextSheet', () => {
         new Error('still failing'),
       );
       const onReloadResult = jest.fn();
-      const {getByTestId} = renderSheet({onReloadResult});
-      fireEvent.press(getByTestId('increase-context-confirm'));
+      const {getByTestId} = await renderSheet({onReloadResult});
+      await fireEvent.press(getByTestId('increase-context-confirm'));
 
       await waitFor(() =>
         expect(onReloadResult).toHaveBeenCalledWith(false, 6144),
@@ -144,10 +144,14 @@ describe('IncreaseContextSheet', () => {
   });
 
   describe('slider and capacity', () => {
-    it('updates the chosen size and capacity readout when the slider moves', () => {
-      const {getByTestId, getByText} = renderSheet();
+    it('updates the chosen size and capacity readout when the slider moves', async () => {
+      const {getByTestId, getByText} = await renderSheet();
       // Move to ladder index 0 (6144, the smallest stop above 4096).
-      fireEvent(getByTestId('increase-context-slider'), 'onValueChange', 0);
+      await fireEvent(
+        getByTestId('increase-context-slider'),
+        'onValueChange',
+        0,
+      );
       expect(getByText('6K  tokens')).toBeTruthy();
       // Confirm label reflects the chosen size.
       expect(getByText('Set to 6K')).toBeTruthy();
@@ -155,12 +159,12 @@ describe('IncreaseContextSheet', () => {
 
     it('caps the ladder at the model max', async () => {
       // Top stop is the model max (32768 → "32K · model max").
-      const {findByText} = renderSheet();
+      const {findByText} = await renderSheet();
       expect(await findByText('32K · model max')).toBeTruthy();
     });
 
-    it('announces the chosen size to screen readers', () => {
-      const {getByTestId} = renderSheet();
+    it('announces the chosen size to screen readers', async () => {
+      const {getByTestId} = await renderSheet();
       const slider = getByTestId('increase-context-slider');
       expect(slider.props.accessibilityLabel).toBe(
         l10n.en.chat.increaseContextSliderA11yLabel,
@@ -171,8 +175,8 @@ describe('IncreaseContextSheet', () => {
   });
 
   describe('memory estimate', () => {
-    it('sizes each stop with the state checkpoint budget', () => {
-      renderSheet();
+    it('sizes each stop with the state checkpoint budget', async () => {
+      await renderSheet();
       expect(memSpy).toHaveBeenCalledWith(
         model,
         undefined,
@@ -190,7 +194,7 @@ describe('IncreaseContextSheet', () => {
       const DeviceInfo = require('react-native-device-info');
       DeviceInfo.getTotalMemory.mockResolvedValueOnce(2.2e9);
       const onReloadResult = jest.fn();
-      const {getByTestId} = renderSheet({onReloadResult});
+      const {getByTestId} = await renderSheet({onReloadResult});
       // Default pick (6144) fits → confirm enabled.
       await waitFor(() =>
         expect(
@@ -199,12 +203,16 @@ describe('IncreaseContextSheet', () => {
         ).toBeFalsy(),
       );
       // Move to the top stop (32768 → 5e9 req) → won't-fit → confirm disabled.
-      fireEvent(getByTestId('increase-context-slider'), 'onValueChange', 11);
+      await fireEvent(
+        getByTestId('increase-context-slider'),
+        'onValueChange',
+        11,
+      );
       expect(
         getByTestId('increase-context-confirm').props.accessibilityState
           .disabled,
       ).toBe(true);
-      fireEvent.press(getByTestId('increase-context-confirm'));
+      await fireEvent.press(getByTestId('increase-context-confirm'));
       expect(onReloadResult).not.toHaveBeenCalled();
     });
   });
@@ -216,20 +224,20 @@ describe('IncreaseContextSheet', () => {
       const DeviceInfo = require('react-native-device-info');
       DeviceInfo.getTotalMemory.mockResolvedValueOnce(1);
       const onNewChat = jest.fn();
-      const {getByTestId, queryByTestId} = renderSheet({onNewChat});
+      const {getByTestId, queryByTestId} = await renderSheet({onNewChat});
       await waitFor(() =>
         expect(getByTestId('increase-context-no-fit')).toBeTruthy(),
       );
       // Confirm is HIDDEN (not merely disabled); New chat is reachable.
       expect(queryByTestId('increase-context-confirm')).toBeNull();
-      fireEvent.press(getByTestId('increase-context-new-chat'));
+      await fireEvent.press(getByTestId('increase-context-new-chat'));
       expect(onNewChat).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('arbitrary current n_ctx', () => {
-    it('filters the ladder relative to a non-ladder current value', () => {
-      const {getByText} = renderSheet({currentNCtx: 250});
+    it('filters the ladder relative to a non-ladder current value', async () => {
+      const {getByText} = await renderSheet({currentNCtx: 250});
       // Smallest ladder stop above 250 is 2048; it fits the 8 GB ceiling, so
       // it is the default pick.
       expect(getByText('2K  tokens')).toBeTruthy();
