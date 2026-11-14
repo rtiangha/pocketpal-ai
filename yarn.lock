@@ -7742,24 +7742,22 @@ mobx-persist-store@^1.1.8:
   resolved "https://registry.yarnpkg.com/mobx-persist-store/-/mobx-persist-store-1.1.8.tgz#5e0ef18a19a14993941828794196357b260e5c58"
   integrity sha512-7SiLvang0POfGvfP69fzmppBKv36e0TNndKJT1UokZuLXt13CqF3PAxIcRacHqjTBe4ktmzDsh3DK+fbM6epNg==
 
-mobx-react-lite@^4.1.1:
-  version "4.1.1"
-  resolved "https://registry.yarnpkg.com/mobx-react-lite/-/mobx-react-lite-4.1.1.tgz#725d74b025235f73dc2ab815766ffe010be2cf8a"
-  integrity sha512-iUxiMpsvNraCKXU+yPotsOncNNmyeS2B5DKL+TL6Tar/xm+wwNJAubJmtRSeAoYawdZqwv8Z/+5nPRHeQxTiXg==
-  dependencies:
-    use-sync-external-store "^1.4.0"
+mobx-react-lite@^5.1.3:
+  version "5.1.3"
+  resolved "https://registry.yarnpkg.com/mobx-react-lite/-/mobx-react-lite-5.1.3.tgz#8ef099ee04332bef4c5b616626bb782341fcb1a6"
+  integrity sha512-/Qh+wwtyNp9zXXns+B2MxVHC/npHsYvnVJNe0ddvHW4rgAxTOgVr0z/6hWSm2mqdT0jv1QWYZuJ6+3dediv+wQ==
 
-mobx-react@^9.2.1:
-  version "9.2.1"
-  resolved "https://registry.yarnpkg.com/mobx-react/-/mobx-react-9.2.1.tgz#19b1036442d2515eeb6f5fbb2c9c770d81c32f80"
-  integrity sha512-WJNNm0FB2n0Z0u+jS1QHmmWyV8l2WiAj8V8I/96kbUEN2YbYCoKW+hbbqKKRUBqElu0llxM7nWKehvRIkhBVJw==
+mobx-react@^10.0.4:
+  version "10.0.4"
+  resolved "https://registry.yarnpkg.com/mobx-react/-/mobx-react-10.0.4.tgz#e75a4884d235debd6bc5cf83351793ca6229c2bd"
+  integrity sha512-O3luF6o+UZ2AV3dBPj+kWxTVF7dk8vlcwMEW67n87AucLiYlF4lke6886b5mEHTOCijHvjgqOd9SUrepWAT+Ng==
   dependencies:
-    mobx-react-lite "^4.1.1"
+    mobx-react-lite "^5.1.3"
 
-mobx@^6.15.0:
-  version "6.15.0"
-  resolved "https://registry.yarnpkg.com/mobx/-/mobx-6.15.0.tgz#78b9b82d383724eebb4b6e50c2eb4ae2da861cb5"
-  integrity sha512-UczzB+0nnwGotYSgllfARAqWCJ5e/skuV2K/l+Zyck/H6pJIhLXuBnz+6vn2i211o7DtbE78HQtsYEKICHGI+g==
+mobx@^7.1.7:
+  version "7.1.7"
+  resolved "https://registry.yarnpkg.com/mobx/-/mobx-7.1.7.tgz#12281ff4c4329c0e31bf9ad846b602090bd56c0c"
+  integrity sha512-fzFPm0u0xHxrAyjFsjfA/a99JgyvLh8R/bnTe7uD37cwbO5O7OUrv/e6Q4rlYdBGCf3rR/pVvh1OVMPF10ghng==
 
 ms@2.0.0:
   version "2.0.0"
@@ -9839,7 +9837,7 @@ use-latest-callback@^0.2.3, use-latest-callback@^0.2.4:
   resolved "https://registry.yarnpkg.com/use-latest-callback/-/use-latest-callback-0.2.6.tgz#e5ea752808c86219acc179ace0ae3c1203255e77"
   integrity sha512-FvRG9i1HSo0wagmX63Vrm8SnlUU3LMM3WyZkQ76RnslpBrX694AdG4A0zQBx2B3ZifFA0yv/BaEHGBnEax5rZg==
 
-use-sync-external-store@^1.4.0, use-sync-external-store@^1.5.0:
+use-sync-external-store@^1.5.0:
   version "1.6.0"
   resolved "https://registry.yarnpkg.com/use-sync-external-store/-/use-sync-external-store-1.6.0.tgz#b174bfa65cb2b526732d9f2ac0a408027876f32d"
   integrity sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==

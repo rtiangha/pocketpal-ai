@@ -35,6 +35,13 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
   moduleNameMapper: {
     '^react-native-paper$': '<rootDir>/node_modules/react-native-paper/src',
+    // MobX 7 added an `exports` map whose `react-native` condition points
+    // at the ESM build, which Jest cannot parse (and the custom RN resolver
+    // honours that condition). Force the CJS entry (`main`) in tests; the
+    // app bundle via Metro still uses the ESM build.
+    '^mobx$': '<rootDir>/node_modules/mobx/dist/index.js',
+    '^mobx-react$': '<rootDir>/node_modules/mobx-react/dist/index.js',
+    '^mobx-react-lite$': '<rootDir>/node_modules/mobx-react-lite/dist/index.js',
     '@react-native-async-storage/async-storage':
       '<rootDir>/__mocks__/external/@react-native-async-storage/async-storage.js',
     'llama.rn': '<rootDir>/__mocks__/external/llama.rn.ts',

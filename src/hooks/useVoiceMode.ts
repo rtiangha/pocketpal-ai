@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from 'react';
 import {AppState, type AppStateStatus} from 'react-native';
 
 import {toByteArray} from 'base64-js';
-import {comparer, reaction, when} from 'mobx';
+import {compareStructural, reaction, when} from 'mobx';
 import {useFocusEffect} from '@react-navigation/native';
 import AudioRecord from '@fugood/react-native-audio-pcm-stream';
 import {
@@ -668,7 +668,7 @@ export function useVoiceMode({
           controller.exit('chat_changed');
         }
       },
-      {equals: comparer.structural},
+      {equals: compareStructural},
     );
     return () => {
       interruptions.remove();

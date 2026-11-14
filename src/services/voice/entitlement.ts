@@ -1,4 +1,4 @@
-import {makeAutoObservable, observable} from 'mobx';
+import {makeAutoObservable, observableRef} from 'mobx';
 
 /** Where voice mode learns whether it is paid for. */
 export interface VoiceEntitlementSource {
@@ -17,7 +17,7 @@ export class VoiceEntitlement {
 
   constructor(defaultSource: VoiceEntitlementSource) {
     this.source = defaultSource;
-    makeAutoObservable(this, {source: observable.ref});
+    makeAutoObservable(this, {source: observableRef});
   }
 
   register(source: VoiceEntitlementSource): void {

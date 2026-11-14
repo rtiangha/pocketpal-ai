@@ -1,9 +1,10 @@
 import {
   IReactionDisposer,
-  comparer,
+  compareStructural,
   makeAutoObservable,
   makeObservable,
   observable,
+  observableRef,
   reaction,
   runInAction,
 } from 'mobx';
@@ -158,8 +159,8 @@ export class RouterRecord {
     makeObservable(this, {
       phase: observable,
       verdictRequested: observable,
-      detail: observable.ref,
-      failure: observable.ref,
+      detail: observableRef,
+      failure: observableRef,
     });
   }
 }
@@ -215,7 +216,7 @@ export class RouterStore {
       | 'disposers'
     >(this, {
       records: false,
-      stream: observable.ref,
+      stream: observableRef,
       foreground: observable,
       foregroundReadsPending: observable,
       clock: false,
@@ -961,7 +962,7 @@ export class RouterStore {
             }
           }
         },
-        {equals: comparer.structural},
+        {equals: compareStructural},
       ),
       reaction(
         () =>
@@ -972,12 +973,12 @@ export class RouterStore {
           const now = new Map(servers.map(([id, ...rest]) => [id, rest]));
           for (const [id, ...before] of previous) {
             const after = now.get(id);
-            if (!after || !comparer.structural(after, before)) {
+            if (!after || !compareStructural(after, before)) {
               this.onServerChanged(id);
             }
           }
         },
-        {equals: comparer.structural},
+        {equals: compareStructural},
       ),
       reaction(
         () => this.desiredStreamServer,

@@ -1,4 +1,4 @@
-import {computed, observable, runInAction} from 'mobx';
+import {computed, observable, observableRef, runInAction} from 'mobx';
 
 import {purchaseStore} from '../../store';
 
@@ -10,7 +10,7 @@ export interface PlusRequest {
 
 export const plusGate = observable(
   {request: null as PlusRequest | null},
-  {request: observable.ref},
+  {request: observableRef},
 );
 
 const available = computed(() => shippedPlusFeatures().length > 0);

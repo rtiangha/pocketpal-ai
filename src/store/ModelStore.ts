@@ -5,7 +5,13 @@ import {v4 as uuidv4} from 'uuid';
 import 'react-native-get-random-values';
 import {makePersistable} from 'mobx-persist-store';
 import * as RNFS from '@dr.pogodin/react-native-fs';
-import {comparer, computed, makeAutoObservable, runInAction, toJS} from 'mobx';
+import {
+  compareStructural,
+  computed,
+  makeAutoObservable,
+  runInAction,
+  toJS,
+} from 'mobx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {ContextParams, LlamaContext, initLlama} from 'llama.rn';
 import {
@@ -286,7 +292,7 @@ class ModelStore {
       isReleasingContext: false,
       isGenerationBusy: false,
       activeModel: computed,
-      activeModelCaps: computed({equals: comparer.structural}),
+      activeModelCaps: computed({equals: compareStructural}),
       activeSamplerDefaults: computed,
       contextId: computed,
       memoryEstimateSettings: computed,

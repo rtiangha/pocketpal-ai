@@ -1,4 +1,4 @@
-import {computed, makeAutoObservable, observable} from 'mobx';
+import {computed, makeAutoObservable, observableRef} from 'mobx';
 
 import {modelsList} from '../../jest/fixtures/models';
 
@@ -120,7 +120,7 @@ class MockModelStore {
 
   constructor() {
     makeAutoObservable(this, {
-      engine: observable.ref,
+      engine: observableRef,
       refreshDownloadStatuses: false,
       retryDownload: false,
       clearDownloadError: false,

@@ -4,7 +4,7 @@ import {
   type NativeEventSubscription,
 } from 'react-native';
 
-import {makeAutoObservable, observable, runInAction} from 'mobx';
+import {makeAutoObservable, observableRef, runInAction} from 'mobx';
 import {makePersistable} from 'mobx-persist-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DeviceInfo from 'react-native-device-info';
@@ -95,7 +95,7 @@ export class ASRStore {
   constructor() {
     makeAutoObservable<ASRStore, 'hydrated' | 'reconciled'>(
       this,
-      {inputLevels: observable.ref, hydrated: false, reconciled: false},
+      {inputLevels: observableRef, hydrated: false, reconciled: false},
       {autoBind: true},
     );
     this.hydrated = makePersistable(this, {
