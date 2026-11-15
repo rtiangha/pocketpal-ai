@@ -35,7 +35,7 @@
     "@flyerhq/react-native-link-preview": "^1.6.0",
     "@fugood/react-native-audio-pcm-stream": "1.1.4",
     "@gorhom/bottom-sheet": "5.2.14",
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^7.0.6",
     "@invertase/react-native-apple-authentication": "2.5.1",
     "@nozbe/watermelondb": "^0.28.0",
     "@pocketpalai/react-native-speech": "2.11.3",
