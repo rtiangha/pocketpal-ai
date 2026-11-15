@@ -1535,7 +1535,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-document-picker (11.0.4):
+  - react-native-document-picker (12.0.3):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -3361,7 +3361,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: c5df4b7fe2553c25d419b99c586179ab77594b5b
   React-mutationobservernativemodule: b85faf3c54644c0ef2c758cd8c4e6ce16fb1f8ae
   react-native-config: b579534a137bbbc148d97c6e2dadc704238f053f
-  react-native-document-picker: ecddc94fce43fec4a024179324f238b5556ea2fb
+  react-native-document-picker: 0e19e3476259c7db349c80cdf3a58cc87ed20d65
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
   react-native-image-picker: a644c511762935787d356abde17db8c72fecae20
   react-native-keyboard-controller: 21cf7c9e4dfcdd77e73cc3c604b05eb50117212c
