@@ -1126,6 +1126,30 @@
       "usingServerDefaultUnreported": "A usar o padrão do servidor (não indicado)",
       "resetToServerDefault": "Padrão do servidor: {{value}} · Redefinir",
       "resetToServerDefaultAccessibilityLabel": "Redefinir {{name}} para o padrão do servidor, {{value}}"
+    },
+    "messageMenuButton": {
+      "accessibilityLabel": "Mais ações",
+      "openMenuAction": "Abrir menu da mensagem"
+    },
+    "markdownView": {
+      "selectionMenu": {
+        "copy": "Copiar",
+        "copyAsMarkdown": "Copiar como Markdown",
+        "copyImageUrl": "Copiar URL da imagem",
+        "copyImageUrls": "Copiar {{count}} URLs de imagens"
+      },
+      "accessibility": {
+        "bulletPoint": "Marcador de lista",
+        "nestedBulletPoint": "Marcador de lista aninhada",
+        "orderedItem": "Item de lista {{n}}",
+        "nestedOrderedItem": "Item de lista aninhada {{n}}",
+        "quote": "Citação em bloco",
+        "nestedQuote": "Citação em bloco aninhada",
+        "tableRow": "Linha {{n}}: {{content}}",
+        "rotorHeadings": "Títulos",
+        "rotorLinks": "Ligações",
+        "rotorImages": "Imagens"
+      }
     }
   },
   "palsScreen": {
@@ -1628,7 +1652,10 @@
     "systemNoVoicesForLanguage": "Ainda não há vozes em {{language}} neste telemóvel.",
     "systemIosSettingsHint": "Adicione vozes em Definições > Acessibilidade > Conteúdo Falado > Vozes.",
     "systemLanguageSheetTitle": "Idioma da voz",
-    "systemLanguageSearchPlaceholder": "Pesquisar idiomas"
+    "systemLanguageSearchPlaceholder": "Pesquisar idiomas",
+    "speakingNotificationTitle": "O PocketPal está a falar",
+    "speakingNotificationStop": "Parar",
+    "speakingNotificationChannel": "Fala"
   },
   "onboarding": {
     "back": "Voltar",
@@ -1754,7 +1781,7 @@
     "errorPermissionBlocked": "O acesso ao microfone está bloqueado. Ative-o nas Definições.",
     "errorTranscribeFailed": "Não foi possível transcrever — tente novamente.",
     "errorNotInstalled": "Descarregue um modelo de voz para usar a entrada de voz.",
-    "errorInsufficientMemory": "Não há memória suficiente para a entrada de voz com este modelo de chat. Experimente um modelo mais pequeno.",
+    "errorInsufficientMemory": "Este modelo de chat e a entrada de voz precisam de mais memória do que a que este telemóvel tem. Experimente um modelo mais pequeno.",
     "errorMicUnavailable": "O microfone não está a responder. Tente novamente ou mude para um modelo de chat mais pequeno.",
     "errorTranscriptPartial": "Não foi possível transcrever parte do seu ditado.",
     "openSettingsLabel": "Abrir Definições",
@@ -1864,7 +1891,7 @@
     "memoryTightTitle": "Memória limitada",
     "memoryTightBody": "O modo de voz mantém três modelos carregados ao mesmo tempo. Neste telemóvel, isso pode ser lento ou a app pode fechar-se.",
     "memoryWontFitTitle": "Memória insuficiente",
-    "memoryWontFitBody": "O reconhecimento de fala não cabe na memória juntamente com este modelo de chat. Escolha um modelo mais pequeno para usar o modo de voz.",
+    "memoryWontFitBody": "Estes modelos precisam de mais memória do que a que este telemóvel tem. Escolha um modelo mais pequeno para usar o modo de voz.",
     "memoryChatRow": "Modelo de chat · {{name}}",
     "memorySttRowModel": "Reconhecimento de fala · Whisper {{tier}}",
     "memoryVoiceRow": "Voz · {{name}}",
