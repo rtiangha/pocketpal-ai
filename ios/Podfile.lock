@@ -2287,7 +2287,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNDeviceInfo (14.1.1):
+  - RNDeviceInfo (15.0.2):
     - React-Core
   - RNFBApp (27.1.1):
     - hermes-engine
@@ -3414,7 +3414,7 @@ SPEC CHECKSUMS:
   RNCClipboard: d62037a4a0e89afa88cc291eb403d9a751bc6519
   RNCMaskedView: a9c7c7992c85d8073707286fb59a857bc786cbd5
   RNCPicker: b6ac9cc3e312efce83820d74657bfa208f535fc9
-  RNDeviceInfo: bcce8752b5043a623fe3c26789679b473f705d3c
+  RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e
   RNFBApp: d1b3fd24f876a6054f6d7c1cdd7f979bfc6bd2f4
   RNFBAppCheck: f56d233920a06f483a9a1225e49ae0d0b075e830
   RNGestureHandler: de75a2160d5b1dd6b2b667fe21434ebee501bc0b
