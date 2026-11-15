@@ -54,9 +54,9 @@ const ANDROID_SYSTEM_VOICES = [
   },
 ];
 
-const renderView = async () =>
+const renderView = async (strings = l10n.en) =>
   await render(
-    <L10nContext.Provider value={l10n.en}>
+    <L10nContext.Provider value={strings}>
       <VoicePickerView />
     </L10nContext.Provider>,
     {withBottomSheetProvider: true, withSafeArea: true},
@@ -240,8 +240,8 @@ describe('VoicePickerView', () => {
     const testIDs = (nodes: Array<{props: {testID?: string}}>) =>
       nodes.map(n => n.props.testID);
 
-    const openSystemGroup = async () => {
-      const view = await renderView();
+    const openSystemGroup = async (strings = l10n.en) => {
+      const view = await renderView(strings);
       await fireEvent.press(
         await view.findByTestId('tts-engine-group-toggle-system'),
       );
@@ -456,6 +456,59 @@ describe('VoicePickerView', () => {
       ).toBeTruthy();
       expect(queryByTestId('tts-system-get-voices')).toBeNull();
       expect(queryAllByTestId(/^tts-system-network-header-/)).toHaveLength(0);
+    });
+
+    describe('Settings hint by iOS version', () => {
+      const READ_AND_SPEAK_HINT =
+        'Add voices in Settings > Accessibility > Read & Speak > Voices.';
+      const SPOKEN_CONTENT_HINT =
+        'Add voices in Settings > Accessibility > Spoken Content > Voices.';
+
+      const openOnIos = (version: string, strings = l10n.en) => {
+        Platform.OS = 'ios';
+        jest.spyOn(Platform, 'Version', 'get').mockReturnValue(version);
+        return openSystemGroup(strings);
+      };
+
+      afterEach(() => {
+        jest.restoreAllMocks();
+      });
+
+      it.each(['26.0', '26.7.3', '27.1'])(
+        'names Read & Speak on iOS %s',
+        async version => {
+          const {getByText, queryByText} = await openOnIos(version);
+
+          expect(getByText(READ_AND_SPEAK_HINT)).toBeTruthy();
+          expect(queryByText(SPOKEN_CONTENT_HINT)).toBeNull();
+        },
+      );
+
+      it.each(['18.5', '17.0', '25.9'])(
+        'names Spoken Content on iOS %s',
+        async version => {
+          const {getByText, queryByText} = await openOnIos(version);
+
+          expect(getByText(SPOKEN_CONTENT_HINT)).toBeTruthy();
+          expect(queryByText(READ_AND_SPEAK_HINT)).toBeNull();
+        },
+      );
+
+      it('names Spoken Content on iOS 18.5 in a translated language', async () => {
+        const es = l10n.es.voiceAndSpeech;
+
+        const {getByText, queryByText} = await openOnIos('18.5', l10n.es);
+        expect(getByText(es.systemIosSettingsHint)).toBeTruthy();
+        expect(queryByText(es.systemIosReadAndSpeakHint)).toBeNull();
+      });
+
+      it('names Read & Speak on iOS 26.7.3 in a translated language', async () => {
+        const es = l10n.es.voiceAndSpeech;
+
+        const {getByText, queryByText} = await openOnIos('26.7.3', l10n.es);
+        expect(getByText(es.systemIosReadAndSpeakHint)).toBeTruthy();
+        expect(queryByText(es.systemIosSettingsHint)).toBeNull();
+      });
     });
 
     it('re-reads the voices when the app returns, without loading an engine', async () => {
