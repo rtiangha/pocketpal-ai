@@ -2336,7 +2336,7 @@ PODS:
     - ReactNativeDependencies
     - RNFBApp
     - Yoga
-  - RNGestureHandler (2.33.1):
+  - RNGestureHandler (3.5.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2359,6 +2359,7 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
+    - RNWorklets (>= 0.8.0)
     - Yoga
   - RNGoogleSignin (17.0.0):
     - GoogleSignIn (= 10.1.0)
@@ -3417,7 +3418,7 @@ SPEC CHECKSUMS:
   RNDeviceInfo: 4c852998208b60dc192ae3529e5867817719ad1e
   RNFBApp: d1b3fd24f876a6054f6d7c1cdd7f979bfc6bd2f4
   RNFBAppCheck: f56d233920a06f483a9a1225e49ae0d0b075e830
-  RNGestureHandler: de75a2160d5b1dd6b2b667fe21434ebee501bc0b
+  RNGestureHandler: e11840399a9e42f90b6a69699a5b232bddb417d5
   RNGoogleSignin: e51f34000941d6fca9fd14734d36a7846cfa18a9
   RNKeychain: c151043ce48ce98b038cff539b916f5e2fb7456a
   RNPermissions: 812c498d7e6c86790eb69d546611c4d0a1f771b8

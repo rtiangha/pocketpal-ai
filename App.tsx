@@ -15,10 +15,7 @@ import {BottomSheetModalProvider} from '@gorhom/bottom-sheet';
 import {createDrawerNavigator} from '@react-navigation/drawer';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {KeyboardProvider} from 'react-native-keyboard-controller';
-import {
-  gestureHandlerRootHOC,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 
 import {asrStore, purchaseStore, ttsStore, uiStore} from './src/store';
 import {useTheme} from './src/hooks';
@@ -159,14 +156,14 @@ const App = observer(() => {
                           )}>
                           <Drawer.Screen
                             name={ROUTES.CHAT}
-                            component={gestureHandlerRootHOC(ChatScreen)}
+                            component={ChatScreen}
                             options={{
                               headerShown: false,
                             }}
                           />
                           <Drawer.Screen
                             name={ROUTES.PALS}
-                            component={gestureHandlerRootHOC(PalsScreen)}
+                            component={PalsScreen}
                             options={{
                               headerRight: () => <PalHeaderRight />,
                               headerStyle: styles.headerWithoutDivider,
@@ -175,7 +172,7 @@ const App = observer(() => {
                           />
                           <Drawer.Screen
                             name={ROUTES.MODELS}
-                            component={gestureHandlerRootHOC(ModelsScreen)}
+                            component={ModelsScreen}
                             options={{
                               headerRight: () => <ModelsHeaderRight />,
                               headerStyle: styles.headerWithoutDivider,
@@ -184,7 +181,7 @@ const App = observer(() => {
                           />
                           <Drawer.Screen
                             name={ROUTES.BENCHMARK}
-                            component={gestureHandlerRootHOC(BenchmarkScreen)}
+                            component={BenchmarkScreen}
                             options={{
                               headerStyle: styles.headerWithoutDivider,
                               title: currentL10n.screenTitles.benchmark,
@@ -192,7 +189,7 @@ const App = observer(() => {
                           />
                           <Drawer.Screen
                             name={ROUTES.SETTINGS}
-                            component={gestureHandlerRootHOC(SettingsScreen)}
+                            component={SettingsScreen}
                             options={{
                               headerStyle: styles.headerWithoutDivider,
                               title: currentL10n.screenTitles.settings,
@@ -200,7 +197,7 @@ const App = observer(() => {
                           />
                           <Drawer.Screen
                             name={ROUTES.APP_INFO}
-                            component={gestureHandlerRootHOC(AboutScreen)}
+                            component={AboutScreen}
                             options={{
                               headerStyle: styles.headerWithoutDivider,
                               title: currentL10n.screenTitles.appInfo,
@@ -211,7 +208,7 @@ const App = observer(() => {
                           {isDebugMode && (
                             <Drawer.Screen
                               name={ROUTES.DEV_TOOLS}
-                              component={gestureHandlerRootHOC(DevToolsScreen)}
+                              component={DevToolsScreen}
                               options={{
                                 headerStyle: styles.headerWithoutDivider,
                                 title: 'Dev Tools',
@@ -230,9 +227,7 @@ const App = observer(() => {
                           {__E2E__ && (
                             <Drawer.Screen
                               name={ROUTES.BENCHMARK_RUNNER}
-                              component={gestureHandlerRootHOC(
-                                BenchmarkRunnerScreen,
-                              )}
+                              component={BenchmarkRunnerScreen}
                               options={{
                                 headerStyle: styles.headerWithoutDivider,
                                 title: 'Benchmark Runner',
@@ -243,9 +238,7 @@ const App = observer(() => {
                           {__E2E__ && (
                             <Drawer.Screen
                               name={ROUTES.PLUS_TEST_FEATURE}
-                              component={gestureHandlerRootHOC(
-                                PlusTestFeatureScreen,
-                              )}
+                              component={PlusTestFeatureScreen}
                               options={{
                                 headerStyle: styles.headerWithoutDivider,
                                 title: 'Plus Test Feature',
