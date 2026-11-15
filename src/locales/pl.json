@@ -1507,7 +1507,17 @@
     "engineChipPhonon": "Phonon",
     "enginePhononTagline": "Szybki start. Zużywa mało pamięci RAM. Tylko język angielski.",
     "enginePhononCredit": "Model i głosy autorstwa Gradium (Apache-2.0), oparte na Mimi firmy Kyutai.",
-    "engineTierNatural": "naturalny angielski"
+    "engineTierNatural": "naturalny angielski",
+    "systemNeedsInternet": "Wymaga internetu",
+    "systemVoiceNumber": "Głos {{number}}",
+    "systemQualityEnhanced": "Ulepszona",
+    "systemOnDeviceSection": "Na tym telefonie",
+    "systemLanguagesLabel": "Języki",
+    "systemGetMoreVoices": "Pobierz więcej głosów",
+    "systemNoVoicesForLanguage": "{{language}}: na tym telefonie nie ma jeszcze żadnych głosów.",
+    "systemIosSettingsHint": "Dodaj głosy w sekcji Ustawienia > Dostępność > Treść mówiona > Głosy.",
+    "systemLanguageSheetTitle": "Język głosu",
+    "systemLanguageSearchPlaceholder": "Szukaj języków"
   },
   "onboarding": {
     "screen5": {
@@ -1847,7 +1857,6 @@
     "installedLabel": "Zainstalowano",
     "voiceRowTitle": "Głos",
     "voiceRowReady": "{{voice}} · gotowy",
-    "voiceRowMissing": "Wybierz naturalny głos. Głos systemowy nie działa w trybie głosowym.",
     "chooseVoiceCta": "Wybierz głos",
     "micNote": "W następnym kroku poprosimy o dostęp do mikrofonu.",
     "micDenied": "Tryb głosowy wymaga dostępu do mikrofonu.",

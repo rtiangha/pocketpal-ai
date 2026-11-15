@@ -1618,7 +1618,17 @@
     "engineChipPhonon": "Phonon",
     "enginePhononTagline": "Início rápido e pouco uso de RAM. Apenas em inglês.",
     "enginePhononCredit": "Modelo e vozes da Gradium (Apache-2.0), construídos sobre o Mimi da Kyutai.",
-    "engineTierNatural": "inglês natural"
+    "engineTierNatural": "inglês natural",
+    "systemNeedsInternet": "Requer internet",
+    "systemVoiceNumber": "Voz {{number}}",
+    "systemQualityEnhanced": "Melhorada",
+    "systemOnDeviceSection": "Neste telemóvel",
+    "systemLanguagesLabel": "Idiomas",
+    "systemGetMoreVoices": "Obter mais vozes",
+    "systemNoVoicesForLanguage": "Ainda não há vozes em {{language}} neste telemóvel.",
+    "systemIosSettingsHint": "Adicione vozes em Definições > Acessibilidade > Conteúdo Falado > Vozes.",
+    "systemLanguageSheetTitle": "Idioma da voz",
+    "systemLanguageSearchPlaceholder": "Pesquisar idiomas"
   },
   "onboarding": {
     "back": "Voltar",
@@ -1847,7 +1857,6 @@
     "installedLabel": "Instalado",
     "voiceRowTitle": "Voz",
     "voiceRowReady": "{{voice}} · pronta",
-    "voiceRowMissing": "Escolha uma voz natural. A voz do sistema não funciona no modo de voz.",
     "chooseVoiceCta": "Escolher uma voz",
     "micNote": "A seguir, vamos pedir acesso ao microfone.",
     "micDenied": "O modo de voz precisa de acesso ao microfone.",
