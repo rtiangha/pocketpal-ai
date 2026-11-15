@@ -29,8 +29,7 @@ setup_permissions(['Microphone'])
 #   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
 #   use_frameworks! :linkage => linkage.to_sym
 # end
-use_frameworks! :linkage => :static
-$RNFirebaseAsStaticFramework = true
+use_frameworks! :linkage => :dynamic
 
 ENV['RCT_NEW_ARCH_ENABLED'] = '1'
 ENV['RNLLAMA_BUILD_FROM_SOURCE'] = '1'
@@ -241,6 +240,49 @@ target 'PocketPal' do
       if target.name == 'glog'
         target.build_configurations.each do |config|
           config.build_settings['MODULEMAP_FILE'] = '${PODS_ROOT}/Target Support Files/glog/glog-textual.modulemap'
+        end
+      end
+      # WatermelonDB links JSI symbols (facebook::jsi::*) that live in the
+      # Hermes engine (hermesvm.framework) under use_frameworks! :dynamic.
+      # The podspec declares React-jsi (headers) and React-hermes, but make
+      # the hermesvm link explicit so the framework links even if CocoaPods
+      # does not propagate the transitive dependency's framework flag.
+      # (Adding React-jsi alone did not link any JSI symbols: with Hermes
+      # on, its jsi.cpp is excluded and it supplies headers only.)
+      if target.name == 'WatermelonDB'
+        target.build_configurations.each do |config|
+          ldflags = config.build_settings['OTHER_LDFLAGS'] || '$(inherited)'
+          ldflags = [ldflags].flatten.join(' ')
+          unless ldflags.include?('hermesvm')
+            config.build_settings['OTHER_LDFLAGS'] = "#{ldflags} -framework \"hermesvm\""
+          end
+        end
+      end
+      # react-native-image-picker and RNCClipboard link UTType symbols that
+      # live in MobileCoreServices (and, for image-picker, in
+      # UniformTypeIdentifiers). Their podspecs now declare those frameworks,
+      # but make the link explicit here too so the frameworks link even if
+      # CocoaPods does not propagate the podspec's framework flag. (These
+      # two frameworks do not auto-link via modules the way most system
+      # frameworks do, which is why the link failed with "Undefined symbols
+      # for architecture arm64: _UTTypeCopyPreferredTagWithClass, ..." even
+      # though other undeclared frameworks, e.g. in RNDeviceInfo, link fine.)
+      if target.name == 'react-native-image-picker'
+        target.build_configurations.each do |config|
+          ldflags = config.build_settings['OTHER_LDFLAGS'] || '$(inherited)'
+          ldflags = [ldflags].flatten.join(' ')
+          unless ldflags.include?('MobileCoreServices')
+            config.build_settings['OTHER_LDFLAGS'] = "#{ldflags} -framework \"MobileCoreServices\" -framework \"UniformTypeIdentifiers\""
+          end
+        end
+      end
+      if target.name == 'RNCClipboard'
+        target.build_configurations.each do |config|
+          ldflags = config.build_settings['OTHER_LDFLAGS'] || '$(inherited)'
+          ldflags = [ldflags].flatten.join(' ')
+          unless ldflags.include?('MobileCoreServices')
+            config.build_settings['OTHER_LDFLAGS'] = "#{ldflags} -framework \"MobileCoreServices\""
+          end
         end
       end
     end

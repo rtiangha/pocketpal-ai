@@ -22,24 +22,6 @@ PODS:
     - ReactNativeDependencies
   - FBLazyVector (0.88.1):
     - React-Core-prebuilt
-  - Firebase/AppCheck (12.10.0):
-    - Firebase/CoreOnly
-    - FirebaseAppCheck (~> 12.10.0)
-  - Firebase/CoreOnly (12.10.0):
-    - FirebaseCore (~> 12.10.0)
-  - FirebaseAppCheck (12.10.0):
-    - AppCheckCore (~> 11.0)
-    - FirebaseAppCheckInterop (~> 12.10.0)
-    - FirebaseCore (~> 12.10.0)
-    - GoogleUtilities/Environment (~> 8.1)
-    - GoogleUtilities/UserDefaults (~> 8.1)
-  - FirebaseAppCheckInterop (12.10.0)
-  - FirebaseCore (12.10.0):
-    - FirebaseCoreInternal (~> 12.10.0)
-    - GoogleUtilities/Environment (~> 8.1)
-    - GoogleUtilities/Logger (~> 8.1)
-  - FirebaseCoreInternal (12.10.0):
-    - "GoogleUtilities/NSData+zlib (~> 8.1)"
   - fmt (12.1.0):
     - ReactNativeDependencies
   - glog (0.3.5):
@@ -53,8 +35,6 @@ PODS:
     - GoogleUtilities/Privacy
   - GoogleUtilities/Logger (8.1.5):
     - GoogleUtilities/Environment
-    - GoogleUtilities/Privacy
-  - "GoogleUtilities/NSData+zlib (8.1.5)":
     - GoogleUtilities/Privacy
   - GoogleUtilities/Privacy (8.1.5)
   - GoogleUtilities/UserDefaults (8.1.5):
@@ -2309,8 +2289,7 @@ PODS:
     - Yoga
   - RNDeviceInfo (14.1.1):
     - React-Core
-  - RNFBApp (23.8.8):
-    - Firebase/CoreOnly (= 12.10.0)
+  - RNFBApp (27.1.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2333,8 +2312,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNFBAppCheck (23.8.8):
-    - Firebase/AppCheck (= 12.10.0)
+  - RNFBAppCheck (27.1.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2852,6 +2830,8 @@ PODS:
     - React-Core
   - WatermelonDB (0.28.0):
     - React
+    - React-hermes
+    - React-jsi
     - simdjson
   - whisper-rn (0.7.4):
     - hermes-engine
@@ -3044,11 +3024,6 @@ SPEC REPOS:
     - AppAuth
     - AppCheckCore
     - CocoaAsyncSocket
-    - Firebase
-    - FirebaseAppCheck
-    - FirebaseAppCheckInterop
-    - FirebaseCore
-    - FirebaseCoreInternal
     - GoogleSignIn
     - GoogleUtilities
     - GRMustache.swift
@@ -3328,11 +3303,6 @@ SPEC CHECKSUMS:
   DoubleConversion: 501a575c40c0b50c89685762dd3e415e6bb26fb0
   fast_float: 7c925d1cebf8328d4018d061f49377e9f887e3b4
   FBLazyVector: 07cb4c5b92110c132f2bb73b908e87f35cbe0a19
-  Firebase: 99f203d3a114c6ba591f3b32263a9626e450af65
-  FirebaseAppCheck: 3cd5112c60c3b04e6207e41a864b6c3cb06f73ad
-  FirebaseAppCheckInterop: 2480ab50a070a6bc02e26e62733874361f017a11
-  FirebaseCore: f4428e22415ea3b3eca652c2098413dabf2a23a9
-  FirebaseCoreInternal: e7bbaeb00ab73011298f35ed223aa7371e212948
   fmt: ba0886e864ebb21d14c98b2e12e164b8002f5b93
   glog: 3cf7cb46f743c4bc758ae3e6d9c15bd1b4cfd6d4
   GoogleSignIn: 6c0681460b202440022a4029ac0cbd71ef72068f
@@ -3392,7 +3362,7 @@ SPEC CHECKSUMS:
   react-native-config: b579534a137bbbc148d97c6e2dadc704238f053f
   react-native-document-picker: ecddc94fce43fec4a024179324f238b5556ea2fb
   react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
-  react-native-image-picker: 013a2ce199129e2cb46ab064d34242a9f086d879
+  react-native-image-picker: a644c511762935787d356abde17db8c72fecae20
   react-native-keyboard-controller: 21cf7c9e4dfcdd77e73cc3c604b05eb50117212c
   react-native-safe-area-context: f54c903d3a8c8ddd602e85d4e5bcfe9944de85bc
   react-native-slider: 51120d67580f0b9cd6a409e34f32ee9eb3dbef36
@@ -3441,12 +3411,12 @@ SPEC CHECKSUMS:
   RNAppleAuthentication: a89c9804592b38ed4ab11f0aee68d05ba12ad432
   RNAudioPcmStream: 7f54645cfad8a18daebdc45111ebc7be99b4c2a3
   RNCAsyncStorage: 47ffec1d3f091c4a21881654bbd5e2e7f62efbc9
-  RNCClipboard: 27d5e530990704ebda46ddd789fb816fbca618f6
+  RNCClipboard: d62037a4a0e89afa88cc291eb403d9a751bc6519
   RNCMaskedView: a9c7c7992c85d8073707286fb59a857bc786cbd5
   RNCPicker: b6ac9cc3e312efce83820d74657bfa208f535fc9
   RNDeviceInfo: bcce8752b5043a623fe3c26789679b473f705d3c
-  RNFBApp: af0fd0f13bdd204fedc20171a1f0e2f960b8dd77
-  RNFBAppCheck: c4af0eb52b13128460bea0e0a052a284e14a82d2
+  RNFBApp: d1b3fd24f876a6054f6d7c1cdd7f979bfc6bd2f4
+  RNFBAppCheck: f56d233920a06f483a9a1225e49ae0d0b075e830
   RNGestureHandler: de75a2160d5b1dd6b2b667fe21434ebee501bc0b
   RNGoogleSignin: e51f34000941d6fca9fd14734d36a7846cfa18a9
   RNKeychain: c151043ce48ce98b038cff539b916f5e2fb7456a
@@ -3463,10 +3433,10 @@ SPEC CHECKSUMS:
   simdjson: 7bb9e33d87737cec966e7b427773c67baa4458fe
   SocketRocket: 37aec555668fb852ec12e3c0de59a86ca58f0871
   VisionCamera: 7187b3dac1ff3071234ead959ce311875748e14f
-  WatermelonDB: 75e467adbaf2cb2809780fb3eda7ce4964e11778
+  WatermelonDB: 1c4cc914f9ee992b24b21b0992d05df035dd1b30
   whisper-rn: 398cdcf33dd609b6291a81bc958ec821252e8674
   Yoga: d1c536142c5ff8ec8cd856ab2a7c227a1d875c8e
 
-PODFILE CHECKSUM: 6072d4b8b7daf77e02888e228d992286b9e89072
+PODFILE CHECKSUM: 98b2aa3538a08a4a12aab4d1f68efa61e30bff95
 
 COCOAPODS: 1.15.2

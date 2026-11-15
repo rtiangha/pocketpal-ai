@@ -1,0 +1,21 @@
+diff --git a/node_modules/@react-native-clipboard/clipboard/RNCClipboard.podspec b/node_modules/@react-native-clipboard/clipboard/RNCClipboard.podspec
+index 2e47ccf..99c171a 100644
+--- a/node_modules/@react-native-clipboard/clipboard/RNCClipboard.podspec
++++ b/node_modules/@react-native-clipboard/clipboard/RNCClipboard.podspec
+@@ -18,6 +18,16 @@ Pod::Spec.new do |s|
+   s.osx.source_files = "macos/**/*.{h,m,mm}"
+   s.visionos.source_files = "ios/**/*.{h,m,mm}"
+ 
++  # MobileCoreServices is required when building with use_frameworks!
++  # :linkage => :dynamic. RNCClipboard.mm uses UTType symbols
++  # (kUTTypeImage, UTTypeConformsTo, UTTypeCopyPreferredTagWithClass).
++  # Under :static linkage these resolved at the final app link; under
++  # :dynamic the framework must link its own dependencies, and
++  # MobileCoreServices does not auto-link via modules the way most
++  # system frameworks do. Without it the link fails with "Undefined
++  # symbols for architecture arm64: _UTTypeCopyPreferredTagWithClass, ...".
++  s.frameworks = 'MobileCoreServices'
++
+   if fabric_enabled
+     folly_compiler_flags = '-DFOLLY_NO_CONFIG -DFOLLY_MOBILE=1 -DFOLLY_USE_LIBCPP=1 -Wno-comma -Wno-shorten-64-to-32'
+ 

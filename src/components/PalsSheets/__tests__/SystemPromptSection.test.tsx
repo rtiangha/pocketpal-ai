@@ -1,5 +1,5 @@
 import React from 'react';
-import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
+import {act, fireEvent, render, waitFor} from '../../../../jest/test-utils';
 import {FormProvider, useForm, useFormContext} from 'react-hook-form';
 import {SystemPromptSection} from '../SystemPromptSection';
 import {modelStore} from '../../../store';
@@ -88,6 +88,21 @@ describe('SystemPromptSection', () => {
       isBusy: false,
       stop: jest.fn(),
       cancel: jest.fn(),
+    });
+  });
+
+  // The model selector renders a Paper Menu, which starts a 250ms hide
+  // animation whenever it mounts hidden (and whenever it closes); the
+  // animation's completion callback reads Platform. If the suite ends
+  // first, that callback fires after Jest tears down the environment and
+  // crashes the worker ("You are trying to `require` a file after the
+  // Jest environment has been torn down", from Menu.tsx focusFirstDOMNode
+  // via the Animated timing end callback). The suite passed 21/21 tests
+  // and still failed CI this way. Let any in-flight hide animation finish
+  // before the suite tears down.
+  afterAll(async () => {
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 300));
     });
   });
 

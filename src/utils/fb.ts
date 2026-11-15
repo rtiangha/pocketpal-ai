@@ -1,5 +1,8 @@
 import {getApp} from '@react-native-firebase/app';
-import {initializeAppCheck as fbInitializeAppCheck} from '@react-native-firebase/app-check';
+import {
+  initializeAppCheck as fbInitializeAppCheck,
+  getToken as fbGetToken,
+} from '@react-native-firebase/app-check';
 
 import {APPCHECK_DEBUG_TOKEN_ANDROID, APPCHECK_DEBUG_TOKEN_IOS} from '@env';
 
@@ -30,12 +33,14 @@ export const initializeAppCheck = async () => {
       return;
     }
 
-    // Pass the provider as a plain config object: since app-check 23.6+
-    // the package root only exports ReactNativeFirebaseAppCheckProvider as
-    // a type (the class is shadowed by a type-only re-export), so `new`
-    // on it fails typecheck with TS2693. The runtime accepts a
-    // { providerOptions } config directly (ReactNativeFirebaseAppCheckProviderConfig).
-    appCheckInstance = await fbInitializeAppCheck(getApp(), {
+    // initializeAppCheck is synchronous in app-check v26+ (it returns the
+    // AppCheck instance directly; provider setup continues in the
+    // background). The provider is passed as a plain config object
+    // (ReactNativeFirebaseAppCheckProviderConfig), the form that also
+    // fixed the 23.8.8 TS2693 — it still works in v27, and the class's
+    // own getToken() is a placeholder that throws, so tokens come from
+    // the modular getToken() below.
+    appCheckInstance = fbInitializeAppCheck(getApp(), {
       provider: {
         providerOptions: {
           android: {
@@ -61,7 +66,9 @@ export const initializeAppCheck = async () => {
 // Get a fresh App Check token
 export const getAppCheckToken = async () => {
   try {
-    const {token} = await appCheckInstance.getToken();
+    // Modular getToken() in v26+: the AppCheck instance has no
+    // .getToken() method anymore.
+    const {token} = await fbGetToken(appCheckInstance);
     return token;
   } catch (error) {
     console.error('Failed to get App Check token:', error);

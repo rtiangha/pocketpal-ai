@@ -1,0 +1,22 @@
+diff --git a/node_modules/react-native-image-picker/react-native-image-picker.podspec b/node_modules/react-native-image-picker/react-native-image-picker.podspec
+index 4df93d4..fbdbb45 100644
+--- a/node_modules/react-native-image-picker/react-native-image-picker.podspec
++++ b/node_modules/react-native-image-picker/react-native-image-picker.podspec
+@@ -19,7 +19,16 @@ Pod::Spec.new do |s|
+     'RNImagePickerPrivacyInfo' => ['ios/PrivacyInfo.xcprivacy'],
+   }
+ 
+-  s.frameworks   = 'Photos','PhotosUI', 'AVFoundation', 'CoreMedia'
++  # NOTE: MobileCoreServices and UniformTypeIdentifiers are required when
++  # building with use_frameworks! :linkage => :dynamic. ImagePickerManager.mm
++  # and ImagePickerUtils.mm use UTType symbols (kUTTypeImage/JPEG/Movie,
++  # UTTypeCreatePreferredIdentifierForTag, UTTypeCopyPreferredTagWithClass,
++  # UTTypeImage.identifier). Under :static linkage these resolved at the
++  # final app link; under :dynamic the framework must link its own
++  # dependencies, and these two frameworks do not auto-link via modules
++  # the way most system frameworks do. Without them the link fails with
++  # "Undefined symbols for architecture arm64: _UTTypeCopyPreferredTagWithClass, ...".
++  s.frameworks   = 'Photos','PhotosUI', 'AVFoundation', 'CoreMedia', 'MobileCoreServices', 'UniformTypeIdentifiers'
+ 
+   if defined?(install_modules_dependencies) != nil
+     install_modules_dependencies(s)

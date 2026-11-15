@@ -1,11 +1,11 @@
 buildscript {
     ext {
         buildToolsVersion = "37.0.0"
-        minSdkVersion = 34
+        minSdkVersion = 35
         compileSdkVersion = 37
         targetSdkVersion = 35
         ndkVersion = "30.0.16248370"
-        kotlinVersion = "2.3.21"
+        kotlinVersion = "2.4.21"
     }
     repositories {
         google()
@@ -14,7 +14,25 @@ buildscript {
     dependencies {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        // Pin to ext.kotlinVersion (2.4.21). Left unversioned, this resolves to
+        // RN's catalog default (2.2.0) via react-native-gradle-plugin, while the
+        // stdlib follows ext.kotlinVersion — so modules compile with Kotlin 2.2.0
+        // against a 2.4.21 stdlib and fail with "compiled with an incompatible
+        // version of Kotlin ... metadata version is 2.4.0, but the compiler
+        // version 2.2.0 can read versions up to 2.3.0". Keep in sync with
+        // kotlinVersion above (Firebase BoM 35 requires KGP >= 2.4.0).
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.21")
+
+        // KSP (Kotlin Symbol Processing) for Room. Replaces kapt, which
+        // Room 2.8.2's processor cannot run under Kotlin 2.4.21: kapt fails
+        // silently (empty KaptExecutionWorkAction error, no processor output)
+        // because Room's compiler-processing was built against Kotlin 2.2.0
+        // and cannot read Kotlin 2.4.0 metadata. KSP reads symbols through
+        // the compiler itself, so it is version-matched to Kotlin 2.4.21.
+        // KSP now versions independently of Kotlin (the old 2.4.21-1.0.28
+        // scheme is legacy); 2.3.12 is the latest per kotlinlang.org and
+        // supports KGP 2.3.20-2.4.x. Keep in sync with kotlinVersion above.
+        classpath("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:2.3.12")
 
         // Add the Google Services plugin dependency
         // This is used exclusively for sending benchmarks (with user consent) to Hugging Face Spaces via Firebase.
