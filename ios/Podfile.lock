@@ -1558,8 +1558,29 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-get-random-values (1.11.0):
+  - react-native-get-random-values (2.1.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-bridging
     - React-Core
+    - React-Core-prebuilt
+    - React-cxxstableapi
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - react-native-image-picker (8.3.0):
     - hermes-engine
     - RCTRequired
@@ -3363,7 +3384,7 @@ SPEC CHECKSUMS:
   React-mutationobservernativemodule: b85faf3c54644c0ef2c758cd8c4e6ce16fb1f8ae
   react-native-config: b579534a137bbbc148d97c6e2dadc704238f053f
   react-native-document-picker: 0e19e3476259c7db349c80cdf3a58cc87ed20d65
-  react-native-get-random-values: d16467cf726c618e9c7a8c3c39c31faa2244bbba
+  react-native-get-random-values: 9d0bf64e709a5aea514815142d5711e275a3194f
   react-native-image-picker: a644c511762935787d356abde17db8c72fecae20
   react-native-keyboard-controller: 21cf7c9e4dfcdd77e73cc3c604b05eb50117212c
   react-native-safe-area-context: f54c903d3a8c8ddd602e85d4e5bcfe9944de85bc
