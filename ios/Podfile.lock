@@ -1535,7 +1535,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-document-picker (12.0.3):
+  - react-native-document-picker (12.1.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2452,7 +2452,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNReactNativeHapticFeedback (2.3.4):
+  - RNReactNativeHapticFeedback (3.0.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -3383,7 +3383,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: c5df4b7fe2553c25d419b99c586179ab77594b5b
   React-mutationobservernativemodule: b85faf3c54644c0ef2c758cd8c4e6ce16fb1f8ae
   react-native-config: b579534a137bbbc148d97c6e2dadc704238f053f
-  react-native-document-picker: 0e19e3476259c7db349c80cdf3a58cc87ed20d65
+  react-native-document-picker: 2d4358affe7cd049ad8d042958d27d9ff781366f
   react-native-get-random-values: 9d0bf64e709a5aea514815142d5711e275a3194f
   react-native-image-picker: a644c511762935787d356abde17db8c72fecae20
   react-native-keyboard-controller: 21cf7c9e4dfcdd77e73cc3c604b05eb50117212c
@@ -3443,7 +3443,7 @@ SPEC CHECKSUMS:
   RNGoogleSignin: e51f34000941d6fca9fd14734d36a7846cfa18a9
   RNKeychain: c151043ce48ce98b038cff539b916f5e2fb7456a
   RNPermissions: 812c498d7e6c86790eb69d546611c4d0a1f771b8
-  RNReactNativeHapticFeedback: bacae1f8ff24253c6af6f6d88c389abae6ce752b
+  RNReactNativeHapticFeedback: a1bba076645e8fedcb65c8e70461b77cd5d6dd32
   RNReanimated: 5c641cc430b7255eae87c8039204eb0f816ea1b8
   RNScreens: fdca179295dcb421672af2a9e2979a9cebeda720
   RNShare: 2782800e2fdb15e946048e6acbc17b5652a4380d
