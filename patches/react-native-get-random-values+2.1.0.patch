@@ -1,0 +1,26 @@
+diff --git a/node_modules/react-native-get-random-values/index.js b/node_modules/react-native-get-random-values/index.js
+index ea95358..2fc2ba8 100644
+--- a/node_modules/react-native-get-random-values/index.js
++++ b/node_modules/react-native-get-random-values/index.js
+@@ -19,17 +19,17 @@ function insecureRandomValues (array) {
+   return array
+ }
+ 
+-let module = null
++let nativeModule = null
+ /**
+  * @param {number} byteLength
+  * @returns {string}
+  */
+ function getRandomBase64 (byteLength) {
+-  if (module == null) {
+-    module = TurboModuleRegistry.getEnforcing('RNGetRandomValues')
++  if (nativeModule == null) {
++    nativeModule = TurboModuleRegistry.getEnforcing('RNGetRandomValues')
+   }
+ 
+-  return module.getRandomBase64(byteLength)
++  return nativeModule.getRandomBase64(byteLength)
+ }
+ 
+ /**
