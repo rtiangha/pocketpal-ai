@@ -1,4 +1,4 @@
-export const Camera = 'Camera';
+export const Camera = jest.fn(() => null);
 const backDevice = {
   id: 'back',
   name: 'Back Camera',
@@ -13,4 +13,7 @@ export const useCameraPermission = jest.fn(() => ({
   hasPermission: true,
   requestPermission: jest.fn(),
 }));
-export const useCodeScanner = jest.fn(config => config);
+export const usePhotoOutput = jest.fn(() => ({
+  capturePhoto: jest.fn(),
+  capturePhotoToFile: jest.fn(),
+}));

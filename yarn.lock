@@ -1762,9 +1762,9 @@
     "@hapi/hoek" "^9.0.0"
 
 "@hookform/resolvers@^7.0.6":
-  version "7.0.6"
-  resolved "https://registry.yarnpkg.com/@hookform/resolvers/-/resolvers-7.0.6.tgz#c5a489b153989670bec2824dc5f2e29cf305d21c"
-  integrity sha512-LSTMwW4tmRWtM7pS5HkSqahi71USbhrmjc9pNHNa7UyYTbKIK/e0G1EAw6xsEnp9GahTjXhunxRJp0Bd8E6NZA==
+  version "7.0.7"
+  resolved "https://registry.yarnpkg.com/@hookform/resolvers/-/resolvers-7.0.7.tgz#e664352f8bcb49d65e26e15fd05bf1d166ad793d"
+  integrity sha512-sxiEGu5dhg6gMEsGznEQ/++634YiRLmxclw+/B1+yNN9uuhKIfNCRTE4xwqkRcKNqBPwtmDXg5oDhLw3i/wklw==
   dependencies:
     "@standard-schema/utils" "^0.3.0"
 
@@ -4530,9 +4530,9 @@ csso@^5.0.5:
     css-tree "~2.2.0"
 
 csstype@^3.2.2:
-  version "3.2.3"
-  resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.2.3.tgz#ec48c0f3e993e50648c86da559e2610995cf989a"
-  integrity sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==
+  version "3.2.4"
+  resolved "https://registry.yarnpkg.com/csstype/-/csstype-3.2.4.tgz#e3c565add00793c36f089cc14b70d04d784daa19"
+  integrity sha512-PoKaoPzQapnEoqUSnHx1u6W6ku8CVEgKsnpmmzU3m1nwkidpPBQ8V/Zq2+bWNrsOKoKLwTGdbx6xF7BXP1zLVQ==
 
 data-view-buffer@^1.0.2:
   version "1.0.2"
@@ -7583,9 +7583,9 @@ node-int64@^0.4.0:
   integrity sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==
 
 node-releases@^2.0.64:
-  version "2.0.64"
-  resolved "https://registry.yarnpkg.com/node-releases/-/node-releases-2.0.64.tgz#f98f49ee9592be46c78780a5246e3b2c8b8d6f4d"
-  integrity sha512-zAPCKqMcnqs2nGy6nlkm7JduFseiBJy3EXHGLh+8pFR+TxGCBxxiEN21+UROU5CKwX/f4TlUcYjiM+vs/tsyxw==
+  version "2.0.65"
+  resolved "https://registry.yarnpkg.com/node-releases/-/node-releases-2.0.65.tgz#8937f0f215e572b35c1dc83f8c6ec61cafccb9f8"
+  integrity sha512-PfvofsGQ+MiOQIPkX9fU8ELUWmy5zL74CdQaph/ismKszfFkfwXaw0cGiwbwym2hT9k5+mdyl8O5WQ1MD8EHmA==
 
 node-stream-zip@^1.9.1:
   version "1.16.0"
@@ -8286,6 +8286,11 @@ react-native-linear-gradient@^2.8.3:
   resolved "https://registry.yarnpkg.com/react-native-linear-gradient/-/react-native-linear-gradient-2.8.3.tgz#9a116649f86d74747304ee13db325e20b21e564f"
   integrity sha512-KflAXZcEg54PXkLyflaSZQ3PJp4uC4whM7nT/Uot9m0e/qxFV3p6uor1983D1YOBJbJN7rrWdqIjq0T42jOJyA==
 
+react-native-nitro-image@^0.15.2:
+  version "0.15.2"
+  resolved "https://registry.yarnpkg.com/react-native-nitro-image/-/react-native-nitro-image-0.15.2.tgz#d7807f4a12ee7ecbc94990b2290d83b16fef9165"
+  integrity sha512-WiaGnORmfNIIqtRJW76TWYNet1YZx1MWDlSOxd0jfcIBN4KjkVVMDVpvO01eCfpxKVG0ez9nA2iLQkPVlGFj+A==
+
 react-native-nitro-modules@0.37.2:
   version "0.37.2"
   resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.37.2.tgz#fa224c44b2e63c6de2ac5db53361c0bed5b4e596"
@@ -8387,10 +8392,15 @@ react-native-vector-icons@^10.3.0:
     prop-types "^15.7.2"
     yargs "^16.1.1"
 
-react-native-vision-camera@^4.7.2:
-  version "4.7.3"
-  resolved "https://registry.yarnpkg.com/react-native-vision-camera/-/react-native-vision-camera-4.7.3.tgz#ed03cedabcaec54774f5aa40e69afa30069924d4"
-  integrity sha512-g1/neOyjSqn1kaAa2FxI/qp5KzNvPcF0bnQw6NntfbxH6tm0+8WFZszlgb5OV+iYlB6lFUztCbDtyz5IpL47OA==
+react-native-vision-camera-barcode-scanner@^5.2.4:
+  version "5.2.4"
+  resolved "https://registry.yarnpkg.com/react-native-vision-camera-barcode-scanner/-/react-native-vision-camera-barcode-scanner-5.2.4.tgz#7bf5ccbca919ba2aba150b3df1ae6b1bfd958ec2"
+  integrity sha512-Fv/CozWtFMuwXCNHYwQHTlFoEWYeG0NGifyzskJmaCgBhbO1GKTJhVgHK+pLc/buMzA4eISj6bVvN4RroxGQug==
+
+react-native-vision-camera@^5.2.4:
+  version "5.2.4"
+  resolved "https://registry.yarnpkg.com/react-native-vision-camera/-/react-native-vision-camera-5.2.4.tgz#f33dc4163d2741d3bb0e5a845fba8fd8b2d6b196"
+  integrity sha512-bYRSYkV61CgdvcB4MdBR2pCTzqWgYaKLbXAtvg0lDQtD7dUumiXhKw76q80cxlJb0Obimdj+HD1Fci9fCVvxbQ==
 
 react-native-webview@^14.0.1:
   version "14.0.1"

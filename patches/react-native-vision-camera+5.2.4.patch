@@ -1,0 +1,64 @@
+diff --git a/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridPreviewViewManager.kt b/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridPreviewViewManager.kt
+index d2a7948..8d7635f 100644
+--- a/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridPreviewViewManager.kt
++++ b/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridPreviewViewManager.kt
+@@ -78,16 +78,17 @@ public class HybridPreviewViewManager: SimpleViewManager<View>() {
+     val hybridView = holder.hybridView
+     holder.lastState = null
+ 
+-    @Suppress("USELESS_IS_CHECK")
+-    if (hybridView is RecyclableView) {
+-      // Recycle in it's implementation
+-      hybridView.prepareForRecycle()
+-
+-      // Maybe update the view if it changed
+-      return hybridView.view
+-    } else {
+-      return null
+-    }
++    // NOTE (PocketPal patch): the generated `hybridView is RecyclableView`
++    // check below was deleted — HybridPreviewView is a final class that
++    // does not implement RecyclableView, so the check is provably always
++    // false and Kotlin 2.4 reports it as an IMPOSSIBLE_IS_CHECK error,
++    // which the generated @Suppress("USELESS_IS_CHECK") does not cover
++    // (that name only covers the always-true case). The branch was dead
++    // code: setupViewRecycling() is only enabled when the view class
++    // implements RecyclableView (see the init block above), so this
++    // method is never even invoked for this view. Remove this patch if
++    // upstream nitrogen stops emitting the impossible check.
++    return null
+   }
+ 
+   private fun getHybridViewHolder(view: View): HybridViewHolder? {
+diff --git a/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridFrameRendererViewManager.kt b/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridFrameRendererViewManager.kt
+index 883c5bf..682beeb 100644
+--- a/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridFrameRendererViewManager.kt
++++ b/node_modules/react-native-vision-camera/nitrogen/generated/android/kotlin/com/margelo/nitro/camera/views/HybridFrameRendererViewManager.kt
+@@ -78,16 +78,17 @@ public class HybridFrameRendererViewManager: SimpleViewManager<View>() {
+     val hybridView = holder.hybridView
+     holder.lastState = null
+ 
+-    @Suppress("USELESS_IS_CHECK")
+-    if (hybridView is RecyclableView) {
+-      // Recycle in it's implementation
+-      hybridView.prepareForRecycle()
+-
+-      // Maybe update the view if it changed
+-      return hybridView.view
+-    } else {
+-      return null
+-    }
++    // NOTE (PocketPal patch): the generated `hybridView is RecyclableView`
++    // check below was deleted — HybridFrameRendererView is a final class
++    // that does not implement RecyclableView, so the check is provably
++    // always false and Kotlin 2.4 reports it as an IMPOSSIBLE_IS_CHECK
++    // error, which the generated @Suppress("USELESS_IS_CHECK") does not
++    // cover (that name only covers the always-true case). The branch was
++    // dead code: setupViewRecycling() is only enabled when the view class
++    // implements RecyclableView (see the init block above), so this
++    // method is never even invoked for this view. Remove this patch if
++    // upstream nitrogen stops emitting the impossible check.
++    return null
+   }
+ 
+   private fun getHybridViewHolder(view: View): HybridViewHolder? {

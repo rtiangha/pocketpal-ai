@@ -12,6 +12,11 @@ export const createStyles = (theme: Theme) =>
     preview: {
       height: 240,
     },
+    // v5's Camera takes no testID prop, so the preview wrapper above
+    // carries it; the Camera itself just fills the wrapper.
+    camera: {
+      flex: 1,
+    },
     closeButton: {
       position: 'absolute',
       top: 4,

@@ -14,8 +14,10 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
-# Log the minimum iOS version
-ios_version = min_ios_version_supported
+# Minimum iOS version. Raised from the React Native default (15.1) to 15.5
+# because react-native-vision-camera-barcode-scanner 5.x depends on
+# GoogleMLKit/BarcodeScanning 9.0.0, which requires iOS 15.5+.
+ios_version = '15.5'
 Pod::UI.puts "📱 Minimum iOS version supported: #{ios_version}".green
 
 platform :ios, ios_version
@@ -282,6 +284,30 @@ target 'PocketPal' do
           ldflags = [ldflags].flatten.join(' ')
           unless ldflags.include?('MobileCoreServices')
             config.build_settings['OTHER_LDFLAGS'] = "#{ldflags} -framework \"MobileCoreServices\""
+          end
+        end
+      end
+      # VisionCameraBarcodeScanner links MLKit symbols (MLKBarcode,
+      # MLKBarcodeScanner, MLKBarcodeScannerOptions, GMLImage) that live
+      # in Google's MLKit frameworks, which are STATIC xcframeworks. The
+      # podspec declares the dependency (GoogleMLKit/BarcodeScanning
+      # 9.0.0) and CocoaPods adds the -F search paths, but under
+      # use_frameworks! :dynamic it does not put the -framework flags
+      # for static vendored frameworks on a dynamic framework target's
+      # link line — so the framework link failed with "Undefined symbols
+      # for architecture arm64" even though pod install resolved the
+      # dependency. Make the link explicit here, with the full closure
+      # the static MLKit archives pull in (MLKitCommon/MLKitVision/
+      # MLImage, then GoogleDataTransport, GoogleToolboxForMac,
+      # GTMSessionFetcher, GoogleUtilities, nanopb and FBLPromises).
+      # The app target does not link MLKit itself, so embedding the
+      # symbols in this framework cannot duplicate them at app link.
+      if target.name == 'VisionCameraBarcodeScanner'
+        target.build_configurations.each do |config|
+          ldflags = config.build_settings['OTHER_LDFLAGS'] || '$(inherited)'
+          ldflags = [ldflags].flatten.join(' ')
+          unless ldflags.include?('MLKitBarcodeScanning')
+            config.build_settings['OTHER_LDFLAGS'] = "#{ldflags} -framework \"MLKitBarcodeScanning\" -framework \"MLKitCommon\" -framework \"MLKitVision\" -framework \"MLImage\" -framework \"GoogleDataTransport\" -framework \"GoogleToolboxForMac\" -framework \"GTMSessionFetcher\" -framework \"GoogleUtilities\" -framework \"nanopb\" -framework \"FBLPromises\""
           end
         end
       end

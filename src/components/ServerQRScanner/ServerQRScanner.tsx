@@ -1,13 +1,8 @@
 import React, {useContext, useRef, useState} from 'react';
 import {View} from 'react-native';
 import {IconButton, Text} from 'react-native-paper';
-import {
-  Camera,
-  CameraRuntimeError,
-  Code,
-  useCameraDevice,
-  useCodeScanner,
-} from 'react-native-vision-camera';
+import {Camera, useCameraDevice} from 'react-native-vision-camera';
+import {useBarcodeScannerOutput} from 'react-native-vision-camera-barcode-scanner';
 
 import {useTheme} from '../../hooks';
 import {L10nContext} from '../../utils';
@@ -45,14 +40,16 @@ export const ServerQRScanner: React.FC<ServerQRScannerProps> = ({
   const [frameError, setFrameError] = useState(false);
   const showCamera = !!device && !cameraFailed;
 
-  const codeScanner = useCodeScanner({
-    codeTypes: ['qr'],
-    onCodeScanned: (codes: Code[]) => {
+  const barcodeOutput = useBarcodeScannerOutput({
+    barcodeFormats: ['qr-code'],
+    onBarcodeScanned: barcodes => {
       setFrameError(false);
       if (acceptedRef.current) {
         return;
       }
-      const url = codes.map(code => code.value?.trim() ?? '').find(isServerUrl);
+      const url = barcodes
+        .map(barcode => barcode.rawValue?.trim() ?? '')
+        .find(isServerUrl);
       if (url) {
         acceptedRef.current = true;
         onScanned(url);
@@ -60,27 +57,32 @@ export const ServerQRScanner: React.FC<ServerQRScannerProps> = ({
         setRejectedPayload(true);
       }
     },
+    // A scanner error is transient (e.g. the scanner is not ready yet):
+    // keep the preview and show the "not ready" hint until the next scan.
+    onError: () => {
+      setFrameError(true);
+    },
   });
 
-  const handleCameraError = (error: CameraRuntimeError) => {
-    if (error.code.startsWith('unknown/')) {
-      setFrameError(true);
-    } else {
-      setCameraFailed(true);
-    }
+  // In v5 the Camera's onError only fires for session/device errors,
+  // which are fatal to the preview (there is no typed error code to
+  // distinguish anymore — it receives a plain Error).
+  const handleCameraError = (_error: Error) => {
+    setCameraFailed(true);
   };
 
   return (
     <View style={styles.container}>
       {showCamera ? (
-        <Camera
-          testID="server-qr-camera"
-          style={styles.preview}
-          device={device}
-          isActive
-          codeScanner={codeScanner}
-          onError={handleCameraError}
-        />
+        <View testID="server-qr-camera" style={styles.preview}>
+          <Camera
+            style={styles.camera}
+            device={device}
+            isActive
+            outputs={[barcodeOutput]}
+            onError={handleCameraError}
+          />
+        </View>
       ) : (
         <Text style={styles.message}>
           {cameraFailed

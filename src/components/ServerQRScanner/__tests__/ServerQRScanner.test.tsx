@@ -1,7 +1,8 @@
 import React from 'react';
 import {StyleSheet} from 'react-native';
 import {act} from '@testing-library/react-native';
-import {useCameraDevice, useCodeScanner} from 'react-native-vision-camera';
+import {useCameraDevice, Camera} from 'react-native-vision-camera';
+import {useBarcodeScannerOutput} from 'react-native-vision-camera-barcode-scanner';
 
 import {render, fireEvent} from '../../../../jest/test-utils';
 import {themeFixtures} from '../../../../jest/fixtures/theme';
@@ -14,8 +15,19 @@ import {l10n} from '../../../locales';
 import {ServerQRScanner} from '../ServerQRScanner';
 
 const scan = async (...values: Array<string | undefined>) => {
-  const {onCodeScanned} = (useCodeScanner as jest.Mock).mock.calls.at(-1)[0];
-  await act(() => onCodeScanned(values.map(value => ({type: 'qr', value}))));
+  const {onBarcodeScanned} = (
+    useBarcodeScannerOutput as jest.Mock
+  ).mock.calls.at(-1)[0];
+  await act(() =>
+    onBarcodeScanned(
+      values.map(value => ({format: 'qr-code', rawValue: value})),
+    ),
+  );
+};
+
+const fireScannerError = async () => {
+  const {onError} = (useBarcodeScannerOutput as jest.Mock).mock.calls.at(-1)[0];
+  await act(() => onError(new Error('scanner not ready')));
 };
 
 describe('ServerQRScanner', () => {
@@ -26,8 +38,8 @@ describe('ServerQRScanner', () => {
   it('scans qr codes only', async () => {
     await render(<ServerQRScanner onScanned={jest.fn()} onClose={jest.fn()} />);
 
-    expect(useCodeScanner).toHaveBeenCalledWith(
-      expect.objectContaining({codeTypes: ['qr']}),
+    expect(useBarcodeScannerOutput).toHaveBeenCalledWith(
+      expect.objectContaining({barcodeFormats: ['qr-code']}),
     );
   });
 
@@ -88,24 +100,20 @@ describe('ServerQRScanner', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  const fireCameraError = async (
-    view: Awaited<ReturnType<typeof render>>,
-    code: string,
-  ) =>
-    await act(() => view.getByTestId('server-qr-camera').props.onError({code}));
+  // The Camera mock captures its props (v5's Camera takes no testID,
+  // so the error is fired from the mock's recorded onError).
+  const fireCameraError = async () => {
+    const {onError} = (Camera as unknown as jest.Mock).mock.calls.at(-1)[0];
+    await act(() => onError(new Error('camera failed')));
+  };
 
-  it.each([
-    'code-scanner/not-compatible-with-outputs',
-    'permission/camera-permission-denied',
-    'device/no-device',
-    'system/camera-module-not-found',
-  ])('replaces the preview with a message on %s', async code => {
+  it('replaces the preview with a message on a camera error', async () => {
     const onClose = jest.fn();
     const view = await render(
       <ServerQRScanner onScanned={jest.fn()} onClose={onClose} />,
     );
 
-    await fireCameraError(view, code);
+    await fireCameraError();
 
     expect(view.getByText(l10n.en.settings.scanQrUnavailable)).toBeTruthy();
     expect(view.queryByTestId('server-qr-camera')).toBeNull();
@@ -113,14 +121,14 @@ describe('ServerQRScanner', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the preview on unknown errors and clears the hint on the next scan', async () => {
+  it('keeps the preview on scanner errors and clears the hint on the next scan', async () => {
     const view = await render(
       <ServerQRScanner onScanned={jest.fn()} onClose={jest.fn()} />,
     );
 
-    await fireCameraError(view, 'unknown/unknown');
-    await fireCameraError(view, 'unknown/unknown');
-    await fireCameraError(view, 'unknown/unknown');
+    await fireScannerError();
+    await fireScannerError();
+    await fireScannerError();
 
     expect(view.getByTestId('server-qr-camera')).toBeTruthy();
     const {colors} = themeFixtures.lightTheme;
@@ -144,32 +152,30 @@ describe('ServerQRScanner', () => {
     );
 
     await scan('hello');
-    await fireCameraError(view, 'unknown/unknown');
+    await fireScannerError();
 
     expect(view.getByText(l10n.en.settings.scanQrNotReady)).toBeTruthy();
     expect(view.queryByText(l10n.en.settings.scanQrNotServer)).toBeNull();
   });
 
-  it('still accepts a server url after an unknown error', async () => {
+  it('still accepts a server url after a scanner error', async () => {
     const onScanned = jest.fn();
-    const view = await render(
-      <ServerQRScanner onScanned={onScanned} onClose={jest.fn()} />,
-    );
+    await render(<ServerQRScanner onScanned={onScanned} onClose={jest.fn()} />);
 
-    await fireCameraError(view, 'unknown/unknown');
+    await fireScannerError();
     await scan('http://h:1/');
 
     expect(onScanned).toHaveBeenCalledTimes(1);
     expect(onScanned).toHaveBeenCalledWith('http://h:1/');
   });
 
-  it('still closes after an unknown error', async () => {
+  it('still closes after a scanner error', async () => {
     const onClose = jest.fn();
     const view = await render(
       <ServerQRScanner onScanned={jest.fn()} onClose={onClose} />,
     );
 
-    await fireCameraError(view, 'unknown/unknown');
+    await fireScannerError();
     await fireEvent.press(view.getByTestId('server-qr-close'));
 
     expect(onClose).toHaveBeenCalledTimes(1);

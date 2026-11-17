@@ -9,6 +9,9 @@ import {l10n} from '../../../locales';
 // Mock react-native-vision-camera
 jest.mock('react-native-vision-camera', () => {
   const mockReact = require('react');
+  const useCameraDevicesMock = jest.fn(() => [
+    {id: 'mock-device', position: 'back'},
+  ]);
   return {
     Camera: mockReact.forwardRef(({children, ...props}: any, ref: any) =>
       mockReact.createElement(
@@ -17,12 +20,20 @@ jest.mock('react-native-vision-camera', () => {
         children,
       ),
     ),
-    useCameraDevices: jest.fn(() => [{id: 'mock-device', position: 'back'}]),
-    getCameraDevice: (devices: any[], position: string) =>
-      devices.find(d => d.position === position),
+    useCameraDevices: useCameraDevicesMock,
+    // Position-aware like the real hook, reading the current device list
+    // so per-test useCameraDevices overrides (empty list, front-only)
+    // behave the same as with the real implementation.
+    useCameraDevice: jest.fn((position: string) =>
+      useCameraDevicesMock().find(d => d.position === position),
+    ),
     useCameraPermission: jest.fn(() => ({
       hasPermission: true,
       requestPermission: jest.fn(() => Promise.resolve(true)),
+    })),
+    usePhotoOutput: jest.fn(() => ({
+      capturePhoto: jest.fn(),
+      capturePhotoToFile: jest.fn(),
     })),
   };
 });

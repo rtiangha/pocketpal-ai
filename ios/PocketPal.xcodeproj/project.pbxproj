@@ -636,7 +636,7 @@
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = MYXGXY23Y6;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = PocketPal/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -674,7 +674,7 @@
 				CURRENT_PROJECT_VERSION = 160;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = MYXGXY23Y6;
 				INFOPLIST_FILE = PocketPal/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -776,7 +776,7 @@
 					"${PODS_ROOT}/React-featureflags",
 					"${PODS_ROOT}/React-renderercss",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -884,7 +884,7 @@
 					"${PODS_ROOT}/React-featureflags",
 					"${PODS_ROOT}/React-renderercss",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -1059,7 +1059,7 @@
 					"${PODS_ROOT}/React-featureflags",
 					"${PODS_ROOT}/React-renderercss",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -1108,7 +1108,7 @@
 				CURRENT_PROJECT_VERSION = 160;
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = MYXGXY23Y6;
 				INFOPLIST_FILE = PocketPal/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

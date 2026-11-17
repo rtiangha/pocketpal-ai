@@ -89,6 +89,11 @@ module.exports = {
     'mobx-persist-store': '<rootDir>/__mocks__/external/mobx-persist-store.js',
     'react-native-image-picker':
       '<rootDir>/__mocks__/external/react-native-image-picker.js',
+    'react-native-vision-camera-barcode-scanner':
+      '<rootDir>/__mocks__/external/react-native-vision-camera-barcode-scanner.ts',
+    // NOTE: this must stay below the barcode-scanner entry — the mapper
+    // matches top-down and 'react-native-vision-camera' is a prefix of
+    // the barcode-scanner package name.
     'react-native-vision-camera':
       '<rootDir>/__mocks__/external/react-native-vision-camera.ts',
     '@react-native-google-signin/google-signin':

@@ -10,15 +10,16 @@ import {
 
 import {observer} from 'mobx-react';
 import 'react-native-get-random-values';
-import * as RNFS from '@dr.pogodin/react-native-fs';
+import {Buffer} from 'buffer';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   Camera,
-  getCameraDevice,
+  useCameraDevice,
   useCameraDevices,
   useCameraPermission,
+  usePhotoOutput,
   CameraDevice,
-  CameraPosition,
+  TargetCameraPosition,
 } from 'react-native-vision-camera';
 
 import {useTheme} from '../../hooks';
@@ -49,12 +50,15 @@ export const EmbeddedVideoView = observer(
     const l10n = React.useContext(L10nContext);
     const {hasPermission, requestPermission} = useCameraPermission();
     const [cameraPosition, setCameraPosition] =
-      useState<CameraPosition>('back');
+      useState<TargetCameraPosition>('back');
     const [isCapturing, setIsCapturing] = useState(false);
-    const camera = useRef<Camera>(null);
+    const photoOutput = usePhotoOutput();
     const devices = useCameraDevices();
+    // v5: getCameraDevice now takes a CameraDeviceFactory, not the device
+    // list, so pick the device for the requested position with the hook
+    // and fall back to the first available device (e.g. front-only phone).
     const device: CameraDevice | undefined =
-      getCameraDevice(devices, cameraPosition) ?? devices[0];
+      useCameraDevice(cameraPosition) ?? devices[0];
     const captureTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     // Check if running in simulator - simplified check for iOS simulator
@@ -111,33 +115,27 @@ export const EmbeddedVideoView = observer(
       stopCapturing();
 
       captureTimerRef.current = setInterval(async () => {
-        if (camera.current && !isCapturing) {
+        if (!isCapturing) {
           setIsCapturing(true);
           try {
-            const photo = await camera.current.takePhoto({
-              flash: 'off',
-              enableShutterSound: false,
-            });
-
-            // Convert photo to base64
-            const filePath = Platform.OS === 'ios' ? photo.path : photo.path;
-            const base64Data = await RNFS.readFile(filePath, 'base64');
-
-            // Clean up the temporary file immediately after reading
+            // v5: capturePhoto returns an in-memory Photo (no temp file).
+            // getFileDataAsync gives the encoded JPEG bytes; dispose the
+            // Photo when done so its native memory is released promptly.
+            const photo = await photoOutput.capturePhoto(
+              {flashMode: 'off', enableShutterSound: false},
+              {},
+            );
             try {
-              await RNFS.unlink(filePath);
-            } catch (deleteError) {
-              console.warn(
-                'Failed to delete temporary image file:',
-                deleteError,
-              );
-              // Don't throw - continue with the base64 data even if cleanup fails
+              const fileData = await photo.getFileDataAsync();
+              const base64Data = Buffer.from(fileData).toString('base64');
+
+              // Create data URL format expected by llama.rn
+              const imageBase64 = `data:image/jpeg;base64,${base64Data}`;
+
+              onCapture(imageBase64);
+            } finally {
+              photo.dispose();
             }
-
-            // Create data URL format expected by llama.rn
-            const imageBase64 = `data:image/jpeg;base64,${base64Data}`;
-
-            onCapture(imageBase64);
           } catch (error) {
             // Only log error if camera is still supposed to be active
             console.error('Error taking photo or converting to base64:', error);
@@ -146,7 +144,7 @@ export const EmbeddedVideoView = observer(
           }
         }
       }, captureInterval);
-    }, [stopCapturing, captureInterval, isCapturing, onCapture]);
+    }, [stopCapturing, captureInterval, isCapturing, onCapture, photoOutput]);
 
     // Start capturing frames at the specified interval
     useEffect(() => {
@@ -207,11 +205,10 @@ export const EmbeddedVideoView = observer(
     return (
       <View style={styles.container}>
         <Camera
-          ref={camera}
           style={styles.camera}
           device={device}
           isActive={true}
-          photo={true}
+          outputs={[photoOutput]}
         />
 
         {/* Response overlay */}
