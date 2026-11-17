@@ -59,7 +59,7 @@
     "date-fns": "^4.4.0",
     "dayjs": "^1.11.23",
     "expr-eval": "^2.0.2",
-    "llama.rn": "0.13.0-rc.11",
+    "llama.rn": "0.13.0-rc.12",
     "mobx": "^7.1.7",
     "mobx-persist-store": "^1.1.8",
     "mobx-react": "^10.0.4",
