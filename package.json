@@ -139,7 +139,7 @@
     "patch-package": "^8.0.1",
     "postinstall-postinstall": "^2.1.0",
     "prettier": "3.10.1",
-    "react-native-dotenv": "^3.4.11",
+    "react-native-dotenv": "^5.0.0",
     "react-native-svg-transformer": "^1.5.3",
     "reassure": "1.6.1",
     "typescript": "5.9.3",
