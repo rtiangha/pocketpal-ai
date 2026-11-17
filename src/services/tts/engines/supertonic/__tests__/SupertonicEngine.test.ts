@@ -375,6 +375,7 @@ describe('SupertonicEngine', () => {
           vocoderPath: expect.stringMatching(/^file:\/\/.*vocoder\.onnx$/),
           voicesPath: expect.stringMatching(/voices-manifest\.json$/),
           executionProviders: ['cpu'],
+          ducking: true,
         }),
       );
       expect(Speech.speak).toHaveBeenCalledWith('hello', anyVoice.id, {
@@ -619,7 +620,6 @@ describe('SupertonicEngine', () => {
       new SupertonicEngine().playStreaming(anyVoice, undefined, {
         language: 'en',
         firstChunk: 'clause',
-        firstChunkMaxWords: 16,
         onProgress,
       });
       await flush();
@@ -631,7 +631,6 @@ describe('SupertonicEngine', () => {
         expect.objectContaining({
           language: 'en',
           firstChunk: 'clause',
-          firstChunkMaxWords: 16,
         }),
       );
       expect(options).not.toHaveProperty('onProgress');

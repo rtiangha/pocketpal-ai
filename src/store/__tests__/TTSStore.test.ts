@@ -8,10 +8,6 @@ jest.mock('mobx-persist-store', () => ({
   makePersistable: jest.fn().mockReturnValue(Promise.resolve()),
 }));
 
-jest.mock('../ModelStore', () => ({
-  modelStore: require('../../../__mocks__/stores/modelStore').mockModelStore,
-}));
-
 // AppState.addEventListener spy — capture registered handler so we can invoke it
 const mockAppStateRemove = jest.fn();
 const appStateHandlers: Array<(s: string) => void> = [];
@@ -50,16 +46,6 @@ const mockKittenDownloadModel = jest.fn().mockResolvedValue(undefined);
 const mockKittenDeleteModel = jest.fn().mockResolvedValue(undefined);
 const mockKittenPlay = jest.fn().mockResolvedValue(undefined);
 const mockKittenStop = jest.fn().mockResolvedValue(undefined);
-const mockKokoroPlayStreaming = jest.fn(() => ({
-  appendText: jest.fn(),
-  finalize: jest.fn().mockResolvedValue(undefined),
-  cancel: jest.fn().mockResolvedValue(undefined),
-}));
-const mockKittenPlayStreaming = jest.fn(() => ({
-  appendText: jest.fn(),
-  finalize: jest.fn().mockResolvedValue(undefined),
-  cancel: jest.fn().mockResolvedValue(undefined),
-}));
 const mockPhononIsInstalled = jest.fn().mockResolvedValue(false);
 const mockPhononDownloadModel = jest.fn().mockResolvedValue(undefined);
 const mockPhononDeleteModel = jest.fn().mockResolvedValue(undefined);
@@ -135,7 +121,11 @@ jest.mock('../../services/tts', () => {
         isInstalled: mockKokoroIsInstalled,
         getVoices: mockKokoroGetVoices,
         play: mockKokoroPlay,
-        playStreaming: mockKokoroPlayStreaming,
+        playStreaming: jest.fn(() => ({
+          appendText: jest.fn(),
+          finalize: jest.fn().mockResolvedValue(undefined),
+          cancel: jest.fn().mockResolvedValue(undefined),
+        })),
         stop: mockKokoroStop,
         downloadModel: mockKokoroDownloadModel,
         deleteModel: mockKokoroDeleteModel,
@@ -161,7 +151,11 @@ jest.mock('../../services/tts', () => {
         isInstalled: mockKittenIsInstalled,
         getVoices: jest.fn().mockResolvedValue([]),
         play: mockKittenPlay,
-        playStreaming: mockKittenPlayStreaming,
+        playStreaming: jest.fn(() => ({
+          appendText: jest.fn(),
+          finalize: jest.fn().mockResolvedValue(undefined),
+          cancel: jest.fn().mockResolvedValue(undefined),
+        })),
         stop: mockKittenStop,
         downloadModel: mockKittenDownloadModel,
         deleteModel: mockKittenDeleteModel,
@@ -207,10 +201,6 @@ import {TTSStore} from '../TTSStore';
 import type {Voice} from '../../services/tts';
 import {ttsRuntime} from '../../services/tts';
 import {chatSessionStore} from '../ChatSessionStore';
-import {modelStore} from '../ModelStore';
-import {voiceModeStore} from '..';
-import {VOICE_FIRST_CHUNK_MAX_WORDS} from '../../services/voice/constants';
-import {dumpVoiceTrace} from '../../utils/voiceTrace';
 
 const SYSTEM_VOICE: Voice = {
   id: 'com.apple.voice.Sarah',
@@ -244,7 +234,6 @@ describe('TTSStore', () => {
     appStateHandlers.length = 0;
     lastSystemHandle = null;
     lastSupertonicHandle = null;
-    modelStore.deviceTier = null;
   });
 
   describe('memory gate', () => {
@@ -828,8 +817,7 @@ describe('TTSStore', () => {
       mockSupertonicPlayStreaming.mockImplementation(defaultPlayStreaming);
     });
 
-    it('opens a voice reply with a capped clause first chunk and progress', async () => {
-      modelStore.deviceTier = 'flagship';
+    it('opens a voice reply with a clause first chunk and progress', async () => {
       const store = await makeVoiceStore();
 
       store.onAssistantMessageStart('msg-1');
@@ -839,7 +827,6 @@ describe('TTSStore', () => {
       expect(handle!.opts).toEqual(
         expect.objectContaining({
           firstChunk: 'clause',
-          firstChunkMaxWords: 24,
           language: 'na',
           onProgress: expect.any(Function),
         }),
@@ -978,162 +965,6 @@ describe('TTSStore', () => {
       cancelled();
       await flush();
       expect(started).toBe(true);
-    });
-  });
-
-  describe('voice first chunk per engine and device tier', () => {
-    const KITTEN: Voice = {
-      id: 'expr-voice-2-f',
-      name: 'F2',
-      engine: 'kitten',
-      language: 'en',
-    };
-    const PHONON: Voice = {
-      id: 'Zoey',
-      name: 'Zoey',
-      engine: 'phonon',
-      language: 'en-us',
-    };
-    const playStreamingOf = {
-      kokoro: mockKokoroPlayStreaming,
-      supertonic: mockSupertonicPlayStreaming,
-      kitten: mockKittenPlayStreaming,
-      phonon: mockPhononPlayStreaming,
-    };
-    const originalOS = Platform.OS;
-
-    afterEach(() => {
-      Platform.OS = originalOS;
-      voiceModeStore.userVoiceModeOverride = null;
-    });
-
-    const playStreamingFor = (voice: Voice) =>
-      playStreamingOf[voice.engine as keyof typeof playStreamingOf];
-    const lastOpts = (voice: Voice) => {
-      const calls = playStreamingFor(voice).mock.calls as any[];
-      return calls[calls.length - 1][2];
-    };
-
-    const openVoiceReply = async (voice: Voice, messageId = 'msg-1') => {
-      const store = await makeStore();
-      store.setCurrentVoice(voice);
-      store.setVoiceOutputActive(true);
-      store.onAssistantMessageStart(messageId);
-      return {store, opts: lastOpts(voice)};
-    };
-
-    describe.each([
-      ['Kokoro', KOKORO_VOICE],
-      ['Supertonic', SUPERTONIC_VOICE],
-    ])('%s', (_name, voice) => {
-      it.each([
-        ['ios', 'flagship', 24],
-        ['ios', 'high', 20],
-        ['ios', 'mid', 16],
-        ['ios', 'low', 12],
-        ['android', 'flagship', 24],
-        ['android', 'high', 20],
-        ['android', 'mid', 16],
-        ['android', 'low', 12],
-      ] as const)(
-        'caps a clause first chunk on %s tier %s at %i words',
-        async (os, tier, words) => {
-          Platform.OS = os;
-          modelStore.deviceTier = tier;
-
-          const {opts} = await openVoiceReply(voice);
-
-          expect(opts).toEqual(
-            expect.objectContaining({
-              firstChunk: 'clause',
-              firstChunkMaxWords: words,
-              onProgress: expect.any(Function),
-            }),
-          );
-        },
-      );
-
-      it.each([
-        [null, true],
-        [null, false],
-        [null, null],
-      ] as const)(
-        'leaves the cap out on tier %s with the Settings override %s',
-        async (tier, override) => {
-          modelStore.deviceTier = tier;
-          voiceModeStore.userVoiceModeOverride = override;
-
-          const {opts} = await openVoiceReply(voice);
-
-          expect(opts).toEqual(expect.objectContaining({firstChunk: 'clause'}));
-          expect(opts).not.toHaveProperty('firstChunkMaxWords');
-        },
-      );
-    });
-
-    describe.each([
-      ['Kitten', KITTEN],
-      ['Phonon', PHONON],
-    ])('%s', (_name, voice) => {
-      it.each(['flagship', 'high', 'mid', 'low', null] as const)(
-        'starts at the first sentence with no cap on tier %s',
-        async tier => {
-          modelStore.deviceTier = tier;
-
-          const {opts} = await openVoiceReply(voice);
-
-          expect(opts).toEqual(
-            expect.objectContaining({
-              firstChunk: 'sentence',
-              onProgress: expect.any(Function),
-            }),
-          );
-          expect(opts).not.toHaveProperty('firstChunkMaxWords');
-        },
-      );
-    });
-
-    it('reads the tier again at each stream open and does not change earlier options', async () => {
-      modelStore.deviceTier = 'high';
-      const {store} = await openVoiceReply(KOKORO_VOICE, 'msg-1');
-      const first = lastOpts(KOKORO_VOICE);
-
-      modelStore.deviceTier = 'flagship';
-      store.onAssistantMessageStart('msg-2');
-      const second = lastOpts(KOKORO_VOICE);
-
-      expect(first.firstChunkMaxWords).toBe(20);
-      expect(second.firstChunkMaxWords).toBe(24);
-    });
-
-    it('holds a positive integer cap for every tier', () => {
-      const tiers = ['flagship', 'high', 'mid', 'low'] as const;
-      expect(Object.keys(VOICE_FIRST_CHUNK_MAX_WORDS).sort()).toEqual(
-        [...tiers].sort(),
-      );
-      for (const words of Object.values(VOICE_FIRST_CHUNK_MAX_WORDS)) {
-        expect(Number.isInteger(words)).toBe(true);
-        expect(words).toBeGreaterThanOrEqual(1);
-      }
-    });
-
-    it('traces the first-chunk mode and cap when the stream opens', async () => {
-      modelStore.deviceTier = 'flagship';
-      await openVoiceReply(SUPERTONIC_VOICE);
-      await openVoiceReply(PHONON);
-
-      const opens = dumpVoiceTrace()
-        .split('\n')
-        .filter(line => line.includes(' tts.open '));
-
-      expect(opens.slice(-2)).toEqual([
-        expect.stringMatching(
-          /tts\.open voice=true engine=supertonic first=clause maxWords=24$/,
-        ),
-        expect.stringMatching(
-          /tts\.open voice=true engine=phonon first=sentence maxWords=undefined$/,
-        ),
-      ]);
     });
   });
 
@@ -2475,11 +2306,10 @@ describe('TTSStore', () => {
       expect(voice).toEqual(ZOEY);
       expect(opts).toEqual(
         expect.objectContaining({
-          firstChunk: 'sentence',
+          firstChunk: 'clause',
           onProgress: expect.any(Function),
         }),
       );
-      expect(opts).not.toHaveProperty('firstChunkMaxWords');
       opts.onProgress({
         chunkText: '',
         streamRange: {start: 0, end: 1},
@@ -2822,6 +2652,43 @@ describe('TTSStore', () => {
       await store.play('msg-1', 'hello');
 
       expect(mockSystemPlay).toHaveBeenCalledWith('hello', SYSTEM_VOICE);
+    });
+  });
+
+  describe('play() holds playing until the engine play settles', () => {
+    it('stays playing until the system engine play resolves', async () => {
+      const store = await makeStore();
+      store.setCurrentVoice(SYSTEM_VOICE);
+      let endOfAudio: () => void = () => {};
+      mockSystemPlay.mockImplementationOnce(
+        () => new Promise<void>(r => (endOfAudio = r)),
+      );
+
+      const replay = store.play('msg-1', 'One. Two. Three.');
+      await flush();
+      expect(store.playbackState).toEqual({
+        mode: 'playing',
+        messageId: 'msg-1',
+      });
+
+      endOfAudio();
+      await replay;
+      expect(store.playbackState).toEqual({mode: 'idle'});
+    });
+
+    it('Stop mid-replay goes idle and stops the system engine', async () => {
+      const store = await makeStore();
+      store.setCurrentVoice(SYSTEM_VOICE);
+      mockSystemPlay.mockImplementationOnce(() => new Promise<void>(() => {}));
+
+      store.play('msg-1', 'One. Two. Three.');
+      await flush();
+      mockSystemStop.mockClear();
+
+      await store.stop();
+
+      expect(store.playbackState).toEqual({mode: 'idle'});
+      expect(mockSystemStop).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -1,7 +1,6 @@
 import type {
   FirstChunkMode,
   StreamProgressEvent,
-  SynthesisOptions,
 } from '@pocketpalai/react-native-speech';
 
 /**
@@ -66,8 +65,6 @@ export interface StreamingHandle {
 export interface StreamOptions {
   /** `'clause'` starts speaking at the first clause instead of sentence. */
   firstChunk?: FirstChunkMode;
-  /** Word cap on a `'clause'` first chunk; the library defaults to 12. */
-  firstChunkMaxWords?: SynthesisOptions['firstChunkMaxWords'];
   /** Called as each chunk starts playing, with its range in the stream. */
   onProgress?: (event: StreamProgressEvent) => void;
 }
@@ -82,9 +79,6 @@ export interface Engine {
    * Initialize the underlying native engine. Called by `ttsRuntime` when
    * this engine becomes the active one. Idempotent at the runtime level
    * (the runtime won't call it twice without a `release` in between).
-   *
-   * System engine implements as a no-op — OS-native TTS does not require
-   * setup.
    */
   loadInto(): Promise<void>;
   /**
