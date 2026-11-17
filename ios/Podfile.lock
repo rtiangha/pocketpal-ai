@@ -1771,7 +1771,7 @@ PODS:
   - react-native-tcp-socket (6.4.3):
     - CocoaAsyncSocket
     - React-Core
-  - react-native-webview (13.17.0):
+  - react-native-webview (14.0.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -3386,7 +3386,7 @@ SPEC CHECKSUMS:
   react-native-safe-area-context: f54c903d3a8c8ddd602e85d4e5bcfe9944de85bc
   react-native-slider: 51120d67580f0b9cd6a409e34f32ee9eb3dbef36
   react-native-tcp-socket: e502f7c50922acc808015ce3fe54bb96fae75bf8
-  react-native-webview: 71ec3f14eeb2540be65860f9b613cd56e94f6534
+  react-native-webview: 0350e63d9eff606d9923619409987b6cd1ac58f5
   React-NativeModulesApple: 8cfb2f308f48c48068c96b932e7f0e4297c23342
   React-networking: 6e2fa1cf6d44aa04a11e9f72900361731ddf74d6
   React-oscompat: f27d5f926c696f407b81a282fa15d68c881d7b3d
