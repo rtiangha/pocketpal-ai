@@ -64,8 +64,23 @@ react {
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ *
+ * Enabled Nov 2026 (R8 full minification): R8 shrinks + obfuscates the DEX
+ * and, with shrinkResources below, drops unused Android resources. The
+ * releaseE2e buildType inherits this via initWith release, so E2E builds
+ * are minified too. Keep rules live in proguard-rules.pro — they exist
+ * because several JNI libraries ship NO consumer ProGuard rules (see that
+ * file). If the release build ever breaks at runtime, the rollback is this
+ * flag back to false (and shrinkResources false); debug builds are
+ * unaffected either way. R8 does NOT touch the native .so files or the
+ * Hermes JS bundle, so most of the APK's bytes (llama.cpp, ONNX, Hermes)
+ * are unchanged — the win is DEX + unused resources, not a dramatically
+ * smaller APK. The mapping file lands at
+ * app/build/outputs/mapping/prodRelease/mapping.txt — archive it with
+ * each release build if a production stack trace ever needs deobfuscating
+ * (no Crashlytics in this project, so nothing uploads it automatically).
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -145,6 +160,13 @@ android {
                 println "Warning: Release signing credentials not found, using debug keystore"
             }
             minifyEnabled enableProguardInReleaseBuilds
+            // Drop unused Android resources (drawables, strings, layouts)
+            // from the release APK. No dynamic resource lookup
+            // (Resources.getIdentifier) in the app's own code, so the risk
+            // is confined to libraries loading resources by name — the
+            // on-device test covers it (splash, notification icons,
+            // images). Rollback: set this false, keep minifyEnabled true.
+            shrinkResources true
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
             buildConfigField "boolean", "USE_DEV_SUPPORT", "false"
         }
