@@ -12,7 +12,17 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle")
+        // AGP is versioned explicitly here: React Native's catalog pins
+        // 9.2.1 (node_modules/@react-native/gradle-plugin/gradle/
+        // libs.versions.toml, and RN main still pins 9.2.1 as of Nov 2026),
+        // so the unversioned classpath would resolve to 9.2.1. AGP 9.5.1
+        // needs Gradle >= 9.6.0 — the wrapper is 9.9.1. The RN gradle
+        // plugin (0.88.1) uses the stable AGP variant API plus one internal
+        // task-factory helper (dependsOn); AGP 9.5.0's notes list no removed
+        // or renamed DSL entries, but only the CI Android build proves the
+        // plugin runs against 9.5.1. Revert to the unversioned classpath if
+        // a future RN ships a newer AGP.
+        classpath("com.android.tools.build:gradle:9.5.1")
         classpath("com.facebook.react:react-native-gradle-plugin")
         // Pin to ext.kotlinVersion (2.4.21). Left unversioned, this resolves to
         // RN's catalog default (2.2.0) via react-native-gradle-plugin, while the
