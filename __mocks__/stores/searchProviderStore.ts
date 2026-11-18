@@ -67,6 +67,16 @@ class MockSearchProviderStore {
     );
   }
 
+  get activeProviderRequiresKey(): boolean {
+    const meta = SEARCH_PROVIDERS.find(p => p.id === this.activeProviderId);
+    return meta ? meta.requiresKey !== false : true;
+  }
+
+  get activeProviderAcceptsKey(): boolean {
+    const meta = SEARCH_PROVIDERS.find(p => p.id === this.activeProviderId);
+    return meta ? meta.acceptsKey !== false : true;
+  }
+
   get canSearch(): boolean {
     return this.hasConsentedToSearch && this.isProviderConfigured;
   }

@@ -1389,6 +1389,21 @@ describe('SettingsScreen', () => {
         queryByText('No key needed for Brave. Add one for higher limits.'),
       ).toBeNull();
     });
+
+    it('shows a no-key note and no key button for Bing', async () => {
+      searchProviderStore.setActiveProvider('bing');
+      const {getByText, queryByTestId} = await render(<SettingsScreen />, {
+        withSafeArea: true,
+        withNavigation: true,
+      });
+
+      expect(
+        getByText(
+          'Bing needs no API key — searches run over your own connection.',
+        ),
+      ).toBeTruthy();
+      expect(queryByTestId('search-provider-key-button')).toBeNull();
+    });
   });
 
   it('shows effective value when image_max_tokens exceeds n_ctx', async () => {

@@ -740,6 +740,7 @@ describe('chat export -> import round trip', () => {
       return {
         getActiveProvider: () => provider,
         canSearch: () => true,
+        requiresKey: () => true,
         getResultCount: () => 5,
         readWithDefaultReader: async url => ({url, text: ''}),
       };

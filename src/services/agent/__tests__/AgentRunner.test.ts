@@ -1773,6 +1773,7 @@ describe('runAgent', () => {
         const access: SearchAccess = {
           getActiveProvider: () => new TavilyProvider(() => 'key'),
           canSearch: () => true,
+          requiresKey: () => true,
           getResultCount: () => 3,
           readWithDefaultReader: jest.fn(),
         };
@@ -1829,6 +1830,7 @@ describe('runAgent', () => {
       const access: SearchAccess = {
         getActiveProvider: () => new TavilyProvider(() => 'key'),
         canSearch: () => true,
+        requiresKey: () => true,
         getResultCount: () => 3,
         readWithDefaultReader: jest.fn(),
       };
@@ -1955,6 +1957,7 @@ describe('runAgent', () => {
     const searchAccess = (provider: SearchProvider): SearchAccess => ({
       getActiveProvider: () => provider,
       canSearch: () => true,
+      requiresKey: () => true,
       getResultCount: () => 3,
       readWithDefaultReader: jest.fn(async (url: string) => ({
         url,

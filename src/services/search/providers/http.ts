@@ -154,8 +154,15 @@ export const fetchText = async (
   input: string,
   init: RequestInit,
   timeoutMs: number = DEFAULT_TIMEOUT_MS,
+  {retryOn429 = false}: {retryOn429?: boolean} = {},
 ): Promise<string> => {
-  const res = await withTimeout(input, init, timeoutMs);
+  let res = await withTimeout(input, init, timeoutMs);
+  const retryWaitMs =
+    retryOn429 && res.status === 429 ? rateLimitRetryWaitMs(res) : null;
+  if (retryWaitMs !== null) {
+    await waitOrCancel(retryWaitMs, init.signal);
+    res = await withTimeout(input, init, timeoutMs);
+  }
   if (!res.ok) {
     throw new Error(`request failed (${res.status})`);
   }

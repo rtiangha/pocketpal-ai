@@ -17,10 +17,24 @@ export interface SearchProviderMeta {
   selectable: boolean;
   /** False for providers that work without a key (the key only raises limits). Defaults to true. */
   requiresKey?: boolean;
+  /**
+   * False when the provider has no key to enter at all (fully keyless,
+   * e.g. Bing). Unlike `requiresKey: false` (key optional, e.g. You.com —
+   * a key raises limits), a provider with `acceptsKey: false` shows no key
+   * entry in Settings. Defaults to true.
+   */
+  acceptsKey?: boolean;
 }
 
 /** Parallel ships gated (not selectable) until its free-tier/PAYG terms are confirmed. */
 export const SEARCH_PROVIDERS: SearchProviderMeta[] = [
+  {
+    id: 'bing',
+    label: 'Bing',
+    selectable: true,
+    requiresKey: false,
+    acceptsKey: false,
+  },
   {id: 'tavily', label: 'Tavily', selectable: true},
   {id: 'brave', label: 'Brave', selectable: true},
   {id: 'exa', label: 'Exa', selectable: true},
@@ -116,6 +130,18 @@ class SearchProviderStore {
       this.isKeyOptional(this.activeProviderId) ||
       this.hasKey(this.activeProviderId)
     );
+  }
+
+  /** True when the active provider needs a BYOK key before it can search. */
+  get activeProviderRequiresKey(): boolean {
+    const meta = SEARCH_PROVIDERS.find(p => p.id === this.activeProviderId);
+    return meta ? meta.requiresKey !== false : true;
+  }
+
+  /** False when the active provider has no key to enter at all (fully keyless, e.g. Bing). */
+  get activeProviderAcceptsKey(): boolean {
+    const meta = SEARCH_PROVIDERS.find(p => p.id === this.activeProviderId);
+    return meta ? meta.acceptsKey !== false : true;
   }
 
   get canSearch(): boolean {

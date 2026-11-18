@@ -9,6 +9,14 @@ const opts = {maxResults: 3};
 const key = () => 'key';
 const pageUrl = 'https://example.com';
 
+// The JSON providers answer JSON; Bing answers HTML, so its success body
+// must carry a parseable b_algo block or it (correctly) throws.
+const JSON_OK_BODY = '{"type":"search","results":[],"success":true,"data":{}}';
+const BING_OK_BODY =
+  '<li class="b_algo"><a href="https://a.example/"><h2>A</h2></a><p>b</p></li>';
+const successBody = (label: string) =>
+  label.startsWith('Bing') ? BING_OK_BODY : JSON_OK_BODY;
+
 const providers = SEARCH_PROVIDERS.map(
   ({id, label}) => [label, createSearchProvider(id, key)] as const,
 );
@@ -57,9 +65,9 @@ describe('search network calls honour the caller signal', () => {
     },
   );
 
-  it.each(calls)('%s resolves as before without a signal', async (_l, run) => {
+  it.each(calls)('%s resolves as before without a signal', async (l, run) => {
     global.fetch = abortableFetch({
-      body: '{"type":"search","results":[],"success":true,"data":{}}',
+      body: successBody(l),
     });
 
     await expect(run()).resolves.toBeDefined();
@@ -83,13 +91,11 @@ describe('search network calls on a 429', () => {
     jest.useRealTimers();
   });
 
-  it.each(searches)('%s retries once', async (_label, run) => {
+  it.each(searches)('%s retries once', async (label, run) => {
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce(rateLimited)
-      .mockResolvedValueOnce(
-        okResponse('{"type":"search","results":[],"success":true,"data":{}}'),
-      );
+      .mockResolvedValueOnce(okResponse(successBody(label)));
 
     const result = run();
     await jest.advanceTimersByTimeAsync(1000);

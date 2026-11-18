@@ -15,6 +15,11 @@ export interface SearchAccess {
    * Consent is enforced here, not just in the Settings UI.
    */
   canSearch(): boolean;
+  /**
+   * False for keyless providers. Drives the "not enabled" copy so a keyless
+   * provider isn't told to go set an API key it doesn't need.
+   */
+  requiresKey(): boolean;
   getResultCount(): number;
   readWithDefaultReader(
     url: string,
