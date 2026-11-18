@@ -242,14 +242,20 @@ dependencies {
     implementation "androidx.core:core-ktx:1.19.1"
 
     // OkHttp for DownloadModule (network requests)
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // 5.5.1 (Nov 2026): major bump from 4.12.0. OkHttp 5 keeps binary
+    // compatibility with 4.x stable APIs (Square's 5.0.0 changelog), so
+    // React Native's and Fresco's prebuilt code keeps working against it;
+    // the app's own usage is stable-API-only (OkHttpClient, Request,
+    // Call). The old mockwebserver artifact is still published at 5.5.1,
+    // so the download tests need no migration to mockwebserver3.
+    implementation("com.squareup.okhttp3:okhttp:5.5.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16")
     testImplementation("androidx.test:core-ktx:1.7.0")
     testImplementation("androidx.room:room-testing:$room_version")
     testImplementation("androidx.sqlite:sqlite-bundled-jvm:2.6.1")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.1")
     testImplementation("androidx.work:work-testing:2.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }
