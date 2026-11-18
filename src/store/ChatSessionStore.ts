@@ -69,6 +69,20 @@ const DEFAULT_GROUP_NAMES = {
 export const NEW_CHAT_DRAFT_KEY = '__new_chat__';
 
 export const defaultCompletionSettings = {...defaultCompletionParams};
+
+/**
+ * `tools` is derived state, not stored state: the tool schemas a model sees
+ * are rebuilt from the active pal's `pact.talents` on every resolve. Any
+ * `tools` value carried by a saved settings object is a stale snapshot —
+ * it was resolved for a different pal, or for no pal at all — so strip it
+ * before persisting, loading, or spreading settings. The pact injection in
+ * `resolveCompletionSettings` is the only place `tools` is ever set.
+ */
+function withoutTools(settings: CompletionParams): CompletionParams {
+  const cleanSettings = {...settings};
+  delete cleanSettings.tools;
+  return cleanSettings;
+}
 delete defaultCompletionSettings.prompt;
 delete defaultCompletionSettings.stop;
 
@@ -315,7 +329,10 @@ class ChatSessionStore {
         await chatSessionRepository.getGlobalCompletionSettings();
 
       runInAction(() => {
-        this.newChatCompletionSettings = settings;
+        // Heal a preset saved before tools were stripped on save: a stale
+        // `tools` snapshot in the persisted global preset is dropped on
+        // load, so the next resolve derives tools from the pact alone.
+        this.newChatCompletionSettings = withoutTools(settings);
       });
     } catch (error) {
       console.error('Failed to load global settings:', error);
@@ -560,8 +577,12 @@ class ChatSessionStore {
   }
 
   async setNewChatCompletionSettings(settings: CompletionParams) {
-    this.newChatCompletionSettings = settings;
-    await chatSessionRepository.saveGlobalCompletionSettings(settings);
+    // Never persist `tools`: it is derived from the pal's pact at resolve
+    // time, and a snapshot saved here can go stale (wrong pal / no pal)
+    // and later be copied into session or pal settings verbatim.
+    const cleanSettings = withoutTools(settings);
+    this.newChatCompletionSettings = cleanSettings;
+    await chatSessionRepository.saveGlobalCompletionSettings(cleanSettings);
   }
 
   async resetNewChatCompletionSettings() {
@@ -1073,10 +1094,12 @@ class ChatSessionStore {
       const session = this.sessions.find(s => s.id === this.activeSessionId);
       if (session) {
         try {
+          // Never persist `tools` (see setNewChatCompletionSettings).
+          const cleanSettings = withoutTools(settings);
           // Update in database
           await chatSessionRepository.updateSessionCompletionSettings(
             this.activeSessionId,
-            settings,
+            cleanSettings,
           );
           await chatSessionRepository.setSessionSettingsSource(
             this.activeSessionId,
@@ -1085,7 +1108,7 @@ class ChatSessionStore {
 
           // Update local state directly - no need to reload from database
           runInAction(() => {
-            session.completionSettings = settings;
+            session.completionSettings = cleanSettings;
             session.settingsSource = 'custom'; // Mark as using custom settings
           });
         } catch (error) {
@@ -1508,10 +1531,13 @@ class ChatSessionStore {
     // Start with system defaults
     let resolvedSettings: CompletionParams = {...defaultCompletionSettings};
 
-    // Apply global user settings
+    // Apply global user settings. Stored settings never contribute tools
+    // (see withoutTools): a snapshot saved for another pal — or no pal —
+    // must not reach the model. The pact injection below is the only
+    // source of `tools`.
     resolvedSettings = {
       ...resolvedSettings,
-      ...this.newChatCompletionSettings,
+      ...withoutTools(this.newChatCompletionSettings),
     };
 
     // Apply pal-specific settings if available
@@ -1523,7 +1549,7 @@ class ChatSessionStore {
       if (palSettings) {
         resolvedSettings = {
           ...resolvedSettings,
-          ...palSettings,
+          ...withoutTools(palSettings),
         };
       }
 
@@ -1565,9 +1591,12 @@ class ChatSessionStore {
         // User explicitly chose custom settings - use session settings.
         // Preserve PACT-derived tools — custom settings control generation
         // params (temperature, etc.) but pact.talents is the source of truth
-        // for tool availability.
+        // for tool availability. Stored session settings never contribute
+        // tools: strip any stale snapshot before re-attaching the
+        // pact-derived tools (if any), so a custom session can never run
+        // on tools saved for another pal — or for no pal.
         const pactTools = resolvedSettings.tools;
-        resolvedSettings = session.completionSettings;
+        resolvedSettings = withoutTools(session.completionSettings);
         if (pactTools) {
           resolvedSettings = {...resolvedSettings, tools: pactTools};
         }

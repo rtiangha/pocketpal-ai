@@ -1,6 +1,8 @@
 import {chatSessionStore} from '../ChatSessionStore';
 import {palStore} from '../PalStore';
 import {defaultCompletionSettings} from '../ChatSessionStore';
+import {chatSessionRepository} from '../../repositories/ChatSessionRepository';
+import {deriveToolSchemas} from '../../services/talents';
 import {CompletionParams} from '../../utils/completionTypes';
 import type {Pal} from '../PalStore';
 import {bodyExtras} from '../../api/servers';
@@ -344,6 +346,223 @@ describe('ChatSessionStore - Pal Settings', () => {
       // Tools came from the requested talent.
       const toolNames = tools.map((t: any) => t?.function?.name ?? t?.name);
       expect(toolNames).toContain('calculate');
+    });
+  });
+
+  describe('resolveCompletionSettings — tools are derived from the pact, never stored', () => {
+    // A tool definition that no registered talent produces: if it ever
+    // shows up in a resolved result, a stored snapshot leaked through.
+    const staleTools = [
+      {
+        type: 'function',
+        function: {
+          name: 'stale_snapshot_tool',
+          description: 'stale snapshot, must never reach the model',
+          parameters: {type: 'object', properties: {}},
+        },
+      },
+    ] as unknown as CompletionParams['tools'];
+
+    const toolNames = (result: CompletionParams): string[] =>
+      ((result.tools ?? []) as any[]).map(t => t?.function?.name ?? t?.name);
+
+    const makePal = (
+      id: string,
+      pact?: Pal['pact'],
+      completionSettings?: Partial<CompletionParams>,
+    ): Pal => ({
+      type: 'local',
+      id,
+      name: `Pal ${id}`,
+      description: '',
+      systemPrompt: '',
+      isSystemPromptChanged: false,
+      useAIPrompt: false,
+      parameters: {},
+      parameterSchema: [],
+      ...(completionSettings
+        ? {completionSettings: completionSettings as CompletionParams}
+        : {}),
+      ...(pact ? {pact} : {}),
+      source: 'local',
+    });
+
+    const pushSession = (
+      sessionSettings: CompletionParams,
+      activePalId: string,
+      settingsSource: 'pal' | 'custom' = 'custom',
+    ) => {
+      chatSessionStore.sessions = [
+        {
+          id: 'test-session',
+          title: 'Test Session',
+          date: '2024-01-01',
+          messages: [],
+          completionSettings: sessionSettings,
+          activePalId,
+          settingsSource,
+        },
+      ];
+    };
+
+    it('ignores stale tools in the global preset when the pal has a pact', async () => {
+      // Global preset saved while another pal — or no pal — was active.
+      chatSessionStore.newChatCompletionSettings = {
+        ...defaultCompletionSettings,
+        tools: staleTools,
+      };
+      palStore.pals.push(
+        makePal('palToolful', {
+          talents: [{name: 'web_search', necessity: 'required'}],
+        }),
+      );
+
+      const result = await chatSessionStore.resolveCompletionSettings(
+        undefined,
+        'palToolful',
+      );
+
+      expect(toolNames(result)).toEqual(['web_search']);
+    });
+
+    it('keeps only pact talents when the global preset holds a full stale snapshot', async () => {
+      // All five talents, saved as the global preset at some earlier point.
+      chatSessionStore.newChatCompletionSettings = {
+        ...defaultCompletionSettings,
+        tools: deriveToolSchemas(),
+      };
+      palStore.pals.push(
+        makePal('palToolful', {
+          talents: [{name: 'calculate', necessity: 'required'}],
+        }),
+      );
+
+      const result = await chatSessionStore.resolveCompletionSettings(
+        undefined,
+        'palToolful',
+      );
+
+      expect(toolNames(result)).toEqual(['calculate']);
+    });
+
+    it('ignores stale tools in the pal’s own completionSettings', async () => {
+      palStore.pals.push(
+        makePal(
+          'palToolful',
+          {talents: [{name: 'web_search', necessity: 'required'}]},
+          {tools: staleTools},
+        ),
+      );
+
+      const result = await chatSessionStore.resolveCompletionSettings(
+        undefined,
+        'palToolful',
+      );
+
+      expect(toolNames(result)).toEqual(['web_search']);
+    });
+
+    it('custom session: stored session tools never leak, pact tools win', async () => {
+      pushSession(
+        {
+          ...defaultCompletionSettings,
+          temperature: 0.3,
+          tools: deriveToolSchemas(),
+        },
+        'palToolful',
+        'custom',
+      );
+      palStore.pals.push(
+        makePal('palToolful', {
+          talents: [{name: 'web_search', necessity: 'required'}],
+        }),
+      );
+
+      const result = await chatSessionStore.resolveCompletionSettings(
+        'test-session',
+        'palToolful',
+      );
+
+      expect(toolNames(result)).toEqual(['web_search']);
+      // The rest of the custom session settings still win.
+      expect(result.temperature).toBe(0.3);
+    });
+
+    it('custom session: no stale tools leak when the pal has no pact', async () => {
+      pushSession(
+        {...defaultCompletionSettings, tools: deriveToolSchemas()},
+        'palPlain',
+        'custom',
+      );
+      palStore.pals.push(makePal('palPlain'));
+
+      const result = await chatSessionStore.resolveCompletionSettings(
+        'test-session',
+        'palPlain',
+      );
+
+      expect(result.tools).toBeUndefined();
+    });
+
+    it('no pal: stale tools in the global preset never reach the model', async () => {
+      chatSessionStore.newChatCompletionSettings = {
+        ...defaultCompletionSettings,
+        temperature: 0.8,
+        tools: deriveToolSchemas(),
+      };
+
+      const result = await chatSessionStore.resolveCompletionSettings();
+
+      expect(result.tools).toBeUndefined();
+      // Other global settings still apply — only tools are stripped.
+      expect(result.temperature).toBe(0.8);
+    });
+
+    it('setNewChatCompletionSettings strips tools before persisting', async () => {
+      const saveSpy = jest
+        .spyOn(chatSessionRepository, 'saveGlobalCompletionSettings')
+        .mockResolvedValue(undefined as never);
+      try {
+        await chatSessionStore.setNewChatCompletionSettings({
+          ...defaultCompletionSettings,
+          tools: deriveToolSchemas(),
+        });
+
+        expect('tools' in chatSessionStore.newChatCompletionSettings).toBe(
+          false,
+        );
+        expect(saveSpy).toHaveBeenCalledTimes(1);
+        expect('tools' in (saveSpy.mock.calls[0]?.[0] ?? {})).toBe(false);
+      } finally {
+        saveSpy.mockRestore();
+      }
+    });
+
+    it('updateSessionCompletionSettings strips tools before persisting', async () => {
+      chatSessionStore.activeSessionId = 'test-session';
+      pushSession({...defaultCompletionSettings}, 'palPlain', 'custom');
+      const updateSpy = jest
+        .spyOn(chatSessionRepository, 'updateSessionCompletionSettings')
+        .mockResolvedValue(undefined as never);
+      const sourceSpy = jest
+        .spyOn(chatSessionRepository, 'setSessionSettingsSource')
+        .mockResolvedValue(undefined as never);
+      try {
+        await chatSessionStore.updateSessionCompletionSettings({
+          ...defaultCompletionSettings,
+          tools: deriveToolSchemas(),
+        });
+
+        const session = chatSessionStore.sessions.find(
+          s => s.id === 'test-session',
+        );
+        expect('tools' in (session?.completionSettings ?? {})).toBe(false);
+        expect(updateSpy).toHaveBeenCalledTimes(1);
+        expect('tools' in (updateSpy.mock.calls[0]?.[1] ?? {})).toBe(false);
+      } finally {
+        updateSpy.mockRestore();
+        sourceSpy.mockRestore();
+      }
     });
   });
 });
