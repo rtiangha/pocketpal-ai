@@ -106,6 +106,7 @@
     "ttsAvailability": "Text-to-speech",
     "ttsAvailabilityDescription": "Read assistant replies aloud.",
     "ttsAvailabilityLowMemoryWarning": "Your device's memory is low — this may not work reliably.",
+    "ttsVoice": "Voice",
     "modelLoadingSettings": "Model Loading Settings",
     "autoOffloadLoad": "Auto Offload/Load",
     "autoOffloadLoadDescription": "Offload model when app is in background.",

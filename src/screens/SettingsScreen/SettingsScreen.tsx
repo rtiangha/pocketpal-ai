@@ -55,6 +55,7 @@ import {useTheme} from '../../hooks';
 
 import {createStyles} from './styles';
 import {CacheTypeMenuRow} from './CacheTypeMenuRow';
+import {VoiceRow} from './VoiceRow';
 import {useMenuAnchor} from './useMenuAnchor';
 
 import {
@@ -1123,6 +1124,9 @@ export const SettingsScreen: React.FC = observer(() => {
                     onValueChange={value => ttsStore.setUserTTSOverride(value)}
                   />
                 </View>
+
+                {/* Fork-only: voice picker row (opens the TTS setup sheet) */}
+                <VoiceRow />
 
                 <Divider />
 
