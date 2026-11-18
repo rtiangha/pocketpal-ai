@@ -65,6 +65,8 @@ export interface StreamingHandle {
 export interface StreamOptions {
   /** `'clause'` starts speaking at the first clause instead of sentence. */
   firstChunk?: FirstChunkMode;
+  /** Cap on the words in the first chunk when `firstChunk` is `'clause'` (library default 12). */
+  firstChunkMaxWords?: number;
   /** Called as each chunk starts playing, with its range in the stream. */
   onProgress?: (event: StreamProgressEvent) => void;
 }

@@ -2306,7 +2306,7 @@ describe('TTSStore', () => {
       expect(voice).toEqual(ZOEY);
       expect(opts).toEqual(
         expect.objectContaining({
-          firstChunk: 'clause',
+          firstChunk: 'sentence',
           onProgress: expect.any(Function),
         }),
       );
