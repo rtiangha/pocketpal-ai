@@ -686,11 +686,11 @@ describe('PalsScreen', () => {
         (global as any).__PLUS_STORE_GATE__ = true;
       });
 
-      it('hides the restore row when billing is ready', () => {
+      it('hides the restore row when billing is ready', async () => {
         runInAction(() => {
           purchaseStore.availability = 'ready';
         });
-        const {queryByTestId} = render(<PalsScreen />, {
+        const {queryByTestId} = await render(<PalsScreen />, {
           withNavigation: true,
           withSafeArea: true,
           withBottomSheetProvider: true,

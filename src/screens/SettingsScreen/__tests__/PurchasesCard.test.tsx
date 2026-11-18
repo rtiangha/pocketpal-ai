@@ -240,20 +240,24 @@ describe('PurchasesCard in a non-store build', () => {
     (global as any).__PLUS_STORE_GATE__ = true;
   });
 
-  it('hides Settings › Purchases and its Restore button when billing is ready', () => {
-    const {queryByTestId} = render(<PurchasesCard onSignInPress={jest.fn()} />);
+  it('hides Settings › Purchases and its Restore button when billing is ready', async () => {
+    const {queryByTestId} = await render(
+      <PurchasesCard onSignInPress={jest.fn()} />,
+    );
     expect(queryByTestId('purchases-card')).toBeNull();
     expect(queryByTestId('settings-restore-purchases')).toBeNull();
   });
 
-  it('hides Settings › Purchases with store-owned records while billing is unavailable', () => {
+  it('hides Settings › Purchases with store-owned records while billing is unavailable', async () => {
     runInAction(() => {
       purchaseStore.availability = 'unavailable';
       (purchaseStore as any).needsLink = true;
       purchaseStore.linkConflict = true;
     });
     setRecords(rec('a', 'active'), rec('b', 'held_invalid'));
-    const {queryByTestId} = render(<PurchasesCard onSignInPress={jest.fn()} />);
+    const {queryByTestId} = await render(
+      <PurchasesCard onSignInPress={jest.fn()} />,
+    );
     expect(queryByTestId('purchases-card')).toBeNull();
     expect(queryByTestId('purchase-row-a')).toBeNull();
     expect(queryByTestId('settings-link-purchases')).toBeNull();

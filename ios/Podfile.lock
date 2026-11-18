@@ -84,7 +84,7 @@ PODS:
   - hermes-engine (260318099.0.5):
     - hermes-engine/Pre-built (= 260318099.0.5)
   - hermes-engine/Pre-built (260318099.0.5)
-  - llama-rn (0.13.0-rc.11):
+  - llama-rn (0.13.0-rc.12):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2708,7 +2708,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNSpeech (2.11.3):
+  - RNSpeech (2.11.4):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -3456,7 +3456,7 @@ SPEC CHECKSUMS:
   GTMAppAuth: d5a53b9611d30bb40d92293f72f12c3ac3a08321
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
   hermes-engine: 79484fc4e58f328d01b9339ef899ca633d3702ee
-  llama-rn: a8f9f60b1fbaa7a4f102d8bd2407829f69fd8f4b
+  llama-rn: dacc475ff01f3f17b260b4e0519b7ea40a903ece
   MLImage: 0de5c6c2bf9e93b80ef752e2797f0836f03b58c0
   MLKitBarcodeScanning: 39de223e7b1b8a8fbf10816a536dd292d8a39343
   MLKitCommon: 47d47b50a031d00db62f1b0efe5a1d8b09a3b2e6
@@ -3574,7 +3574,7 @@ SPEC CHECKSUMS:
   RNReanimated: 5c641cc430b7255eae87c8039204eb0f816ea1b8
   RNScreens: fdca179295dcb421672af2a9e2979a9cebeda720
   RNShare: 2782800e2fdb15e946048e6acbc17b5652a4380d
-  RNSpeech: 180fb7bb5da840c3f770a0cd69747e10427a9d28
+  RNSpeech: 3d684c26a50194dab20acff2fb65b2f3c6efcfe3
   RNSpeechPhonon: d70a32f9cb77687633b99009e0618ba25a7b6983
   RNSVG: 62acb707b4fd178063d785d1cdebb4f2c20233eb
   RNVectorIcons: d42eb9762518db642728999cd5a93a1c224034cc
@@ -3587,6 +3587,6 @@ SPEC CHECKSUMS:
   whisper-rn: 398cdcf33dd609b6291a81bc958ec821252e8674
   Yoga: d1c536142c5ff8ec8cd856ab2a7c227a1d875c8e
 
-PODFILE CHECKSUM: 8bae76f11889837544a2017f4e2e54999625381e
+PODFILE CHECKSUM: 9f35a2f6d226aaff122e320bbcf5a6229aa2f8d0
 
 COCOAPODS: 1.15.2
