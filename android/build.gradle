@@ -3,7 +3,35 @@ buildscript {
         buildToolsVersion = "37.0.0"
         minSdkVersion = 35
         compileSdkVersion = 37
-        targetSdkVersion = 35
+        // Target 36 (Android 16), Nov 2026. Audited against Google's
+        // "Behavior changes: Apps targeting Android 16" before applying —
+        // no code changes were needed, only this number:
+        // - Edge-to-edge: already on (MainActivity calls
+        //   WindowCompat.enableEdgeToEdge; NavigationBarModule uses
+        //   WindowInsetsControllerCompat). No windowOptOutEdgeToEdgeEnforcement
+        //   attr anywhere, so its removal at 36 is a non-issue.
+        // - Predictive back: React Native 0.88.1 already routes back through
+        //   OnBackPressedDispatcher (ReactActivity.java registers an
+        //   OnBackPressedCallback; its own comment cites targetSdk 36).
+        //   JS BackHandler listeners flow through it. No manifest opt-out.
+        // - elegantTextHeight / BODY_SENSORS / MediaStore.getVersion /
+        //   scheduleAtFixedRate / Safer Intents: not used anywhere.
+        // - Orientation/resizability: no screenOrientation attr and no JS
+        //   orientation lock, so the large-screen rule changes nothing the
+        //   app asserts; rotation is already handled (configChanges +
+        //   fixExternalDisplayDensity). Worth one look on a tablet/foldable.
+        // - Local Network Permission is OPT-IN only at Android 16, not
+        //   enforced — but the app DOES talk to LAN servers (remote models),
+        //   so when enforcement lands in a later release it will need
+        //   NEARBY_WIFI_DEVICES. Flagged, not changed.
+        // - 16KB: pre-existing at target 35, not a 36 delta. Packaged lib/
+        //   .so files already comply (the app ships at 35 under the same
+        //   rule). The only 4KB-aligned files found are llama.rn's prebuilt
+        //   Hexagon libs — but those ship as ASSETS (ggml-hexagon/), not
+        //   lib/, so they are not linker-loaded at install; the Hexagon NPU
+        //   path dlopens them at runtime and could fail on 16KB-page
+        //   devices. Pre-existing, out of scope for this bump.
+        targetSdkVersion = 36
         ndkVersion = "30.0.16248370"
         kotlinVersion = "2.4.21"
     }
