@@ -2,8 +2,16 @@ import {
   BottomSheetModal,
   BottomSheetModalProps,
   BottomSheetView,
+  type SNAP_POINT_TYPE,
 } from '@gorhom/bottom-sheet';
-import React, {forwardRef, useEffect, useMemo, useRef} from 'react';
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   useSafeAreaFrame,
   useSafeAreaInsets,
@@ -13,7 +21,7 @@ import {Text} from 'react-native-paper';
 import {CloseIcon} from '../../assets/icons';
 import {useTheme} from '../../hooks';
 import {styles} from './styles';
-import {TouchableOpacity, View} from 'react-native';
+import {BackHandler, TouchableOpacity, View} from 'react-native';
 import {CustomBackdrop} from './CustomBackdrop';
 import {Actions} from './Actions';
 import {SheetBackground} from './SheetBackground';
@@ -49,6 +57,7 @@ export const Sheet = forwardRef(
       isVisible,
       displayFullHeight,
       onClose,
+      onChange,
       showCloseButton = true,
       snapPoints: requestedSnapPoints,
       ...props
@@ -67,6 +76,39 @@ export const Sheet = forwardRef(
 
     const theme = useTheme();
 
+    // The modal never sees a back press itself: it renders as a portal
+    // overlay, not a system modal, and @gorhom/bottom-sheet registers no
+    // BackHandler. Without one here the press falls through to navigation,
+    // which pops the screen underneath — or finishes the activity when the
+    // sheet sits on a root screen. Track presentation from onChange so this
+    // covers sheets presented by ref as well as by isVisible.
+    const [isPresented, setIsPresented] = useState(false);
+
+    const handleChange = useCallback(
+      (index: number, position: number, type: SNAP_POINT_TYPE) => {
+        setIsPresented(index >= 0);
+        onChange?.(index, position, type);
+      },
+      [onChange],
+    );
+
+    useEffect(() => {
+      if (!isPresented) {
+        return;
+      }
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          // dismiss(), not close(): close() only collapses the inner
+          // sheet, dismiss() is what takes the modal down and fires
+          // onDismiss.
+          activeRef.current?.dismiss();
+          return true;
+        },
+      );
+      return () => subscription.remove();
+    }, [isPresented, activeRef]);
+
     useEffect(() => {
       if (isVisible) {
         activeRef?.current?.present();
@@ -76,6 +118,7 @@ export const Sheet = forwardRef(
     }, [isVisible, activeRef]);
 
     const onDismiss = () => {
+      setIsPresented(false);
       activeRef?.current?.close();
       onClose?.();
     };
@@ -109,6 +152,7 @@ export const Sheet = forwardRef(
           backgroundColor: theme.colors.background,
         }}
         snapPoints={snapPoints}
+        onChange={handleChange}
         onDismiss={onDismiss}
         // Disable accessible to allow Appium/e2e tests to access child elements on iOS
         // See: https://github.com/gorhom/react-native-bottom-sheet/issues/1141

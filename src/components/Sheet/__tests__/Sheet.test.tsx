@@ -1,5 +1,5 @@
 import React from 'react';
-import {Dimensions, Keyboard} from 'react-native';
+import {BackHandler, Dimensions, Keyboard} from 'react-native';
 import {useBottomSheetInternal} from '@gorhom/bottom-sheet';
 import {
   useSafeAreaFrame,
@@ -180,13 +180,130 @@ describe('Sheet', () => {
     expect(modal.props.enableDynamicSizing).toBe(true);
   });
 
-  it('passes change and animate handlers through unchanged', async () => {
+  it('forwards change events to the caller and passes animate through unchanged', async () => {
     const onChange = jest.fn();
     const onAnimate = jest.fn();
     await render(<Sheet onChange={onChange} onAnimate={onAnimate} />);
 
     const modal = getModal();
-    expect(modal.props.onChange).toBe(onChange);
     expect(modal.props.onAnimate).toBe(onAnimate);
+    // onChange is wrapped so the Sheet can track presentation for the back
+    // handler; the caller's handler must still receive all three args
+    // (index, position, snap-point type).
+    expect(modal.props.onChange).not.toBe(onChange);
+    await act(() => {
+      modal.props.onChange(0, 120, 'percent');
+    });
+    expect(onChange).toHaveBeenCalledWith(0, 120, 'percent');
+  });
+
+  describe('back button', () => {
+    type Handler = Parameters<typeof BackHandler.addEventListener>[1];
+    let backHandlers: Handler[] = [];
+
+    // Mirror PlusHost.test.tsx: handlers run most-recent-first and the
+    // first one to return true consumes the press.
+    const pressBack = (): boolean => {
+      for (const handler of [...backHandlers].reverse()) {
+        if (handler({type: 'hardwareBackPress', timeStamp: 0})) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // The Sheet forwards its modal methods to an inner ref in production,
+    // which tests cannot reach. Passing a ref that already has a current
+    // value makes the Sheet use it as its active ref, so the mock modal's
+    // methods land on an object the test can observe.
+    const modalRef = () => ({current: {}}) as any;
+    const getModals = () =>
+      screen.container.queryAll(
+        (n: any) => n.props.backgroundComponent !== undefined,
+      );
+
+    beforeEach(() => {
+      backHandlers = [];
+      jest
+        .spyOn(BackHandler, 'addEventListener')
+        .mockImplementation((_event, handler) => {
+          backHandlers.push(handler);
+          return {
+            remove: () => {
+              backHandlers = backHandlers.filter(h => h !== handler);
+            },
+          };
+        });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('registers no back handler while the sheet is closed', async () => {
+      await render(<Sheet />);
+
+      expect(BackHandler.addEventListener).not.toHaveBeenCalled();
+      expect(pressBack()).toBe(false);
+    });
+
+    it('dismisses the sheet and consumes the back press while presented', async () => {
+      const ref = modalRef();
+      await render(<Sheet ref={ref} />);
+
+      await act(() => {
+        getModal().props.onChange(0);
+      });
+
+      expect(BackHandler.addEventListener).toHaveBeenCalledTimes(1);
+      expect(pressBack()).toBe(true);
+      expect(ref.current.dismiss).toHaveBeenCalledTimes(1);
+    });
+
+    it('releases the back press once the sheet closes', async () => {
+      const ref = modalRef();
+      await render(<Sheet ref={ref} />);
+
+      await act(() => {
+        getModal().props.onChange(0);
+      });
+      expect(pressBack()).toBe(true);
+
+      await act(() => {
+        getModal().props.onChange(-1);
+      });
+      expect(pressBack()).toBe(false);
+      expect(ref.current.dismiss).toHaveBeenCalledTimes(1);
+    });
+
+    it('dismisses only the top sheet when sheets are stacked', async () => {
+      const bottomRef = modalRef();
+      const topRef = modalRef();
+      await render(
+        <>
+          <Sheet ref={bottomRef} />
+          <Sheet ref={topRef} />
+        </>,
+      );
+
+      const [bottomModal, topModal] = getModals();
+      await act(() => {
+        bottomModal.props.onChange(0);
+        topModal.props.onChange(0);
+      });
+
+      // The top sheet registered last, so its handler runs first and
+      // consumes the press; the bottom sheet stays put.
+      expect(pressBack()).toBe(true);
+      expect(topRef.current.dismiss).toHaveBeenCalledTimes(1);
+      expect(bottomRef.current.dismiss).not.toHaveBeenCalled();
+
+      // Once the top sheet closes, the next press reaches the bottom one.
+      await act(() => {
+        topModal.props.onChange(-1);
+      });
+      expect(pressBack()).toBe(true);
+      expect(bottomRef.current.dismiss).toHaveBeenCalledTimes(1);
+    });
   });
 });

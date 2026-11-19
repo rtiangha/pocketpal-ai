@@ -1,5 +1,12 @@
 import React, {useRef, useContext, useEffect} from 'react';
-import {Alert, Dimensions, View, Pressable, Keyboard} from 'react-native';
+import {
+  Alert,
+  BackHandler,
+  Dimensions,
+  View,
+  Pressable,
+  Keyboard,
+} from 'react-native';
 import {observer} from 'mobx-react';
 import {Text} from 'react-native-paper';
 import BottomSheet, {
@@ -121,6 +128,25 @@ export const ChatPalModelPickerSheet = observer(
       return () => {
         keyboardDidShowListener.remove();
       };
+    }, [isVisible, onClose]);
+
+    // Close the sheet on a back press instead of letting it fall through.
+    // This picker is a raw BottomSheet, not the shared Sheet component, so
+    // the shared back handling does not cover it — and the chat screen is
+    // a root screen, so an unhandled press would finish the activity and
+    // exit the app.
+    useEffect(() => {
+      if (!isVisible) {
+        return;
+      }
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          onClose();
+          return true;
+        },
+      );
+      return () => subscription.remove();
     }, [isVisible, onClose]);
 
     const handleTabPress = (tab: Tab, index: number) => {

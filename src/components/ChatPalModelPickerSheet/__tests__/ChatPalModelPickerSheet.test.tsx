@@ -1,6 +1,6 @@
 import React from 'react';
 import {render, fireEvent, waitFor} from '@testing-library/react-native';
-import {Alert, Keyboard} from 'react-native';
+import {Alert, BackHandler, Keyboard} from 'react-native';
 
 import {ChatPalModelPickerSheet} from '../ChatPalModelPickerSheet';
 import {SheetBackground} from '../../Sheet/SheetBackground';
@@ -202,6 +202,56 @@ describe('ChatPalModelPickerSheet', () => {
 
     // Sheet should be closed
     expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  describe('back button', () => {
+    type Handler = Parameters<typeof BackHandler.addEventListener>[1];
+    let backHandlers: Handler[] = [];
+
+    beforeEach(() => {
+      backHandlers = [];
+      jest
+        .spyOn(BackHandler, 'addEventListener')
+        .mockImplementation((_event, handler) => {
+          backHandlers.push(handler);
+          return {
+            remove: () => {
+              backHandlers = backHandlers.filter(h => h !== handler);
+            },
+          };
+        });
+    });
+
+    afterEach(() => {
+      // Restore only this spy: the file also spies on Keyboard and Alert
+      // at module level, and restoreAllMocks would remove those too.
+      (BackHandler.addEventListener as jest.Mock).mockRestore();
+    });
+
+    const renderPicker = async (props = {}) =>
+      render(
+        <UserContext.Provider value={user}>
+          <L10nContext.Provider value={l10n.en}>
+            <ChatPalModelPickerSheet {...defaultProps} {...props} />
+          </L10nContext.Provider>
+        </UserContext.Provider>,
+      );
+
+    it('closes the sheet and consumes the back press while visible', async () => {
+      const mockOnClose = jest.fn();
+      await renderPicker({isVisible: true, onClose: mockOnClose});
+
+      expect(BackHandler.addEventListener).toHaveBeenCalledTimes(1);
+      const handler = backHandlers[backHandlers.length - 1];
+      expect(handler({type: 'hardwareBackPress', timeStamp: 0})).toBe(true);
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('registers no back handler while not visible', async () => {
+      await renderPicker({isVisible: false});
+
+      expect(BackHandler.addEventListener).not.toHaveBeenCalled();
+    });
   });
 
   it('displays models and pals tabs', async () => {
