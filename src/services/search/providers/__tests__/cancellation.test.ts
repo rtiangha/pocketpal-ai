@@ -11,7 +11,8 @@ const pageUrl = 'https://example.com';
 
 // The JSON providers answer JSON; Bing answers HTML, so its success body
 // must carry a parseable b_algo block or it (correctly) throws.
-const JSON_OK_BODY = '{"type":"search","results":[],"success":true,"data":{}}';
+const JSON_OK_BODY =
+  '{"type":"search","results":[],"hits":[],"success":true,"data":{}}';
 const BING_OK_BODY =
   '<li class="b_algo"><a href="https://a.example/"><h2>A</h2></a><p>b</p></li>';
 const successBody = (label: string) =>

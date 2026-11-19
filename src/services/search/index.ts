@@ -4,6 +4,7 @@ import {TavilyProvider} from './providers/tavily';
 import {BraveProvider} from './providers/brave';
 import {ExaProvider} from './providers/exa';
 import {FirecrawlProvider} from './providers/firecrawl';
+import {OutcrawlProvider} from './providers/outcrawl';
 import {ParallelProvider} from './providers/parallel';
 import {BingProvider} from './providers/bing';
 import {YouProvider} from './providers/you';
@@ -42,6 +43,8 @@ export const createSearchProvider = (
       return new ExaProvider(getKey);
     case 'firecrawl':
       return new FirecrawlProvider(getKey);
+    case 'outcrawl':
+      return new OutcrawlProvider(getKey);
     case 'parallel':
       return new ParallelProvider(getKey);
     case 'you':
