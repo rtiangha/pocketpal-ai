@@ -38,6 +38,7 @@ import {
 import {markdownToPlainText} from '../MarkdownView/markdownToPlainText';
 import {openAtPressPoint} from '../../utils/pressPoint';
 import {visibleStepContent} from '../../utils/chat';
+import {chatSessionStore} from '../../store';
 
 const hapticOptions = {
   enableVibrateFallback: true,
@@ -145,6 +146,24 @@ export const Message = observer(
 
     const currentUserIsAuthor =
       message.type !== 'dateHeader' && user?.id === message.author.id;
+
+    // The search occurrence the prev/next navigation currently points
+    // at. Message is an observer, so reading it here re-renders the row
+    // when the user taps prev/next — the current occurrence gets its
+    // bold highlight, the others keep the plain one.
+    const searchCurrent = chatSessionStore.searchCurrentOccurrence;
+    const isCurrentSearchMessage =
+      searchCurrent !== undefined && searchCurrent.messageId === message.id;
+    // Occurrence index within one rendered chunk, or undefined when
+    // this chunk doesn't hold the current occurrence. Chunk 0 is the
+    // whole text of a text message; for an assistant turn it is the
+    // Nth visible step (see renderAssistantTurn below).
+    const currentOccurrenceForChunk = (
+      chunkIndex: number,
+    ): number | undefined =>
+      isCurrentSearchMessage && searchCurrent.chunkIndex === chunkIndex
+        ? searchCurrent.occurrenceIndex
+        : undefined;
 
     const openUserMenu = React.useCallback(
       (event: PressPointEvent) => {
@@ -295,6 +314,7 @@ export const Message = observer(
                 onPreviewDataFetched,
                 showName,
                 usePreviewData,
+                currentOccurrence: currentOccurrenceForChunk(0),
               }}
             />,
           )(
@@ -325,6 +345,8 @@ export const Message = observer(
       // slot passes through to the first content/talent block.
       let isFirstBlock = true;
       let nameShown = false;
+      // Counts the visible content steps as they are emitted, in order.
+      let chunkCounter = 0;
 
       // Wraps a single TextMessage step fragment in the chat-bubble
       // shell (contentContainer / renderBubble) plus the turn-block
@@ -333,6 +355,7 @@ export const Message = observer(
       const wrapTextBlock = (
         keySuffix: string,
         stepFragment: (typeof steps)[number],
+        chunkIndex: number,
       ) => {
         const showNameForBlock = showName && !nameShown;
         const child = (
@@ -344,6 +367,7 @@ export const Message = observer(
             showName={showNameForBlock}
             usePreviewData={usePreviewData}
             step={stepFragment}
+            currentOccurrence={currentOccurrenceForChunk(chunkIndex)}
           />
         );
         const wrapped = oneOf(
@@ -406,6 +430,14 @@ export const Message = observer(
           step.reasoningContent.length > 0;
         const hasContent = visibleStepContent(step).length > 0;
 
+        // Chunk index among the visible content steps — the same
+        // numbering buildSearchOccurrences uses, so the current
+        // occurrence lands on the right step.
+        const chunkIndex = chunkCounter;
+        if (hasContent) {
+          chunkCounter += 1;
+        }
+
         if (hasReasoning) {
           // Auto-collapse the reasoning bubble once content has begun
           // streaming or the step has finalized. While only reasoning
@@ -423,7 +455,7 @@ export const Message = observer(
         }
 
         if (hasContent) {
-          blocks.push(wrapTextBlock(`step-${stepIdx}-text`, step));
+          blocks.push(wrapTextBlock(`step-${stepIdx}-text`, step, chunkIndex));
           isFirstBlock = false;
         }
 

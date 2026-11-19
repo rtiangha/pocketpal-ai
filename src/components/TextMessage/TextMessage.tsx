@@ -61,6 +61,13 @@ export interface TextMessageProps extends TextMessageTopLevelProps {
    * Reasoning is rendered separately via ReasoningBlock.
    */
   step?: AgentStep;
+  /**
+   * Index of the current search occurrence within this chunk (the
+   * whole text, or this step's content), or undefined when this chunk
+   * doesn't hold it. Rendered bolder by MarkdownView so prev/next
+   * navigation has a visible current match.
+   */
+  currentOccurrence?: number;
 }
 
 const keepTouchOnThumbnail = (event: GestureResponderEvent) =>
@@ -74,6 +81,7 @@ export const TextMessage = ({
   showName,
   usePreviewData,
   step,
+  currentOccurrence,
 }: TextMessageProps) => {
   // For AssistantTurn rendering, `visibleStepContent(step)` is the
   // authoritative source. For legacy `Text` messages, fall back to
@@ -284,6 +292,7 @@ export const TextMessage = ({
             maxMessageWidth={messageWidth}
             selectable={!isUserRow}
             blockContextMenu={!isUserRow}
+            currentOccurrence={currentOccurrence}
           />
         </View>
       )}

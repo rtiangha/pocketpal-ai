@@ -529,5 +529,47 @@ describe('MarkdownView', () => {
         backgroundColor: themeFixtures.lightTheme.colors.searchHighlight,
       });
     });
+
+    // The current occurrence (the one prev/next points at) is wrapped
+    // bolder so the user can tell it apart from the other matches.
+    it('wraps the current occurrence bolder than the others', async () => {
+      const {getByText} = await render(
+        <SearchQueryContext.Provider value="world">
+          <MarkdownView
+            markdownText="Hello world world"
+            maxMessageWidth={300}
+            currentOccurrence={1}
+          />
+        </SearchQueryContext.Provider>,
+      );
+
+      expect(getByText('Hello ==world== ==**world**==')).toBeTruthy();
+      expect(lastProps().markdown).toBe('Hello ==world== ==**world**==');
+    });
+
+    it('re-renders when only the current occurrence changes', async () => {
+      const {rerender} = await render(
+        <SearchQueryContext.Provider value="world">
+          <MarkdownView
+            markdownText="Hello world world"
+            maxMessageWidth={300}
+            currentOccurrence={0}
+          />
+        </SearchQueryContext.Provider>,
+      );
+      expect(lastProps().markdown).toBe('Hello ==**world**== ==world==');
+
+      await rerender(
+        <SearchQueryContext.Provider value="world">
+          <MarkdownView
+            markdownText="Hello world world"
+            maxMessageWidth={300}
+            currentOccurrence={1}
+          />
+        </SearchQueryContext.Provider>,
+      );
+
+      expect(lastProps().markdown).toBe('Hello ==world== ==**world**==');
+    });
   });
 });

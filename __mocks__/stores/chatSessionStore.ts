@@ -1,5 +1,5 @@
 import {sessionFixtures} from '../../jest/fixtures/chatSessions';
-import {derivedText} from '../../src/utils/chat';
+import {buildSearchOccurrences} from '../../src/utils/searchHighlight';
 import type {
   BannerVariant,
   CompletionResultSnapshot,
@@ -195,12 +195,28 @@ Object.defineProperty(mockChatSessionStore, 'searchMatchCount', {
     ) {
       return 0;
     }
-    const query = mockChatSessionStore.searchQuery.toLowerCase().trim();
     const messages = (mockChatSessionStore as any)
       .currentSessionMessages as any[];
-    return messages.filter(msg =>
-      derivedText(msg).toLowerCase().includes(query),
-    ).length;
+    return buildSearchOccurrences(messages, mockChatSessionStore.searchQuery)
+      .length;
+  }),
+  configurable: true,
+});
+
+Object.defineProperty(mockChatSessionStore, 'searchCurrentOccurrence', {
+  get: jest.fn(() => {
+    if (
+      !mockChatSessionStore.isSearchMode ||
+      !mockChatSessionStore.searchQuery.trim() ||
+      mockChatSessionStore.searchMatchIndex < 0
+    ) {
+      return undefined;
+    }
+    const messages = (mockChatSessionStore as any)
+      .currentSessionMessages as any[];
+    return buildSearchOccurrences(messages, mockChatSessionStore.searchQuery)[
+      mockChatSessionStore.searchMatchIndex
+    ];
   }),
   configurable: true,
 });
@@ -214,13 +230,11 @@ Object.defineProperty(mockChatSessionStore, 'searchCurrentMatchId', {
     ) {
       return undefined;
     }
-    const query = mockChatSessionStore.searchQuery.toLowerCase().trim();
     const messages = (mockChatSessionStore as any)
       .currentSessionMessages as any[];
-    const matches = messages.filter((msg: any) =>
-      derivedText(msg).toLowerCase().includes(query),
-    );
-    return matches[mockChatSessionStore.searchMatchIndex]?.id;
+    return buildSearchOccurrences(messages, mockChatSessionStore.searchQuery)[
+      mockChatSessionStore.searchMatchIndex
+    ]?.messageId;
   }),
   configurable: true,
 });

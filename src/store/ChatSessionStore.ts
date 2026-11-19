@@ -17,6 +17,10 @@ import {
 import {chatSessionRepository} from '../repositories/ChatSessionRepository';
 import {defaultCompletionParams} from '../utils/completionSettingsVersions';
 import {assistant, derivedText} from '../utils/chat';
+import {
+  buildSearchOccurrences,
+  SearchOccurrence,
+} from '../utils/searchHighlight';
 import {randId} from '../utils';
 import {
   partitionMessagesForCompaction,
@@ -127,7 +131,7 @@ class ChatSessionStore {
   // Search mode state
   isSearchMode: boolean = false;
   searchQuery: string = '';
-  // Index of the current match within searchMatchingMessages (-1 = none
+  // Index of the current match within searchOccurrences (-1 = none
   // selected yet). Bumped on every prev/next tap so ChatView re-scrolls
   // even when the target message doesn't change (e.g. a single match).
   searchMatchIndex: number = -1;
@@ -1752,64 +1756,74 @@ class ChatSessionStore {
   }
 
   /**
-   * Messages in the active session whose text matches the current query,
-   * in conversation order. Search highlights in place (find-in-page)
-   * rather than filtering the message list, so this is a match list only
-   * — the render list is never swapped.
+   * Every visible occurrence of the current query in the active session,
+   * in conversation order, then chunk order, then position within the
+   * chunk (see `buildSearchOccurrences`). The count and the navigation
+   * are occurrence-based, not message-based, so the bar's "N of M"
+   * equals the number of highlighted spans on screen: occurrences
+   * inside code blocks, link destinations and URLs are not counted,
+   * because they are never highlighted.
    *
-   * Matches on `derivedText`, so assistant replies (`assistant_turn` rows,
-   * whose `text` column is empty by design) are searched via their step
-   * content, not skipped.
+   * Matches on the same text MarkdownView renders (text messages, or
+   * each visible step of an assistant turn), so the Nth counted
+   * occurrence is the Nth highlighted one.
    */
-  get searchMatchingMessages(): MessageType.Any[] {
+  get searchOccurrences(): SearchOccurrence[] {
     if (!this.isSearchMode || !this.searchQuery.trim()) {
       return [];
     }
-    const query = this.searchQuery.toLowerCase().trim();
-    return this.currentSessionMessages.filter(msg =>
-      derivedText(msg).toLowerCase().includes(query),
+    return buildSearchOccurrences(
+      this.currentSessionMessages,
+      this.searchQuery,
     );
   }
 
-  /** Number of messages in the active session matching the current query. */
+  /** Number of highlighted occurrences of the current query. */
   get searchMatchCount(): number {
-    return this.searchMatchingMessages.length;
+    return this.searchOccurrences.length;
+  }
+
+  /** The occurrence the prev/next navigation currently points at. */
+  get searchCurrentOccurrence(): SearchOccurrence | undefined {
+    return this.searchOccurrences[this.searchMatchIndex];
   }
 
   /** Id of the message the prev/next navigation currently points at. */
   get searchCurrentMatchId(): string | undefined {
-    return this.searchMatchingMessages[this.searchMatchIndex]?.id;
+    return this.searchCurrentOccurrence?.messageId;
   }
 
-  // Prev/next navigation moves between matching MESSAGES (the unit the
-  // count reports), wrapping around at both ends like find-in-page in a
-  // browser. The first tap from no selection lands on the first match
-  // (next) or the last match (previous). The nonce bumps on every tap so
-  // the scroll fires even when the target doesn't change (one match).
+  // Prev/next navigation moves between OCCURRENCES (the unit the count
+  // reports), wrapping around at both ends like find-in-page in a
+  // browser. The first tap from no selection lands on the first
+  // occurrence (next) or the last occurrence (previous). The nonce
+  // bumps on every tap so the scroll fires even when the target
+  // doesn't change (one occurrence).
   goToNextSearchMatch() {
-    const matches = this.searchMatchingMessages;
-    if (matches.length === 0) {
+    const occurrences = this.searchOccurrences;
+    if (occurrences.length === 0) {
       return;
     }
     runInAction(() => {
       this.searchMatchIndex =
         this.searchMatchIndex < 0
           ? 0
-          : (this.searchMatchIndex + 1) % matches.length;
+          : (this.searchMatchIndex + 1) % occurrences.length;
       this.searchScrollNonce += 1;
     });
   }
 
   goToPreviousSearchMatch() {
-    const matches = this.searchMatchingMessages;
-    if (matches.length === 0) {
+    const occurrences = this.searchOccurrences;
+    if (occurrences.length === 0) {
       return;
     }
     runInAction(() => {
       this.searchMatchIndex =
         this.searchMatchIndex < 0
-          ? matches.length - 1
-          : (this.searchMatchIndex - 1 + matches.length) % matches.length;
+          ? occurrences.length - 1
+          : (this.searchMatchIndex - 1 + occurrences.length) %
+            occurrences.length;
       this.searchScrollNonce += 1;
     });
   }

@@ -1,4 +1,7 @@
-import {highlightSearchMatches} from '../highlightSearchMatches';
+import {
+  countVisibleOccurrences,
+  highlightSearchMatches,
+} from '../highlightSearchMatches';
 
 describe('highlightSearchMatches', () => {
   it('returns markdown unchanged for an empty or whitespace query', () => {
@@ -84,5 +87,64 @@ describe('highlightSearchMatches', () => {
     expect(highlightSearchMatches('hello\nworld', 'hello\nworld')).toBe(
       'hello\nworld',
     );
+  });
+
+  it('wraps the current occurrence bolder than the others', () => {
+    expect(highlightSearchMatches('ab ab ab', 'ab', 0)).toBe(
+      '==**ab**== ==ab== ==ab==',
+    );
+    expect(highlightSearchMatches('ab ab ab', 'ab', 2)).toBe(
+      '==ab== ==ab== ==**ab**==',
+    );
+  });
+
+  it('wraps every occurrence plainly when there is no current one', () => {
+    expect(highlightSearchMatches('ab ab ab', 'ab', undefined)).toBe(
+      '==ab== ==ab== ==ab==',
+    );
+  });
+
+  it('falls back to a plain wrap when the current match is already bold', () => {
+    // Nesting another ** pair would produce **==**x**==** and break the
+    // parse, so an already-bold current match keeps the plain wrap.
+    expect(highlightSearchMatches('**hello** hello', 'hello', 0)).toBe(
+      '**==hello==** ==hello==',
+    );
+  });
+
+  it('falls back to a plain wrap when the match itself contains bold markers', () => {
+    expect(highlightSearchMatches('a**b and a**b', 'a**b', 0)).toBe(
+      '==a**b== and ==a**b==',
+    );
+  });
+
+  it('counts the current occurrence across lines and link text', () => {
+    const md = 'hello [hello](https://example.com/hello)\nhello';
+    expect(highlightSearchMatches(md, 'hello', 2)).toBe(
+      '==hello== [==hello==](https://example.com/hello)\n==**hello**==',
+    );
+  });
+});
+
+describe('countVisibleOccurrences', () => {
+  it('returns 0 for an empty or whitespace query', () => {
+    expect(countVisibleOccurrences('Hello world', '')).toBe(0);
+    expect(countVisibleOccurrences('Hello world', '   ')).toBe(0);
+  });
+
+  it('counts every occurrence, case-insensitively', () => {
+    expect(countVisibleOccurrences('ab Ab aB', 'ab')).toBe(3);
+  });
+
+  it('does not count occurrences inside code or link destinations', () => {
+    const md = 'war in `war` code and [war](https://example.com/war) plus war';
+    expect(countVisibleOccurrences(md, 'war')).toBe(3);
+  });
+
+  it('agrees with the number of spans highlightSearchMatches wraps', () => {
+    const md = 'war in `war` code and [war](https://example.com/war) plus war';
+    const wrapped = highlightSearchMatches(md, 'war');
+    const spanCount = (wrapped.split('==').length - 1) / 2;
+    expect(countVisibleOccurrences(md, 'war')).toBe(spanCount);
   });
 });

@@ -3019,15 +3019,16 @@ describe('chatSessionStore', () => {
         expect(chatSessionStore.searchMatchCount).toBe(0);
       });
 
-      it('counts user messages that match, case-insensitively', () => {
+      it('counts occurrences, case-insensitively, not just messages', () => {
         setupSessionWithMessages([
           userText('msg1', 'Hello world'),
           userText('msg2', 'Goodbye world'),
-          userText('msg3', 'HELLO again'),
+          userText('msg3', 'HELLO hello again'),
         ]);
         chatSessionStore.enterSearchMode();
         chatSessionStore.setSearchQuery('hello');
-        expect(chatSessionStore.searchMatchCount).toBe(2);
+        // msg1 has 1, msg3 has 2 — a message count would say 2.
+        expect(chatSessionStore.searchMatchCount).toBe(3);
       });
 
       // Guards the blocking bug: the old filter matched `msg.text`, which is
@@ -3044,6 +3045,27 @@ describe('chatSessionStore', () => {
         chatSessionStore.enterSearchMode();
         chatSessionStore.setSearchQuery('energy');
         expect(chatSessionStore.searchMatchCount).toBe(2);
+      });
+
+      // The count must equal the number of highlighted spans: occurrences
+      // inside code and link destinations are never highlighted, so they
+      // must not be counted either. Counting them would show "5 of 5"
+      // for 3 highlights — the bug this change fixes.
+      it('does not count occurrences inside code or link destinations', () => {
+        setupSessionWithMessages([
+          userText(
+            'msg1',
+            'war in `war` code and [war](https://example.com/war) plus war',
+          ),
+        ]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('war');
+        expect(chatSessionStore.searchMatchCount).toBe(3);
+        expect(chatSessionStore.searchOccurrences).toEqual([
+          {messageId: 'msg1', chunkIndex: 0, occurrenceIndex: 0},
+          {messageId: 'msg1', chunkIndex: 0, occurrenceIndex: 1},
+          {messageId: 'msg1', chunkIndex: 0, occurrenceIndex: 2},
+        ]);
       });
     });
 
@@ -3094,71 +3116,124 @@ describe('chatSessionStore', () => {
     });
 
     describe('Search navigation', () => {
-      it('first next tap lands on the first match', () => {
+      // msg1 holds 3 occurrences, msg2 holds 1 — 4 in total.
+      const setupOccurrenceMessages = () =>
         setupSessionWithMessages([
-          userText('msg1', 'Hello world'),
-          userText('msg2', 'Goodbye world'),
-          userText('msg3', 'HELLO again'),
+          userText('msg1', 'war war war'),
+          userText('msg2', 'war'),
         ]);
+
+      it('first next tap lands on the first occurrence', () => {
+        setupOccurrenceMessages();
         chatSessionStore.enterSearchMode();
-        chatSessionStore.setSearchQuery('hello');
+        chatSessionStore.setSearchQuery('war');
 
         chatSessionStore.goToNextSearchMatch();
 
         expect(chatSessionStore.searchMatchIndex).toBe(0);
         expect(chatSessionStore.searchCurrentMatchId).toBe('msg1');
+        expect(chatSessionStore.searchCurrentOccurrence).toEqual({
+          messageId: 'msg1',
+          chunkIndex: 0,
+          occurrenceIndex: 0,
+        });
       });
 
-      it('next advances through matches and wraps around', () => {
-        setupSessionWithMessages([
-          userText('msg1', 'Hello world'),
-          userText('msg2', 'Goodbye world'),
-          userText('msg3', 'HELLO again'),
-        ]);
+      it('next advances through occurrences within a message and wraps around', () => {
+        setupOccurrenceMessages();
         chatSessionStore.enterSearchMode();
-        chatSessionStore.setSearchQuery('hello');
+        chatSessionStore.setSearchQuery('war');
 
         chatSessionStore.goToNextSearchMatch();
         chatSessionStore.goToNextSearchMatch();
         expect(chatSessionStore.searchMatchIndex).toBe(1);
-        expect(chatSessionStore.searchCurrentMatchId).toBe('msg3');
+        expect(chatSessionStore.searchCurrentOccurrence).toEqual({
+          messageId: 'msg1',
+          chunkIndex: 0,
+          occurrenceIndex: 1,
+        });
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchCurrentOccurrence).toEqual({
+          messageId: 'msg1',
+          chunkIndex: 0,
+          occurrenceIndex: 2,
+        });
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchMatchIndex).toBe(3);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg2');
         chatSessionStore.goToNextSearchMatch();
         expect(chatSessionStore.searchMatchIndex).toBe(0);
         expect(chatSessionStore.searchCurrentMatchId).toBe('msg1');
       });
 
-      it('first previous tap lands on the last match', () => {
-        setupSessionWithMessages([
-          userText('msg1', 'Hello world'),
-          userText('msg2', 'Goodbye world'),
-          userText('msg3', 'HELLO again'),
-        ]);
+      it('first previous tap lands on the last occurrence', () => {
+        setupOccurrenceMessages();
         chatSessionStore.enterSearchMode();
-        chatSessionStore.setSearchQuery('hello');
+        chatSessionStore.setSearchQuery('war');
 
         chatSessionStore.goToPreviousSearchMatch();
 
-        expect(chatSessionStore.searchMatchIndex).toBe(1);
-        expect(chatSessionStore.searchCurrentMatchId).toBe('msg3');
+        expect(chatSessionStore.searchMatchIndex).toBe(3);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg2');
+        expect(chatSessionStore.searchCurrentOccurrence).toEqual({
+          messageId: 'msg2',
+          chunkIndex: 0,
+          occurrenceIndex: 0,
+        });
       });
 
-      it('previous wraps around from the first match', () => {
-        setupSessionWithMessages([
-          userText('msg1', 'Hello world'),
-          userText('msg2', 'Goodbye world'),
-          userText('msg3', 'HELLO again'),
-        ]);
+      it('previous wraps around from the first occurrence', () => {
+        setupOccurrenceMessages();
         chatSessionStore.enterSearchMode();
-        chatSessionStore.setSearchQuery('hello');
+        chatSessionStore.setSearchQuery('war');
 
         chatSessionStore.goToNextSearchMatch();
         chatSessionStore.goToPreviousSearchMatch();
 
-        expect(chatSessionStore.searchMatchIndex).toBe(1);
-        expect(chatSessionStore.searchCurrentMatchId).toBe('msg3');
+        expect(chatSessionStore.searchMatchIndex).toBe(3);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg2');
       });
 
-      it('bumps the scroll nonce on every tap, even with one match', () => {
+      it('navigates across the steps of an assistant turn', () => {
+        const turn = {
+          id: 'msg1',
+          type: 'assistant_turn',
+          text: '',
+          steps: [
+            {content: 'war one'},
+            {content: 'no match here'},
+            {content: 'war two war'},
+          ],
+          author: {id: 'assistant'},
+          createdAt: Date.now(),
+        } as unknown as MessageType.Any;
+        setupSessionWithMessages([turn]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('war');
+        expect(chatSessionStore.searchMatchCount).toBe(3);
+
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchCurrentOccurrence).toEqual({
+          messageId: 'msg1',
+          chunkIndex: 0,
+          occurrenceIndex: 0,
+        });
+        chatSessionStore.goToNextSearchMatch();
+        // Skips the empty middle step: chunk 2, first occurrence there.
+        expect(chatSessionStore.searchCurrentOccurrence).toEqual({
+          messageId: 'msg1',
+          chunkIndex: 2,
+          occurrenceIndex: 0,
+        });
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchCurrentOccurrence).toEqual({
+          messageId: 'msg1',
+          chunkIndex: 2,
+          occurrenceIndex: 1,
+        });
+      });
+
+      it('bumps the scroll nonce on every tap, even with one occurrence', () => {
         setupSessionWithMessages([userText('msg1', 'Hello world')]);
         chatSessionStore.enterSearchMode();
         chatSessionStore.setSearchQuery('hello');

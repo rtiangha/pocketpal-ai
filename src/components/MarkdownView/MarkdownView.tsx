@@ -24,6 +24,13 @@ interface MarkdownViewProps {
   selectable?: boolean;
   blockContextMenu?: boolean;
   variant?: MarkdownVariant;
+  /**
+   * Index of the current search occurrence within this text, or
+   * undefined when it doesn't hold it. That occurrence is wrapped
+   * bolder (bold inside the highlight) so prev/next navigation has a
+   * visible current match.
+   */
+  currentOccurrence?: number;
 }
 
 const MD4C_FLAGS: Md4cFlags = {latexMath: false, admonitions: false};
@@ -43,6 +50,7 @@ export const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
     selectable,
     blockContextMenu = true,
     variant = 'body',
+    currentOccurrence,
   }) => {
     const theme = useTheme();
     const l10n = useContext(L10nContext);
@@ -52,11 +60,16 @@ export const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
     // ChatScreen), matches are wrapped in ==...== spans — the enriched
     // renderer parses those as highlight spans only when its highlight
     // flag is on, so the flag follows the query and old messages render
-    // exactly as before outside a search.
+    // exactly as before outside a search. The current occurrence (when
+    // this text holds it) is wrapped bolder.
     const markdown = useMemo(
       () =>
-        highlightSearchMatches(normalizeBreakTags(markdownText), searchQuery),
-      [markdownText, searchQuery],
+        highlightSearchMatches(
+          normalizeBreakTags(markdownText),
+          searchQuery,
+          currentOccurrence,
+        ),
+      [markdownText, searchQuery, currentOccurrence],
     );
     const md4cFlags = useMemo(
       (): Md4cFlags =>
@@ -128,5 +141,6 @@ export const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
     prevProps.maxMessageWidth === nextProps.maxMessageWidth &&
     prevProps.selectable === nextProps.selectable &&
     prevProps.blockContextMenu === nextProps.blockContextMenu &&
-    prevProps.variant === nextProps.variant,
+    prevProps.variant === nextProps.variant &&
+    prevProps.currentOccurrence === nextProps.currentOccurrence,
 );
