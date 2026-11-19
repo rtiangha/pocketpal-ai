@@ -152,6 +152,15 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
             <Meter ratio={ratio} tint={error} styles={styles} />
           ) : null}
           <View style={styles.bannerActions}>
+            <Button
+              compact
+              mode="text"
+              testID="context-warning-compact"
+              loading={chatSessionStore.isCompacting}
+              disabled={chatSessionStore.isCompacting}
+              onPress={() => chatSessionStore.compactActiveSession()}>
+              {l10n.chat.compactButton || 'Compact'}
+            </Button>
             {canIncrease ? (
               <Button
                 compact
@@ -239,6 +248,15 @@ export const BannerRow: React.FC<BannerRowProps> = observer(
           <Meter ratio={ratio} tint={error} styles={styles} />
         ) : null}
         <View style={styles.bannerActions}>
+          <Button
+            compact
+            mode="text"
+            testID="context-full-compact"
+            loading={chatSessionStore.isCompacting}
+            disabled={chatSessionStore.isCompacting}
+            onPress={() => chatSessionStore.compactActiveSession()}>
+            {l10n.chat.compactButton || 'Compact'}
+          </Button>
           {canIncrease ? (
             <Button
               compact

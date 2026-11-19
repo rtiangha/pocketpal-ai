@@ -13,6 +13,7 @@ import {SessionMetaData} from '../store/ChatSessionStore';
 
 import {MessageType} from '../utils/types';
 import {CompletionParams} from '../utils/completionTypes';
+import {compactionMarkerPosition} from '../services/compaction';
 import {
   defaultCompletionParams,
   migrateCompletionSettings,
@@ -553,6 +554,80 @@ class ChatSessionRepository {
       console.error('Error updating message:', error);
       return false;
     }
+  }
+
+  // Atomically marks older messages as compacted and inserts the new compaction marker record
+  async softArchiveMessagesAndAddCompaction(
+    sessionId: string,
+    messageIdsToArchive: string[],
+    compactionMessage: MessageType.Any,
+  ): Promise<Message> {
+    let newRecord: any;
+
+    await database.write(async () => {
+      // 1. Soft-archive the older messages by setting isCompacted = true in their metadata
+      for (const id of messageIdsToArchive) {
+        const msgRecord = await database.collections
+          .get('messages')
+          .find(id)
+          .catch(() => null);
+
+        if (msgRecord) {
+          await msgRecord.update((record: any) => {
+            const existingMeta = JSON.parse(record.metadata || '{}');
+            record.metadata = JSON.stringify({
+              ...existingMeta,
+              isCompacted: true,
+              compactionId: compactionMessage.id,
+            });
+          });
+        }
+      }
+
+      // 2. Fetch existing session messages to determine positioning
+      const allMessages = await database.collections
+        .get('messages')
+        .query(Q.where('session_id', sessionId))
+        .fetch();
+
+      const positions = allMessages.map(m => (m as any).position || 0);
+      const highestPosition = positions.length > 0 ? Math.max(...positions) : 0;
+
+      // Fork fix: the marker must render AT the compaction boundary, not at
+      // the end of the chat. Display order is by `position` (messages load
+      // sortBy('position', desc) into an inverted list), so highest+1 put
+      // the marker below the newest message. Place it midway between the
+      // newest archived message and the oldest message that stays visible.
+      const archivedIds = new Set(messageIdsToArchive);
+      const archivedPositions = allMessages
+        .filter(m => archivedIds.has((m as any).id))
+        .map(m => (m as any).position || 0);
+      const preservedPositions = allMessages
+        .filter(m => !archivedIds.has((m as any).id))
+        .map(m => (m as any).position || 0);
+      const markerPosition = compactionMarkerPosition(
+        archivedPositions,
+        preservedPositions,
+        highestPosition,
+      );
+
+      const authorId = compactionMessage.author.id;
+      const metadata = compactionMessage.metadata || {};
+
+      newRecord = await database.collections
+        .get('messages')
+        .create((record: any) => {
+          record.sessionId = sessionId;
+          record.author = authorId;
+          record.text = (compactionMessage as any).text || '';
+          record.type = compactionMessage.type;
+          record.createdAt = compactionMessage.createdAt || Date.now();
+          record.metadata = JSON.stringify(metadata);
+          record.position = markerPosition;
+        });
+    });
+
+    return newRecord;
   }
 
   // Update session completion settings

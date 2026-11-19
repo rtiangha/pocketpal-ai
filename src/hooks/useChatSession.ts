@@ -59,6 +59,7 @@ import {
   talentRegistry,
 } from '../services/talents';
 import type {ToolDefinition} from '../services/talents/types';
+import {shouldCompactSession} from '../services/compaction';
 import {
   agentStateReducer,
   createTriggerMarkerCache,
@@ -163,6 +164,17 @@ const prepareCompletion = async ({
     now: new Date(),
     maxToolTurns: DEFAULT_MAX_TURNS,
   });
+
+  // Fold latest compaction summary into systemPromptFragments so it safely
+  // collapses into the single leading system message in assembleMessages.
+  const latestCompaction = currentMessages.find(
+    msg => msg.type === 'custom' && msg.metadata?.compaction === true,
+  );
+  if (latestCompaction?.metadata?.summary) {
+    systemPromptFragments.push(
+      `[Previous Conversation Summary]\n${latestCompaction.metadata.summary}\n[End Summary]`,
+    );
+  }
 
   const messages = assembleMessages(systemMessages, systemPromptFragments, [
     ...chatMessages,
@@ -570,6 +582,21 @@ async function applyEventToStore(
       if (snapshot.isRemote) {
         modelStore.reprobeRemoteCapsAfterCompletion();
       }
+
+      // Auto-compaction check: if the finished turn pushed context usage past
+      // the dynamic token headroom threshold, trigger an async compaction pass
+      const effectiveNCtx = modelStore.activeModelCaps.effectiveContextLength;
+      if (shouldCompactSession(snapshot, effectiveNCtx)) {
+        setTimeout(() => {
+          chatSessionStore.compactActiveSession().catch(compactErr => {
+            console.warn(
+              '[useChatSession] auto-compaction failed:',
+              compactErr,
+            );
+          });
+        }, 100);
+      }
+
       if (event.result.hitMaxTurns) {
         console.warn(
           '[useChatSession] agent run hit maxTurns; surfacing last available content',
@@ -689,6 +716,45 @@ export const useChatSession = (
     message: MessageType.PartialText,
     opts: SendOptions = {},
   ): Promise<UndoneSend | undefined> => {
+    // While a compaction is running the engine is busy with the summarizer
+    // pass: a second completion on the same context would collide with it.
+    // Block the send and hand the text back so the composer restores it.
+    if (chatSessionStore.isCompacting) {
+      await addSystemMessage(
+        l10n.chat.compactInProgress ||
+          'Compaction is in progress — please wait a moment, then send again.',
+      );
+      return {
+        message,
+        sessionId: chatSessionStore.activeSessionId ?? '',
+      };
+    }
+
+    // Intercept /compact command
+    const rawText = (message.text || '').trim();
+    if (rawText.startsWith('/compact')) {
+      const focusInstruction = rawText.replace(/^\/compact\s*/i, '').trim();
+      const currentMessages = toJS(chatSessionStore.currentSessionMessages);
+      if (currentMessages.length < 5) {
+        await addSystemMessage(
+          l10n.chat.compactNotEnoughMessages ||
+            'Not enough messages in this conversation to compact.',
+        );
+        return;
+      }
+
+      const success = await chatSessionStore.compactActiveSession(
+        focusInstruction || undefined,
+      );
+      if (!success) {
+        await addSystemMessage(
+          l10n.chat.compactFailed ||
+            'Could not compact conversation. Continuing with current context.',
+        );
+      }
+      return;
+    }
+
     const sentFrom = chatSessionStore.activeSessionId;
     const stopsAtSend = stopsBeforeLease.current;
     if (modelStore.isGenerationBusy) {
@@ -1084,6 +1150,16 @@ export const useChatSession = (
             isRemote,
           });
           turnAbsorbedError = true;
+
+          // Attempt recovery compaction when prompt overflowed context
+          setTimeout(() => {
+            chatSessionStore.compactActiveSession().catch(compactErr => {
+              console.warn(
+                '[useChatSession] recovery compaction failed:',
+                compactErr,
+              );
+            });
+          }, 100);
         }
         await chatSessionStore.deleteMessageFromSession(
           messageInfo.sessionId,

@@ -26,6 +26,7 @@ import {
   TalentSurface,
   TextMessage,
   TextMessageTopLevelProps,
+  CompactionMarker,
 } from '..';
 
 import {MessageType, PressPointEvent} from '../../utils/types';
@@ -227,6 +228,15 @@ export const Message = observer(
     }
 
     const isUserTextRow = currentUserIsAuthor && message.type === 'text';
+
+    if (message.type === 'custom' && message.metadata?.compaction === true) {
+      return (
+        <CompactionMarker
+          message={message as MessageType.Custom}
+          messageWidth={messageWidth}
+        />
+      );
+    }
 
     const renderBubbleContainer = () => {
       const child = renderMessage();

@@ -10,12 +10,19 @@ import {
 } from '../utils/types';
 import {
   BannerVariant,
+  CompletionEngine,
   CompletionParams,
   CompletionResultSnapshot,
 } from '../utils/completionTypes';
 import {chatSessionRepository} from '../repositories/ChatSessionRepository';
 import {defaultCompletionParams} from '../utils/completionSettingsVersions';
-import {derivedText} from '../utils/chat';
+import {assistant, derivedText} from '../utils/chat';
+import {randId} from '../utils';
+import {
+  partitionMessagesForCompaction,
+  buildCompactionPrompt,
+  executeCompaction,
+} from '../services/compaction';
 import {palStore} from './PalStore';
 import {deriveToolSchemas} from '../services/talents';
 import {AgentUiState, initialAgentUiState} from '../services/agent';
@@ -138,6 +145,10 @@ class ChatSessionStore {
   dismissedBannerVariants: Set<BannerVariant> = new Set();
   consecutiveFullFailures: number = 0;
   palLoadHintSeen: Set<string> = new Set();
+
+  // Compaction state
+  isCompacting: boolean = false;
+  compactionAbortController: AbortController | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -562,18 +573,159 @@ class ChatSessionStore {
     if (this.activeSessionId) {
       const session = this.sessions.find(s => s.id === this.activeSessionId);
       if (session) {
+        let msgs = session.messages;
         if (this.isEditMode && this.editingMessageId) {
-          const messageIndex = session.messages.findIndex(
+          const messageIndex = msgs.findIndex(
             msg => msg.id === this.editingMessageId,
           );
           if (messageIndex >= 0) {
-            return session.messages.slice(messageIndex + 1);
+            msgs = msgs.slice(messageIndex + 1);
           }
         }
-        return session.messages;
+        return msgs.filter(msg => !msg.metadata?.isCompacted);
       }
     }
     return [];
+  }
+
+  resetContextMetrics(): void {
+    runInAction(() => {
+      this.lastCompletionResult = undefined;
+      this.dismissedBannerVariants = new Set();
+      this.consecutiveFullFailures = 0;
+    });
+  }
+
+  cancelCompaction(): void {
+    if (this.compactionAbortController) {
+      this.compactionAbortController.abort();
+      this.compactionAbortController = null;
+    }
+    import('./ModelStore')
+      .then(({modelStore}) => {
+        modelStore.engine?.stopCompletion().catch(err => {
+          console.warn('[compaction] stopCompletion on cancel failed:', err);
+        });
+      })
+      .catch(() => {});
+    runInAction(() => {
+      this.isCompacting = false;
+    });
+  }
+
+  async compactActiveSession(
+    focusInstruction?: string,
+    completionEngine?: CompletionEngine,
+  ): Promise<boolean> {
+    if (this.isCompacting || this.isGenerating) {
+      return false;
+    }
+
+    const sessionId = this.activeSessionId;
+    if (!sessionId) {
+      return false;
+    }
+
+    const session = this.sessions.find(s => s.id === sessionId);
+    if (!session) {
+      return false;
+    }
+
+    let engine = completionEngine;
+    if (!engine) {
+      const {modelStore} = await import('./ModelStore');
+      engine = modelStore.engine;
+    }
+
+    if (!engine) {
+      return false;
+    }
+
+    if (!session.messagesLoaded) {
+      await this.loadSessionMessages(sessionId);
+    }
+
+    const partition = partitionMessagesForCompaction(session.messages, 2);
+    if (!partition || partition.toSummarize.length === 0) {
+      return false;
+    }
+
+    this.compactionAbortController = new AbortController();
+    // Capture the signal now: cancelCompaction() nulls the controller
+    // field when it runs, so checking the field later would miss a Cancel
+    // that landed mid-flight.
+    const abortSignal = this.compactionAbortController.signal;
+    runInAction(() => {
+      this.isCompacting = true;
+    });
+
+    try {
+      const prompt = buildCompactionPrompt(
+        partition.toSummarize,
+        focusInstruction,
+        partition.priorSummary,
+      );
+
+      const summaryText = await executeCompaction(
+        engine,
+        prompt,
+        this.compactionAbortController.signal,
+      );
+
+      // Fork fix: a Cancel that landed after the summarizer already
+      // resolved must not commit the compaction. The engine has no abort
+      // signal support, so stopCompletion is the only in-flight cancel;
+      // this check is what makes Cancel actually prevent the write.
+      if (abortSignal.aborted) {
+        runInAction(() => {
+          this.isCompacting = false;
+          this.compactionAbortController = null;
+        });
+        return false;
+      }
+
+      const compactionMessage: MessageType.Custom = {
+        id: randId(),
+        type: 'custom',
+        author: assistant,
+        createdAt: partition.markerTimestamp,
+        metadata: {
+          compaction: true,
+          summary: summaryText,
+          compactedCount: partition.messageIdsToArchive.length,
+          focusInstruction: focusInstruction?.trim() || undefined,
+          timestamp: Date.now(),
+        },
+      };
+
+      const createdRecord =
+        await chatSessionRepository.softArchiveMessagesAndAddCompaction(
+          sessionId,
+          partition.messageIdsToArchive,
+          compactionMessage,
+        );
+      compactionMessage.id = createdRecord.id;
+
+      const updated = await chatSessionRepository.getSessionById(sessionId);
+
+      runInAction(() => {
+        if (updated?.messages) {
+          session.messages = updated.messages.map(m => m.toMessageObject());
+        }
+        this.resetContextMetrics();
+        this.isCompacting = false;
+        this.compactionAbortController = null;
+      });
+
+      return true;
+    } catch (err: any) {
+      console.warn('[compaction] compactActiveSession failed:', err);
+      runInAction(() => {
+        this.isCompacting = false;
+        this.compactionAbortController = null;
+      });
+      return false;
+    }
   }
 
   async setNewChatCompletionSettings(settings: CompletionParams) {
