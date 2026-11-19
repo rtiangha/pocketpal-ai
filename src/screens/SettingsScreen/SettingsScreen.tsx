@@ -55,6 +55,7 @@ import {useTheme} from '../../hooks';
 
 import {createStyles} from './styles';
 import {CacheTypeMenuRow} from './CacheTypeMenuRow';
+import {AutoCompactionRow} from './AutoCompactionRow';
 import {VoiceRow} from './VoiceRow';
 import {useMenuAnchor} from './useMenuAnchor';
 
@@ -491,6 +492,11 @@ export const SettingsScreen: React.FC = observer(() => {
                   {l10n.settings.modelReloadNotice}
                 </Text>
               </View>
+              <Divider />
+
+              {/* Fork-only: automatic compaction toggle */}
+              <AutoCompactionRow />
+              <Divider />
 
               {/* Advanced Settings */}
               <List.Accordion

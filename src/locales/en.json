@@ -55,6 +55,8 @@
     "contextSizePlaceholder": "Enter context size (min {{minContextSize}})",
     "invalidContextSizeError": "Please enter a valid number (minimum {{minContextSize}})",
     "modelReloadNotice": "Model reload needed for changes to take effect.",
+    "autoCompaction": "Automatic compaction",
+    "autoCompactionDescription": "When a conversation nears the context limit, summarize the oldest messages automatically. When off, compact only with /compact or the Compact button.",
     "advancedSettings": "Advanced Settings",
     "batchSize": "Batch Size",
     "batchSizeDescription": "Batch size: {{batchSize}}{{effectiveBatch}}",

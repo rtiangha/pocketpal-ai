@@ -126,6 +126,14 @@ class ChatSessionRepository {
     return 0;
   }
 
+  async getAutoCompactionEnabled() {
+    return false;
+  }
+
+  async saveAutoCompactionEnabled(value) {
+    return; // Mock: do nothing
+  }
+
   async deleteMessage(id) {
     return; // Mock: do nothing
   }

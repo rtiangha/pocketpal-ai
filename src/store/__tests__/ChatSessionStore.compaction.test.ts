@@ -27,6 +27,7 @@ describe('ChatSessionStore compaction integration', () => {
     chatSessionStore.activeSessionId = null;
     chatSessionStore.isCompacting = false;
     chatSessionStore.isGenerating = false;
+    chatSessionStore.autoCompactionEnabled = false;
     chatSessionStore.lastCompletionResult = {
       used: 1900,
       contextFull: true,
@@ -308,6 +309,47 @@ describe('ChatSessionStore compaction integration', () => {
 
       expect(await chatSessionStore.restoreCompaction('marker_1')).toBe(false);
       expect(spyRestore).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('autoCompactionEnabled', () => {
+    it('is off by default and persists when set', async () => {
+      expect(chatSessionStore.autoCompactionEnabled).toBe(false);
+
+      const spySave = jest.spyOn(
+        chatSessionRepository,
+        'saveAutoCompactionEnabled',
+      );
+
+      await chatSessionStore.setAutoCompactionEnabled(true);
+
+      expect(chatSessionStore.autoCompactionEnabled).toBe(true);
+      expect(spySave).toHaveBeenCalledWith(true);
+
+      await chatSessionStore.setAutoCompactionEnabled(false);
+
+      expect(chatSessionStore.autoCompactionEnabled).toBe(false);
+      expect(spySave).toHaveBeenCalledWith(false);
+    });
+
+    it('loads the persisted value with the other global settings', async () => {
+      jest
+        .spyOn(chatSessionRepository, 'getAutoCompactionEnabled')
+        .mockResolvedValue(true);
+
+      await chatSessionStore.loadGlobalSettings();
+
+      expect(chatSessionStore.autoCompactionEnabled).toBe(true);
+    });
+
+    it('stays off when nothing was ever persisted', async () => {
+      jest
+        .spyOn(chatSessionRepository, 'getAutoCompactionEnabled')
+        .mockResolvedValue(false);
+
+      await chatSessionStore.loadGlobalSettings();
+
+      expect(chatSessionStore.autoCompactionEnabled).toBe(false);
     });
   });
 });

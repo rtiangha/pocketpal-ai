@@ -584,9 +584,15 @@ async function applyEventToStore(
       }
 
       // Auto-compaction check: if the finished turn pushed context usage past
-      // the dynamic token headroom threshold, trigger an async compaction pass
+      // the dynamic token headroom threshold, trigger an async compaction pass.
+      // Fork-only: gated on the Settings toggle (default off). With the
+      // toggle off, nothing compacts by itself; /compact and the banner
+      // Compact buttons still work.
       const effectiveNCtx = modelStore.activeModelCaps.effectiveContextLength;
-      if (shouldCompactSession(snapshot, effectiveNCtx)) {
+      if (
+        chatSessionStore.autoCompactionEnabled &&
+        shouldCompactSession(snapshot, effectiveNCtx)
+      ) {
         setTimeout(() => {
           chatSessionStore.compactActiveSession().catch(compactErr => {
             console.warn(
@@ -1151,15 +1157,20 @@ export const useChatSession = (
           });
           turnAbsorbedError = true;
 
-          // Attempt recovery compaction when prompt overflowed context
-          setTimeout(() => {
-            chatSessionStore.compactActiveSession().catch(compactErr => {
-              console.warn(
-                '[useChatSession] recovery compaction failed:',
-                compactErr,
-              );
-            });
-          }, 100);
+          // Attempt recovery compaction when prompt overflowed context.
+          // Fork-only: gated on the same Settings toggle — with it off,
+          // a context-full turn stays an error, as before the PR, and
+          // the user compacts manually.
+          if (chatSessionStore.autoCompactionEnabled) {
+            setTimeout(() => {
+              chatSessionStore.compactActiveSession().catch(compactErr => {
+                console.warn(
+                  '[useChatSession] recovery compaction failed:',
+                  compactErr,
+                );
+              });
+            }, 100);
+          }
         }
         await chatSessionStore.deleteMessageFromSession(
           messageInfo.sessionId,

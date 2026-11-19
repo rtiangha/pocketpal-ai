@@ -780,6 +780,49 @@ class ChatSessionRepository {
     });
   }
 
+  // Get/set the automatic-compaction toggle. Stored under its own
+  // global_settings key as a JSON boolean; absent means off, so
+  // conversations behave exactly as before the compaction PR until
+  // the user turns it on in Settings.
+  async getAutoCompactionEnabled(): Promise<boolean> {
+    const rows = await database.collections
+      .get('global_settings')
+      .query(Q.where('key', 'autoCompactionEnabled'))
+      .fetch();
+
+    if (rows.length === 0) {
+      return false;
+    }
+
+    try {
+      return JSON.parse((rows[0] as any).value) === true;
+    } catch {
+      return false;
+    }
+  }
+
+  async saveAutoCompactionEnabled(value: boolean): Promise<void> {
+    await database.write(async () => {
+      const existingRows = await database.collections
+        .get('global_settings')
+        .query(Q.where('key', 'autoCompactionEnabled'))
+        .fetch();
+
+      if (existingRows.length > 0) {
+        await (existingRows[0] as any).update((record: any) => {
+          record.value = JSON.stringify(value);
+        });
+      } else {
+        await database.collections
+          .get('global_settings')
+          .create((record: any) => {
+            record.key = 'autoCompactionEnabled';
+            record.value = JSON.stringify(value);
+          });
+      }
+    });
+  }
+
   // Update session title
   async updateSessionTitle(sessionId: string, newTitle: string): Promise<void> {
     const session = await database.collections

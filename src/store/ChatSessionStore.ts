@@ -149,6 +149,12 @@ class ChatSessionStore {
   // Compaction state
   isCompacting: boolean = false;
   compactionAbortController: AbortController | null = null;
+  // Fork-only: whether compaction runs automatically (threshold +
+  // recovery). Default off, so conversations behave as before the
+  // compaction PR until the user turns it on in Settings. Manual
+  // compaction (/compact, banner Compact buttons, restore) works
+  // regardless of this flag.
+  autoCompactionEnabled: boolean = false;
 
   constructor() {
     makeAutoObservable(this);
@@ -338,15 +344,32 @@ class ChatSessionStore {
     try {
       const settings =
         await chatSessionRepository.getGlobalCompletionSettings();
+      const autoCompactionEnabled =
+        await chatSessionRepository.getAutoCompactionEnabled();
 
       runInAction(() => {
         // Heal a preset saved before tools were stripped on save: a stale
         // `tools` snapshot in the persisted global preset is dropped on
         // load, so the next resolve derives tools from the pact alone.
         this.newChatCompletionSettings = withoutTools(settings);
+        this.autoCompactionEnabled = autoCompactionEnabled;
       });
     } catch (error) {
       console.error('Failed to load global settings:', error);
+    }
+  }
+
+  async setAutoCompactionEnabled(value: boolean): Promise<void> {
+    runInAction(() => {
+      this.autoCompactionEnabled = value;
+    });
+    try {
+      await chatSessionRepository.saveAutoCompactionEnabled(value);
+    } catch (error) {
+      console.warn(
+        '[compaction] failed to persist autoCompactionEnabled:',
+        error,
+      );
     }
   }
 
