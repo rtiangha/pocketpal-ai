@@ -1,5 +1,5 @@
 import React, {useState, useContext} from 'react';
-import {View, TouchableOpacity, Text} from 'react-native';
+import {View, TouchableOpacity, Text, Alert} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import {useTheme} from '../../hooks';
@@ -89,7 +89,15 @@ export const CompactionMarker: React.FC<CompactionMarkerProps> = ({
             onPress={async () => {
               setIsRestoring(true);
               try {
-                await chatSessionStore.restoreCompaction(message.id);
+                const restored = await chatSessionStore.restoreCompaction(
+                  message.id,
+                );
+                if (!restored) {
+                  Alert.alert(
+                    l10n.chat?.compactRestoreFailed ||
+                      "Couldn't restore original messages",
+                  );
+                }
               } finally {
                 setIsRestoring(false);
               }

@@ -106,8 +106,12 @@ class ChatSessionRepository {
     messageIdsToArchive,
     compactionMessage,
   ) {
+    // Mirror the real database: WatermelonDB generates the record id
+    // on create, so the stored marker's id differs from the id on the
+    // object passed in. Tests that need the created id must use this
+    // returned value, not compactionMessage.id.
     return {
-      id: compactionMessage.id || 'mock-compaction-id',
+      id: 'mock-created-compaction-id',
       sessionId,
       text: compactionMessage.text || '',
       type: compactionMessage.type || 'custom',

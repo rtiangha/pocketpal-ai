@@ -1,4 +1,5 @@
 import React from 'react';
+import {Alert} from 'react-native';
 
 import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
 
@@ -73,5 +74,23 @@ describe('CompactionMarker restore', () => {
 
     await fireEvent.press(getByTestId('compaction-marker-toggle'));
     expect(queryByTestId('compaction-summary-card')).toBeNull();
+  });
+
+  it('shows an alert when restore reports nothing restored', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    (chatSessionStore.restoreCompaction as jest.Mock).mockResolvedValueOnce(
+      false,
+    );
+    const {getByTestId} = await renderMarker();
+
+    await fireEvent.press(getByTestId('compaction-marker-toggle'));
+    await fireEvent.press(getByTestId('compaction-restore'));
+
+    await waitFor(() =>
+      expect(alertSpy).toHaveBeenCalledWith(
+        "Couldn't restore original messages",
+      ),
+    );
+    alertSpy.mockRestore();
   });
 });

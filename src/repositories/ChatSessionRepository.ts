@@ -565,26 +565,9 @@ class ChatSessionRepository {
     let newRecord: any;
 
     await database.write(async () => {
-      // 1. Soft-archive the older messages by setting isCompacted = true in their metadata
-      for (const id of messageIdsToArchive) {
-        const msgRecord = await database.collections
-          .get('messages')
-          .find(id)
-          .catch(() => null);
-
-        if (msgRecord) {
-          await msgRecord.update((record: any) => {
-            const existingMeta = JSON.parse(record.metadata || '{}');
-            record.metadata = JSON.stringify({
-              ...existingMeta,
-              isCompacted: true,
-              compactionId: compactionMessage.id,
-            });
-          });
-        }
-      }
-
-      // 2. Fetch existing session messages to determine positioning
+      // 1. Fetch existing session messages to determine positioning.
+      // The archive step below does not change positions, so this can
+      // run before any writes.
       const allMessages = await database.collections
         .get('messages')
         .query(Q.where('session_id', sessionId))
@@ -611,6 +594,12 @@ class ChatSessionRepository {
         highestPosition,
       );
 
+      // 2. Create the marker FIRST, so its database id is known.
+      // WatermelonDB generates the record id on create (the id on the
+      // object passed in is not used), so stamping the archived
+      // messages before this point recorded a throwaway id that
+      // restore could never match — tapping restore then found
+      // nothing and silently did nothing.
       const authorId = compactionMessage.author.id;
       const metadata = compactionMessage.metadata || {};
 
@@ -625,6 +614,26 @@ class ChatSessionRepository {
           record.metadata = JSON.stringify(metadata);
           record.position = markerPosition;
         });
+
+      // 3. Soft-archive the older messages, stamped with the marker's
+      // real id so restore can find them.
+      for (const id of messageIdsToArchive) {
+        const msgRecord = await database.collections
+          .get('messages')
+          .find(id)
+          .catch(() => null);
+
+        if (msgRecord) {
+          await msgRecord.update((record: any) => {
+            const existingMeta = JSON.parse(record.metadata || '{}');
+            record.metadata = JSON.stringify({
+              ...existingMeta,
+              isCompacted: true,
+              compactionId: newRecord.id,
+            });
+          });
+        }
+      }
     });
 
     return newRecord;
@@ -646,17 +655,45 @@ class ChatSessionRepository {
         .query(Q.where('session_id', sessionId))
         .fetch();
 
+      const clearArchiveFlags = async (msg: any) => {
+        await msg.update((record: any) => {
+          const existingMeta = JSON.parse(record.metadata || '{}');
+          delete existingMeta.isCompacted;
+          delete existingMeta.compactionId;
+          record.metadata = JSON.stringify(existingMeta);
+        });
+      };
+
+      // Exact group: messages stamped with this marker's id. This is
+      // the path for compactions made after the stamping fix above.
       for (const msg of allMessages) {
         const meta = JSON.parse((msg as any).metadata || '{}');
         if (meta.isCompacted === true && meta.compactionId === compactionId) {
-          await (msg as any).update((record: any) => {
-            const existingMeta = JSON.parse(record.metadata || '{}');
-            delete existingMeta.isCompacted;
-            delete existingMeta.compactionId;
-            record.metadata = JSON.stringify(existingMeta);
-          });
+          await clearArchiveFlags(msg);
           restored += 1;
         }
+      }
+
+      if (restored === 0) {
+        // Legacy fallback: compactions made before the stamping fix
+        // stamped a throwaway id, so no message matches the marker.
+        // Restore every archived message in the session and drop
+        // every compaction marker — once the originals are back, no
+        // marker's summary stands for anything.
+        for (const msg of allMessages) {
+          const meta = JSON.parse((msg as any).metadata || '{}');
+          if (meta.isCompacted === true) {
+            await clearArchiveFlags(msg);
+            restored += 1;
+          }
+        }
+        for (const msg of allMessages) {
+          const meta = JSON.parse((msg as any).metadata || '{}');
+          if (meta.compaction === true) {
+            await (msg as any).destroyPermanently();
+          }
+        }
+        return;
       }
 
       // With its messages back, the marker's summary no longer stands

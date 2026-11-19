@@ -1363,6 +1363,7 @@
     "compactSuccess": "Conversation successfully compacted.",
     "compactFailed": "Could not compact conversation. Continuing with current context.",
     "compactRestore": "Restore original messages",
+    "compactRestoreFailed": "Couldn't restore original messages",
     "viewSummary": "View summary",
     "hideSummary": "Hide summary",
     "contextMoreRoom": "More room",
