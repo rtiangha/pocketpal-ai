@@ -13,15 +13,22 @@ import {Text} from 'react-native-paper';
 import {useTheme} from '../../hooks';
 import {chatSessionStore} from '../../store';
 
-import {SearchIcon, CloseIcon} from '../../assets/icons';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  CloseIcon,
+  SearchIcon,
+} from '../../assets/icons';
 import {L10nContext} from '../../utils';
+import {t} from '../../locales';
 
 interface ChatSearchBarProps {
   matchCount: number;
+  matchIndex: number;
 }
 
 export const ChatSearchBar: React.FC<ChatSearchBarProps> = observer(
-  ({matchCount}) => {
+  ({matchCount, matchIndex}) => {
     const theme = useTheme();
     const l10n = useContext(L10nContext);
     const inputRef = useRef<TextInputInstance>(null);
@@ -35,6 +42,18 @@ export const ChatSearchBar: React.FC<ChatSearchBarProps> = observer(
     }, []);
 
     const hasQuery = chatSessionStore.searchQuery.trim().length > 0;
+    // Before the first prev/next tap there is no selection yet, so show
+    // the plain count; once navigating, show the position ("3 of 12").
+    const counterText =
+      matchCount === 0
+        ? l10n.chat.noResults
+        : matchIndex >= 0
+          ? t(l10n.chat.searchResultPosition, {
+              current: matchIndex + 1,
+              total: matchCount,
+            })
+          : `${matchCount}`;
+    const navDisabled = matchCount === 0;
 
     return (
       <View
@@ -71,9 +90,35 @@ export const ChatSearchBar: React.FC<ChatSearchBarProps> = observer(
                 styles.matchCount,
                 {color: theme.colors.onSurfaceVariant},
               ]}>
-              {matchCount > 0 ? `${matchCount}` : l10n.chat.noResults}
+              {counterText}
             </Text>
           )}
+          <TouchableOpacity
+            onPress={() => chatSessionStore.goToPreviousSearchMatch()}
+            disabled={navDisabled}
+            style={[styles.navButton, navDisabled && styles.navButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={l10n.chat.previousResult}
+            testID="search-prev-button">
+            <ChevronUpIcon
+              width={18}
+              height={18}
+              stroke={theme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => chatSessionStore.goToNextSearchMatch()}
+            disabled={navDisabled}
+            style={[styles.navButton, navDisabled && styles.navButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={l10n.chat.nextResult}
+            testID="search-next-button">
+            <ChevronDownIcon
+              width={18}
+              height={18}
+              stroke={theme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => chatSessionStore.exitSearchMode()}
             style={styles.closeButton}
@@ -110,6 +155,12 @@ const styles = StyleSheet.create({
   },
   matchCount: {
     marginHorizontal: 4,
+  },
+  navButton: {
+    padding: 4,
+  },
+  navButtonDisabled: {
+    opacity: 0.4,
   },
   closeButton: {
     padding: 4,

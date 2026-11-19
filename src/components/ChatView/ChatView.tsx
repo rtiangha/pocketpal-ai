@@ -185,6 +185,15 @@ export interface ChatProps extends Omit<ChatTopLevelProps, 'onSendPress'> {
   /** Opens voice mode with this chat's model picker and composer focus. */
   onVoiceModePress?: (actions: VoiceEntryActions) => void;
   /**
+   * Id of the message to scroll into view (in-conversation search
+   * prev/next navigation). The scroll fires when `scrollToMessageNonce`
+   * changes, not when the id changes, so re-tapping with a single match
+   * (same id) still scrolls.
+   */
+  scrollToMessageId?: string;
+  /** Bumped on every prev/next tap to trigger the scroll above. */
+  scrollToMessageNonce?: number;
+  /**
    * Allows you to customize the time format. IMPORTANT: only for the time,
    * do not return date here. @see {@link ChatProps.dateFormat} to customize the date format.
    * @see {@link ChatProps.customDateHeaderText} for more customization.
@@ -263,6 +272,8 @@ export const ChatView = observer(
     renderFileMessage,
     renderImageMessage,
     renderTextMessage,
+    scrollToMessageId,
+    scrollToMessageNonce,
     sendButtonVisibilityMode = 'editing',
     showUserAvatars = false,
     showUserNames = false,
@@ -553,6 +564,61 @@ export const ChatView = observer(
       timeFormat,
       showDateHeaders,
     });
+
+    // Scroll to the current search match when the user navigates (prev/next
+    // in the search bar). Reads the latest list through a ref so a streaming
+    // reply landing doesn't re-trigger the scroll — only a navigation tap
+    // (nonce bump) does. viewPosition 0.5 centers the message; it's also
+    // flip-safe on this inverted list.
+    const chatMessagesRef = React.useRef(chatMessages);
+    chatMessagesRef.current = chatMessages;
+    const scrollRetryNonceRef = React.useRef<number | undefined>(undefined);
+    React.useEffect(() => {
+      if (!scrollToMessageId) {
+        return;
+      }
+      const index = chatMessagesRef.current.findIndex(
+        m => m.id === scrollToMessageId,
+      );
+      if (index < 0) {
+        return;
+      }
+      scrollRetryNonceRef.current = scrollToMessageNonce;
+      list.current?.scrollToIndex({index, animated: true, viewPosition: 0.5});
+    }, [scrollToMessageId, scrollToMessageNonce]);
+
+    // The target row isn't laid out yet when it sits far outside the
+    // rendered window: jump near it by estimated offset, then retry the
+    // indexed scroll once the rows have rendered. Capped at one retry per
+    // navigation, and the retry only runs if the user hasn't navigated
+    // elsewhere in the meantime, so a genuinely missing row can't loop.
+    const handleScrollToIndexFailed = React.useCallback(
+      (info: {
+        index: number;
+        highestMeasuredFrameIndex: number;
+        averageItemLength: number;
+      }) => {
+        if (scrollRetryNonceRef.current === undefined) {
+          return;
+        }
+        scrollRetryNonceRef.current = undefined;
+        list.current?.scrollToOffset({
+          offset: info.averageItemLength * info.index,
+          animated: false,
+        });
+        setTimeout(() => {
+          if (scrollRetryNonceRef.current !== undefined) {
+            return;
+          }
+          list.current?.scrollToIndex({
+            index: info.index,
+            animated: true,
+            viewPosition: 0.5,
+          });
+        }, 300);
+      },
+      [],
+    );
 
     const previousChatMessages = usePrevious(chatMessages);
 
@@ -1089,6 +1155,7 @@ export const ChatView = observer(
               }
               keyExtractor={keyExtractor}
               onEndReached={handleEndReached}
+              onScrollToIndexFailed={handleScrollToIndexFailed}
               ref={list}
               renderItem={renderMessage}
               maintainVisibleContentPosition={
@@ -1141,6 +1208,7 @@ export const ChatView = observer(
         flatListProps,
         keyExtractor,
         handleEndReached,
+        handleScrollToIndexFailed,
         renderMessage,
         isStreaming,
         scrollToBottomAnimatedStyle,

@@ -52,6 +52,8 @@ export const mockChatSessionStore = {
   // Search mode state
   isSearchMode: false,
   searchQuery: '',
+  searchMatchIndex: -1,
+  searchScrollNonce: 0,
   loadSessionList: jest.fn().mockResolvedValue(undefined),
   loadGlobalSettings: jest.fn().mockResolvedValue(undefined),
   deleteSession: jest.fn().mockResolvedValue(undefined),
@@ -92,6 +94,8 @@ export const mockChatSessionStore = {
   enterSearchMode: jest.fn(),
   exitSearchMode: jest.fn(),
   setSearchQuery: jest.fn(),
+  goToNextSearchMatch: jest.fn(),
+  goToPreviousSearchMatch: jest.fn(),
   // Selection mode methods
   enterSelectionMode: jest.fn(),
   exitSelectionMode: jest.fn(),
@@ -197,6 +201,26 @@ Object.defineProperty(mockChatSessionStore, 'searchMatchCount', {
     return messages.filter(msg =>
       derivedText(msg).toLowerCase().includes(query),
     ).length;
+  }),
+  configurable: true,
+});
+
+Object.defineProperty(mockChatSessionStore, 'searchCurrentMatchId', {
+  get: jest.fn(() => {
+    if (
+      !mockChatSessionStore.isSearchMode ||
+      !mockChatSessionStore.searchQuery.trim() ||
+      mockChatSessionStore.searchMatchIndex < 0
+    ) {
+      return undefined;
+    }
+    const query = mockChatSessionStore.searchQuery.toLowerCase().trim();
+    const messages = (mockChatSessionStore as any)
+      .currentSessionMessages as any[];
+    const matches = messages.filter((msg: any) =>
+      derivedText(msg).toLowerCase().includes(query),
+    );
+    return matches[mockChatSessionStore.searchMatchIndex]?.id;
   }),
   configurable: true,
 });

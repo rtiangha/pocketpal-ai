@@ -312,6 +312,7 @@ export const ChatScreen: React.FC = observer(() => {
     chatSessionStore.isSearchMode && chatSessionStore.searchQuery.trim()
       ? chatSessionStore.searchMatchCount
       : 0;
+  const matchIndex = chatSessionStore.searchMatchIndex;
 
   // Otherwise, show the regular chat view
   return (
@@ -326,9 +327,14 @@ export const ChatScreen: React.FC = observer(() => {
             messages={messages}
             customContent={
               chatSessionStore.isSearchMode ? (
-                <ChatSearchBar matchCount={matchCount} />
+                <ChatSearchBar
+                  matchCount={matchCount}
+                  matchIndex={matchIndex}
+                />
               ) : undefined
             }
+            scrollToMessageId={chatSessionStore.searchCurrentMatchId}
+            scrollToMessageNonce={chatSessionStore.searchScrollNonce}
             activePal={activePal}
             onSendPress={handleSendPress}
             onStopPress={handleStopPress}

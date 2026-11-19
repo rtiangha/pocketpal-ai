@@ -152,6 +152,30 @@ describe('chat', () => {
     expect(closeButton).toBeDefined();
   });
 
+  it('renders with a search scroll target without crashing', async () => {
+    // Exercises the prev/next scroll effect: the target id exists in the
+    // list, so findIndex hits and the indexed scroll is attempted (the
+    // list mock in Jest has no layout, so the scroll itself is a no-op
+    // here; the real scroll is verified on-device).
+    const messages = [
+      textMessage,
+      {...textMessage, createdAt: 1, id: 'search-target', text: 'target'},
+    ];
+
+    const {getByText} = await render(
+      <ChatView
+        messages={messages}
+        onSendPress={jest.fn()}
+        user={user}
+        scrollToMessageId="search-target"
+        scrollToMessageNonce={1}
+      />,
+      {withSafeArea: true, withNavigation: true, withBottomSheetProvider: true},
+    );
+
+    expect(getByText('target')).toBeTruthy();
+  });
+
   it('sends a text message', async () => {
     expect.assertions(1);
     // Set up an active model for the test

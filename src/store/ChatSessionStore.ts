@@ -127,6 +127,11 @@ class ChatSessionStore {
   // Search mode state
   isSearchMode: boolean = false;
   searchQuery: string = '';
+  // Index of the current match within searchMatchingMessages (-1 = none
+  // selected yet). Bumped on every prev/next tap so ChatView re-scrolls
+  // even when the target message doesn't change (e.g. a single match).
+  searchMatchIndex: number = -1;
+  searchScrollNonce: number = 0;
 
   // UX state for the active agent run. Driven by `agentStateReducer`
   // from `AgentEvent`s emitted by the runner. The only writer is
@@ -417,6 +422,7 @@ class ChatSessionStore {
       // Search is a per-session view; don't carry it into a new chat.
       this.isSearchMode = false;
       this.searchQuery = '';
+      this.searchMatchIndex = -1;
       this.activeSessionId = null;
       this.lastCompletionResult = undefined;
       this.dismissedBannerVariants = new Set();
@@ -463,6 +469,7 @@ class ChatSessionStore {
       // Search is a per-session view; don't carry a stale query across sessions.
       this.isSearchMode = false;
       this.searchQuery = '';
+      this.searchMatchIndex = -1;
       this.activeSessionId = sessionId;
       // Don't modify global settings when changing sessions
       this.newChatPalId = undefined;
@@ -896,6 +903,7 @@ class ChatSessionStore {
         // session (reachable one tap away via Duplicate → createNewSession).
         this.isSearchMode = false;
         this.searchQuery = '';
+        this.searchMatchIndex = -1;
       });
     } catch (error) {
       console.error('Failed to create new session:', error);
@@ -1725,6 +1733,7 @@ class ChatSessionStore {
       this.exitEditMode();
       this.isSearchMode = true;
       this.searchQuery = '';
+      this.searchMatchIndex = -1;
     });
   }
 
@@ -1732,30 +1741,77 @@ class ChatSessionStore {
     runInAction(() => {
       this.isSearchMode = false;
       this.searchQuery = '';
+      this.searchMatchIndex = -1;
     });
   }
 
   setSearchQuery(query: string) {
     this.searchQuery = query;
+    // A new query means a new match set; drop the previous selection.
+    this.searchMatchIndex = -1;
   }
 
   /**
-   * Number of messages in the active session whose text matches the current
-   * query. Search highlights in place (find-in-page) rather than filtering the
-   * message list, so this is a count only — the render list is never swapped.
+   * Messages in the active session whose text matches the current query,
+   * in conversation order. Search highlights in place (find-in-page)
+   * rather than filtering the message list, so this is a match list only
+   * — the render list is never swapped.
    *
    * Matches on `derivedText`, so assistant replies (`assistant_turn` rows,
    * whose `text` column is empty by design) are searched via their step
    * content, not skipped.
    */
-  get searchMatchCount(): number {
+  get searchMatchingMessages(): MessageType.Any[] {
     if (!this.isSearchMode || !this.searchQuery.trim()) {
-      return 0;
+      return [];
     }
     const query = this.searchQuery.toLowerCase().trim();
     return this.currentSessionMessages.filter(msg =>
       derivedText(msg).toLowerCase().includes(query),
-    ).length;
+    );
+  }
+
+  /** Number of messages in the active session matching the current query. */
+  get searchMatchCount(): number {
+    return this.searchMatchingMessages.length;
+  }
+
+  /** Id of the message the prev/next navigation currently points at. */
+  get searchCurrentMatchId(): string | undefined {
+    return this.searchMatchingMessages[this.searchMatchIndex]?.id;
+  }
+
+  // Prev/next navigation moves between matching MESSAGES (the unit the
+  // count reports), wrapping around at both ends like find-in-page in a
+  // browser. The first tap from no selection lands on the first match
+  // (next) or the last match (previous). The nonce bumps on every tap so
+  // the scroll fires even when the target doesn't change (one match).
+  goToNextSearchMatch() {
+    const matches = this.searchMatchingMessages;
+    if (matches.length === 0) {
+      return;
+    }
+    runInAction(() => {
+      this.searchMatchIndex =
+        this.searchMatchIndex < 0
+          ? 0
+          : (this.searchMatchIndex + 1) % matches.length;
+      this.searchScrollNonce += 1;
+    });
+  }
+
+  goToPreviousSearchMatch() {
+    const matches = this.searchMatchingMessages;
+    if (matches.length === 0) {
+      return;
+    }
+    runInAction(() => {
+      this.searchMatchIndex =
+        this.searchMatchIndex < 0
+          ? matches.length - 1
+          : (this.searchMatchIndex - 1 + matches.length) % matches.length;
+      this.searchScrollNonce += 1;
+    });
   }
 
   async setActivePal(palId: string | undefined): Promise<void> {

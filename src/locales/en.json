@@ -1401,6 +1401,9 @@
     "searchMessages": "Search messages...",
     "closeSearch": "Close search",
     "noResults": "No results",
+    "previousResult": "Previous result",
+    "nextResult": "Next result",
+    "searchResultPosition": "{{current}} of {{total}}",
     "webSearch": {
       "searched": "Searched: {{query}}",
       "noResults": "No results",

@@ -3092,5 +3092,137 @@ describe('chatSessionStore', () => {
         expect(chatSessionStore.searchQuery).toBe('');
       });
     });
+
+    describe('Search navigation', () => {
+      it('first next tap lands on the first match', () => {
+        setupSessionWithMessages([
+          userText('msg1', 'Hello world'),
+          userText('msg2', 'Goodbye world'),
+          userText('msg3', 'HELLO again'),
+        ]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('hello');
+
+        chatSessionStore.goToNextSearchMatch();
+
+        expect(chatSessionStore.searchMatchIndex).toBe(0);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg1');
+      });
+
+      it('next advances through matches and wraps around', () => {
+        setupSessionWithMessages([
+          userText('msg1', 'Hello world'),
+          userText('msg2', 'Goodbye world'),
+          userText('msg3', 'HELLO again'),
+        ]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('hello');
+
+        chatSessionStore.goToNextSearchMatch();
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchMatchIndex).toBe(1);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg3');
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchMatchIndex).toBe(0);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg1');
+      });
+
+      it('first previous tap lands on the last match', () => {
+        setupSessionWithMessages([
+          userText('msg1', 'Hello world'),
+          userText('msg2', 'Goodbye world'),
+          userText('msg3', 'HELLO again'),
+        ]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('hello');
+
+        chatSessionStore.goToPreviousSearchMatch();
+
+        expect(chatSessionStore.searchMatchIndex).toBe(1);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg3');
+      });
+
+      it('previous wraps around from the first match', () => {
+        setupSessionWithMessages([
+          userText('msg1', 'Hello world'),
+          userText('msg2', 'Goodbye world'),
+          userText('msg3', 'HELLO again'),
+        ]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('hello');
+
+        chatSessionStore.goToNextSearchMatch();
+        chatSessionStore.goToPreviousSearchMatch();
+
+        expect(chatSessionStore.searchMatchIndex).toBe(1);
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg3');
+      });
+
+      it('bumps the scroll nonce on every tap, even with one match', () => {
+        setupSessionWithMessages([userText('msg1', 'Hello world')]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('hello');
+
+        chatSessionStore.goToNextSearchMatch();
+        const firstNonce = chatSessionStore.searchScrollNonce;
+        expect(chatSessionStore.searchMatchIndex).toBe(0);
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchMatchIndex).toBe(0);
+        expect(chatSessionStore.searchScrollNonce).toBe(firstNonce + 1);
+      });
+
+      it('does nothing when there are no matches', () => {
+        setupSessionWithMessages([userText('msg1', 'Hello world')]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('zzz');
+        const nonceBefore = chatSessionStore.searchScrollNonce;
+
+        chatSessionStore.goToNextSearchMatch();
+        chatSessionStore.goToPreviousSearchMatch();
+
+        expect(chatSessionStore.searchMatchIndex).toBe(-1);
+        expect(chatSessionStore.searchCurrentMatchId).toBeUndefined();
+        expect(chatSessionStore.searchScrollNonce).toBe(nonceBefore);
+      });
+
+      it('does nothing when not in search mode', () => {
+        setupSessionWithMessages([userText('msg1', 'Hello world')]);
+        chatSessionStore.isSearchMode = false;
+        chatSessionStore.searchQuery = 'hello';
+
+        chatSessionStore.goToNextSearchMatch();
+
+        expect(chatSessionStore.searchMatchIndex).toBe(-1);
+      });
+
+      it('resets the selection when the query changes', () => {
+        setupSessionWithMessages([
+          userText('msg1', 'Hello world'),
+          userText('msg2', 'Goodbye world'),
+          userText('msg3', 'HELLO again'),
+        ]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('hello');
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchMatchIndex).toBe(0);
+
+        chatSessionStore.setSearchQuery('world');
+
+        expect(chatSessionStore.searchMatchIndex).toBe(-1);
+        expect(chatSessionStore.searchCurrentMatchId).toBeUndefined();
+      });
+
+      it('resets the selection when search mode exits', () => {
+        setupSessionWithMessages([userText('msg1', 'Hello world')]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('hello');
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchMatchIndex).toBe(0);
+
+        chatSessionStore.exitSearchMode();
+
+        expect(chatSessionStore.searchMatchIndex).toBe(-1);
+      });
+    });
   });
 });
