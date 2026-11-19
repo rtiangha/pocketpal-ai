@@ -1,0 +1,82 @@
+name: iOS Lock Sync
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync-ios-pods:
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      # corepack first, so the Yarn version pinned in package.json
+      # ("packageManager") is the one that gets used
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "26.13.1"
+          # No yarn cache: we're deleting the lockfile and cache anyway
+
+      - name: Regenerate yarn.lock
+        env:
+          # Yarn Berry defaults to immutable installs on CI, which
+          # refuses to create a new lockfile. Harmless on Yarn 1.
+          YARN_ENABLE_IMMUTABLE_INSTALLS: "false"
+        run: |
+          set -euxo pipefail
+          rm -rf node_modules yarn.lock
+          yarn cache clean
+          yarn install
+
+      # setup-ruby can't read Gemfile.lock itself, so extract the
+      # "RUBY VERSION" entry (e.g. "ruby 3.2.3p157" -> "3.2.3")
+      - name: Detect Ruby version
+        id: ruby
+        shell: bash
+        run: |
+          set -euo pipefail
+          v=$(grep -A1 'RUBY VERSION' Gemfile.lock | tail -n1 | sed -E 's/^ *ruby ([0-9]+(\.[0-9]+)*).*/\1/')
+          if ! [[ "$v" =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "Could not find RUBY VERSION in Gemfile.lock (got: '$v')" >&2
+            exit 1
+          fi
+          echo "Detected Ruby $v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      # Bundler version comes from BUNDLED WITH in Gemfile.lock;
+      # bundler-cache runs bundle install
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ steps.ruby.outputs.version }}
+          bundler-cache: true
+
+      - name: Regenerate Podfile.lock
+        working-directory: ios
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf Pods Podfile.lock
+          # Uses the CocoaPods version pinned in Gemfile.lock
+          bundle exec pod cache clean --all
+          bundle exec pod install --repo-update
+
+      - name: Upload lockfiles
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-pod-sync-artifacts
+          path: |
+            ios/Podfile.lock
+            yarn.lock
+          if-no-files-found: error
+          retention-days: 7
