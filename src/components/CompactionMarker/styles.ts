@@ -74,4 +74,17 @@ export const createStyles = (theme: Theme) =>
       textTransform: 'uppercase',
       letterSpacing: 0.5,
     },
+    restoreButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 10,
+      paddingVertical: 6,
+      gap: 6,
+    },
+    restoreText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.colors.primary,
+    },
   });

@@ -630,6 +630,50 @@ class ChatSessionRepository {
     return newRecord;
   }
 
+  // Undo a compaction: clear the soft-archive flag on the messages that
+  // were archived under this marker and delete the marker itself. The
+  // messages keep their original positions, so they slot back into the
+  // conversation in order. Returns how many messages were restored.
+  async restoreCompactedMessages(
+    sessionId: string,
+    compactionId: string,
+  ): Promise<number> {
+    let restored = 0;
+
+    await database.write(async () => {
+      const allMessages = await database.collections
+        .get('messages')
+        .query(Q.where('session_id', sessionId))
+        .fetch();
+
+      for (const msg of allMessages) {
+        const meta = JSON.parse((msg as any).metadata || '{}');
+        if (meta.isCompacted === true && meta.compactionId === compactionId) {
+          await (msg as any).update((record: any) => {
+            const existingMeta = JSON.parse(record.metadata || '{}');
+            delete existingMeta.isCompacted;
+            delete existingMeta.compactionId;
+            record.metadata = JSON.stringify(existingMeta);
+          });
+          restored += 1;
+        }
+      }
+
+      // With its messages back, the marker's summary no longer stands
+      // for anything, so remove it. A later compaction writes a fresh
+      // marker if the conversation fills up again.
+      const marker = await database.collections
+        .get('messages')
+        .find(compactionId)
+        .catch(() => null);
+      if (marker) {
+        await (marker as any).destroyPermanently();
+      }
+    });
+
+    return restored;
+  }
+
   // Update session completion settings
   async updateSessionCompletionSettings(
     sessionId: string,

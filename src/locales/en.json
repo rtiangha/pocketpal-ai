@@ -1362,6 +1362,7 @@
     "compactInProgress": "Compaction is in progress — please wait a moment, then send again.",
     "compactSuccess": "Conversation successfully compacted.",
     "compactFailed": "Could not compact conversation. Continuing with current context.",
+    "compactRestore": "Restore original messages",
     "viewSummary": "View summary",
     "hideSummary": "Hide summary",
     "contextMoreRoom": "More room",

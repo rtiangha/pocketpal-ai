@@ -728,6 +728,52 @@ class ChatSessionStore {
     }
   }
 
+  // Undo one compaction: un-archive the messages that were archived under
+  // this marker and drop the marker. The restored messages re-enter the
+  // context, so the previous completion snapshot no longer describes the
+  // conversation and the context metrics are reset. Returns false when
+  // nothing was restored. A later completion that crosses the threshold
+  // can compact again, which is expected, not a failure.
+  async restoreCompaction(compactionId: string): Promise<boolean> {
+    if (this.isCompacting || this.isGenerating) {
+      return false;
+    }
+
+    const sessionId = this.activeSessionId;
+    if (!sessionId) {
+      return false;
+    }
+
+    const session = this.sessions.find(s => s.id === sessionId);
+    if (!session) {
+      return false;
+    }
+
+    try {
+      const restored = await chatSessionRepository.restoreCompactedMessages(
+        sessionId,
+        compactionId,
+      );
+      if (restored === 0) {
+        return false;
+      }
+
+      const updated = await chatSessionRepository.getSessionById(sessionId);
+
+      runInAction(() => {
+        if (updated?.messages) {
+          session.messages = updated.messages.map(m => m.toMessageObject());
+        }
+        this.resetContextMetrics();
+      });
+
+      return true;
+    } catch (err: any) {
+      console.warn('[compaction] restoreCompaction failed:', err);
+      return false;
+    }
+  }
+
   async setNewChatCompletionSettings(settings: CompletionParams) {
     // Never persist `tools`: it is derived from the pal's pact at resolve
     // time, and a snapshot saved here can go stale (wrong pal / no pal)

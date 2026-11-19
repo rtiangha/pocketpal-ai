@@ -5,6 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useTheme} from '../../hooks';
 import {MessageType} from '../../utils/types';
 import {L10nContext} from '../../utils';
+import {chatSessionStore} from '../../store';
 import {MarkdownView} from '../MarkdownView';
 import {createStyles} from './styles';
 
@@ -22,6 +23,7 @@ export const CompactionMarker: React.FC<CompactionMarkerProps> = ({
   const l10n = useContext(L10nContext);
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const summary = message.metadata?.summary || message.metadata?.text || '';
   const count = message.metadata?.compactedCount ?? 0;
@@ -36,6 +38,7 @@ export const CompactionMarker: React.FC<CompactionMarkerProps> = ({
         <TouchableOpacity
           activeOpacity={0.7}
           style={styles.badge}
+          testID="compaction-marker-toggle"
           onPress={() => setIsExpanded(prev => !prev)}
           accessibilityRole="button"
           accessibilityLabel={
@@ -78,6 +81,30 @@ export const CompactionMarker: React.FC<CompactionMarkerProps> = ({
             markdownText={summary}
             maxMessageWidth={messageWidth - 32}
           />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.restoreButton}
+            testID="compaction-restore"
+            disabled={isRestoring}
+            onPress={async () => {
+              setIsRestoring(true);
+              try {
+                await chatSessionStore.restoreCompaction(message.id);
+              } finally {
+                setIsRestoring(false);
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              l10n.chat?.compactRestore || 'Restore original messages'
+            }>
+            <Icon name="history" size={14} color={theme.colors.primary} />
+            <Text style={styles.restoreText}>
+              {isRestoring
+                ? 'Restoring…'
+                : l10n.chat?.compactRestore || 'Restore original messages'}
+            </Text>
+          </TouchableOpacity>
         </View>
       ) : null}
     </View>

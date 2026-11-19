@@ -118,6 +118,10 @@ class ChatSessionRepository {
     };
   }
 
+  async restoreCompactedMessages(sessionId, compactionId) {
+    return 0;
+  }
+
   async deleteMessage(id) {
     return; // Mock: do nothing
   }

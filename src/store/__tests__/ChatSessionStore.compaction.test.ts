@@ -26,6 +26,7 @@ describe('ChatSessionStore compaction integration', () => {
     chatSessionStore.sessions = [];
     chatSessionStore.activeSessionId = null;
     chatSessionStore.isCompacting = false;
+    chatSessionStore.isGenerating = false;
     chatSessionStore.lastCompletionResult = {
       used: 1900,
       contextFull: true,
@@ -180,5 +181,133 @@ describe('ChatSessionStore compaction integration', () => {
     expect(spySoftArchive).not.toHaveBeenCalled();
     expect(chatSessionStore.isCompacting).toBe(false);
     expect(chatSessionStore.compactionAbortController).toBeNull();
+  });
+
+  describe('restoreCompaction', () => {
+    const markerMsg = {
+      id: 'marker_1',
+      type: 'custom',
+      author: assistant,
+      createdAt: 2500,
+      metadata: {
+        compaction: true,
+        summary: '### Summary\n- Point',
+        compactedCount: 2,
+      },
+    };
+
+    const restoredSession = () => ({
+      id: 'sess_1',
+      title: 'Session to restore',
+      date: new Date().toISOString(),
+      messagesLoaded: true,
+      messages: [
+        createMsg('1', 'Old message 1', 1000),
+        {
+          ...createMsg('2', 'Old message 2', 2000, true),
+          metadata: {isCompacted: true, compactionId: 'marker_1'},
+        },
+        markerMsg,
+        createMsg('3', 'Recent message 3', 3000),
+      ],
+    });
+
+    it('un-archives the marker group and refreshes the session', async () => {
+      const session = restoredSession();
+      chatSessionStore.sessions = [session as any];
+      chatSessionStore.activeSessionId = 'sess_1';
+
+      const spyRestore = jest
+        .spyOn(chatSessionRepository, 'restoreCompactedMessages')
+        .mockResolvedValue(2);
+      const refreshedMessages = [
+        createMsg('1', 'Old message 1', 1000),
+        createMsg('2', 'Old message 2', 2000, true),
+        createMsg('3', 'Recent message 3', 3000),
+      ];
+      const spyGetSession = jest
+        .spyOn(chatSessionRepository, 'getSessionById')
+        .mockResolvedValue({
+          messages: refreshedMessages.map(m => ({
+            toMessageObject: () => m,
+          })),
+        } as any);
+
+      const success = await chatSessionStore.restoreCompaction('marker_1');
+
+      expect(success).toBe(true);
+      expect(spyRestore).toHaveBeenCalledWith('sess_1', 'marker_1');
+      expect(spyGetSession).toHaveBeenCalledWith('sess_1');
+      // Assert on the store's copy: assigning the session into the
+      // observable sessions array converts it, so the local object is
+      // not the reference the store mutates.
+      const stored = chatSessionStore.sessions.find(s => s.id === 'sess_1');
+      expect(stored?.messages.map(m => m.id)).toEqual(['1', '2', '3']);
+      expect(chatSessionStore.lastCompletionResult).toBeUndefined();
+      expect(chatSessionStore.consecutiveFullFailures).toBe(0);
+    });
+
+    it('returns false and touches nothing when the repo restores nothing', async () => {
+      const session = restoredSession();
+      chatSessionStore.sessions = [session as any];
+      chatSessionStore.activeSessionId = 'sess_1';
+
+      const spyRestore = jest
+        .spyOn(chatSessionRepository, 'restoreCompactedMessages')
+        .mockResolvedValue(0);
+      const spyGetSession = jest.spyOn(chatSessionRepository, 'getSessionById');
+
+      const success = await chatSessionStore.restoreCompaction('marker_1');
+
+      expect(success).toBe(false);
+      expect(spyRestore).toHaveBeenCalledWith('sess_1', 'marker_1');
+      expect(spyGetSession).not.toHaveBeenCalled();
+      expect(session.messages.map(m => m.id)).toEqual([
+        '1',
+        '2',
+        'marker_1',
+        '3',
+      ]);
+    });
+
+    it('returns false without calling the repo when there is no active session', async () => {
+      const spyRestore = jest.spyOn(
+        chatSessionRepository,
+        'restoreCompactedMessages',
+      );
+
+      expect(await chatSessionStore.restoreCompaction('marker_1')).toBe(false);
+      expect(spyRestore).not.toHaveBeenCalled();
+    });
+
+    it('returns false without calling the repo while compacting', async () => {
+      const session = restoredSession();
+      chatSessionStore.sessions = [session as any];
+      chatSessionStore.activeSessionId = 'sess_1';
+      chatSessionStore.isCompacting = true;
+
+      const spyRestore = jest.spyOn(
+        chatSessionRepository,
+        'restoreCompactedMessages',
+      );
+
+      expect(await chatSessionStore.restoreCompaction('marker_1')).toBe(false);
+      expect(spyRestore).not.toHaveBeenCalled();
+    });
+
+    it('returns false without calling the repo while generating', async () => {
+      const session = restoredSession();
+      chatSessionStore.sessions = [session as any];
+      chatSessionStore.activeSessionId = 'sess_1';
+      chatSessionStore.isGenerating = true;
+
+      const spyRestore = jest.spyOn(
+        chatSessionRepository,
+        'restoreCompactedMessages',
+      );
+
+      expect(await chatSessionStore.restoreCompaction('marker_1')).toBe(false);
+      expect(spyRestore).not.toHaveBeenCalled();
+    });
   });
 });

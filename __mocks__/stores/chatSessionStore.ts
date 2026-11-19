@@ -140,6 +140,7 @@ export const mockChatSessionStore = {
   isCompacting: false,
   compactActiveSession: jest.fn().mockResolvedValue(true),
   cancelCompaction: jest.fn(),
+  restoreCompaction: jest.fn().mockResolvedValue(true),
   resetContextMetrics: jest.fn(),
 };
 
