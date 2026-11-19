@@ -10,6 +10,7 @@ import {l10n} from '../../../locales';
 import {L10nContext} from '../../../utils';
 
 import {MarkdownView} from '../MarkdownView';
+import {SearchQueryContext} from '../../../utils';
 
 const spy = EnrichedMarkdownText as unknown as jest.Mock;
 const lastProps = () => spy.mock.calls[spy.mock.calls.length - 1][0];
@@ -484,6 +485,49 @@ describe('MarkdownView', () => {
       ]) {
         expect(second[key]).toBe(first[key]);
       }
+    });
+  });
+
+  describe('Search highlighting', () => {
+    it('renders without highlighting when search query is empty', async () => {
+      const {getByText} = await render(
+        <SearchQueryContext.Provider value="">
+          <MarkdownView markdownText="Hello world" maxMessageWidth={300} />
+        </SearchQueryContext.Provider>,
+      );
+
+      expect(getByText('Hello world')).toBeTruthy();
+      expect(lastProps().markdown).toBe('Hello world');
+      expect(lastProps().md4cFlags.highlight).toBeUndefined();
+    });
+
+    it('renders without highlighting when no context is provided', async () => {
+      const {getByText} = await render(
+        <MarkdownView markdownText="Hello world" maxMessageWidth={300} />,
+      );
+
+      expect(getByText('Hello world')).toBeTruthy();
+      expect(lastProps().markdown).toBe('Hello world');
+      expect(lastProps().md4cFlags.highlight).toBeUndefined();
+    });
+
+    // Guards the wiring end to end: the query wraps the match in ==...==
+    // spans, the highlight flag is on, and the style carries the
+    // search-highlight token.
+    it('wraps a matched term and passes the search-highlight style', async () => {
+      const {getByText} = await render(
+        <SearchQueryContext.Provider value="world">
+          <MarkdownView markdownText="Hello world" maxMessageWidth={300} />
+        </SearchQueryContext.Provider>,
+      );
+
+      expect(getByText('Hello ==world==')).toBeTruthy();
+      expect(lastProps().markdown).toBe('Hello ==world==');
+      expect(lastProps().md4cFlags.highlight).toBe(true);
+      expect(lastProps().markdownStyle.highlight).toEqual({
+        color: themeFixtures.lightTheme.colors.onSearchHighlight,
+        backgroundColor: themeFixtures.lightTheme.colors.searchHighlight,
+      });
     });
   });
 });

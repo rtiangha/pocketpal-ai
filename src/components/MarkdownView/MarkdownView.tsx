@@ -11,10 +11,11 @@ import {
 
 import {useTheme} from '../../hooks';
 
+import {highlightSearchMatches} from './highlightSearchMatches';
 import {normalizeBreakTags} from './normalizeBreakTags';
 import {createMarkdownStyle, MarkdownVariant} from './styles';
 
-import {L10nContext} from '../../utils';
+import {L10nContext, SearchQueryContext} from '../../utils';
 import {t} from '../../locales';
 
 interface MarkdownViewProps {
@@ -45,10 +46,24 @@ export const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
   }) => {
     const theme = useTheme();
     const l10n = useContext(L10nContext);
+    const searchQuery = useContext(SearchQueryContext);
 
+    // When a search query is active (via SearchQueryContext, provided by
+    // ChatScreen), matches are wrapped in ==...== spans — the enriched
+    // renderer parses those as highlight spans only when its highlight
+    // flag is on, so the flag follows the query and old messages render
+    // exactly as before outside a search.
     const markdown = useMemo(
-      () => normalizeBreakTags(markdownText),
-      [markdownText],
+      () =>
+        highlightSearchMatches(normalizeBreakTags(markdownText), searchQuery),
+      [markdownText, searchQuery],
+    );
+    const md4cFlags = useMemo(
+      (): Md4cFlags =>
+        searchQuery.trim().length > 0
+          ? {...MD4C_FLAGS, highlight: true}
+          : MD4C_FLAGS,
+      [searchQuery],
     );
     const markdownStyle = useMemo(
       () => createMarkdownStyle(theme, variant),
@@ -95,7 +110,7 @@ export const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
             markdown={markdown}
             flavor="github"
             markdownStyle={markdownStyle}
-            md4cFlags={MD4C_FLAGS}
+            md4cFlags={md4cFlags}
             selectable={selectable}
             enableBlockContextMenu={blockContextMenu}
             enableTaskListItemToggle={false}

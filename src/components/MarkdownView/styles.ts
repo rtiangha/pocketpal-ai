@@ -52,6 +52,10 @@ export const createMarkdownStyle = (
     },
     codeBlock: {...blockSpacing, padding: 8},
     link: {color: colors.secondary, underline: true},
+    highlight: {
+      color: colors.onSearchHighlight,
+      backgroundColor: colors.searchHighlight,
+    },
     code: {
       color: colors.onSurface,
       backgroundColor: colors.surface,
