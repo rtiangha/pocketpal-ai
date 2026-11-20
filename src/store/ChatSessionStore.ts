@@ -29,7 +29,13 @@ import {
 } from '../services/compaction';
 import {palStore} from './PalStore';
 import {deriveToolSchemas} from '../services/talents';
-import {AgentUiState, initialAgentUiState} from '../services/agent';
+import {
+  AgentUiState,
+  DEFAULT_MAX_TURNS,
+  MAX_TOOL_TURNS,
+  MIN_TOOL_TURNS,
+  initialAgentUiState,
+} from '../services/agent';
 
 /**
  * Update payload accepted by `updateMessage` / `updateMessageStreaming`.
@@ -167,6 +173,12 @@ class ChatSessionStore {
   // compaction (/compact, banner Compact buttons, restore) works
   // regardless of this flag.
   autoCompactionEnabled: boolean = false;
+
+  // Fork-only: max tool-calling turns per assistant reply, set in
+  // Settings. Default 5 (DEFAULT_MAX_TURNS), so behaviour is unchanged
+  // until the user changes it. The model is told a budget of
+  // maxToolTurns - 1. Range 2-20, clamped in setMaxToolTurns.
+  maxToolTurns: number = DEFAULT_MAX_TURNS;
 
   constructor() {
     makeAutoObservable(this);
@@ -358,6 +370,7 @@ class ChatSessionStore {
         await chatSessionRepository.getGlobalCompletionSettings();
       const autoCompactionEnabled =
         await chatSessionRepository.getAutoCompactionEnabled();
+      const maxToolTurns = await chatSessionRepository.getMaxToolTurns();
 
       runInAction(() => {
         // Heal a preset saved before tools were stripped on save: a stale
@@ -365,6 +378,7 @@ class ChatSessionStore {
         // load, so the next resolve derives tools from the pact alone.
         this.newChatCompletionSettings = withoutTools(settings);
         this.autoCompactionEnabled = autoCompactionEnabled;
+        this.maxToolTurns = maxToolTurns;
       });
     } catch (error) {
       console.error('Failed to load global settings:', error);
@@ -382,6 +396,20 @@ class ChatSessionStore {
         '[compaction] failed to persist autoCompactionEnabled:',
         error,
       );
+    }
+  }
+
+  async setMaxToolTurns(value: number): Promise<void> {
+    const clamped = Number.isFinite(value)
+      ? Math.min(MAX_TOOL_TURNS, Math.max(MIN_TOOL_TURNS, Math.floor(value)))
+      : DEFAULT_MAX_TURNS;
+    runInAction(() => {
+      this.maxToolTurns = clamped;
+    });
+    try {
+      await chatSessionRepository.saveMaxToolTurns(clamped);
+    } catch (error) {
+      console.warn('[tools] failed to persist maxToolTurns:', error);
     }
   }
 

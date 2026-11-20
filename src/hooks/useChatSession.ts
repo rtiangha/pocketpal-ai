@@ -63,7 +63,6 @@ import {shouldCompactSession} from '../services/compaction';
 import {
   agentStateReducer,
   createTriggerMarkerCache,
-  DEFAULT_MAX_TURNS,
   initialAgentUiState,
   runAgent,
   type AgentEvent,
@@ -162,7 +161,7 @@ const prepareCompletion = async ({
   ).map(tool => tool.function?.name ?? '');
   const systemPromptFragments = collectSystemPromptFragments(sessionToolNames, {
     now: new Date(),
-    maxToolTurns: DEFAULT_MAX_TURNS,
+    maxToolTurns: chatSessionStore.maxToolTurns,
   });
 
   // Fold latest compaction summary into systemPromptFragments so it safely
@@ -966,6 +965,7 @@ export const useChatSession = (
         talentLookup: name => talentRegistry.get(name),
         triggerMarkers,
         messageId: messageInfo.id,
+        maxTurns: chatSessionStore.maxToolTurns,
         signal: lease.signal,
       });
 

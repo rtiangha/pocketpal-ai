@@ -1,4 +1,5 @@
 import {LlamaContext} from 'llama.rn';
+import {runInAction} from 'mobx';
 import {renderHook, act} from '@testing-library/react-native';
 
 import {textMessage} from '../../../jest/fixtures';
@@ -139,6 +140,48 @@ describe('useChatSession — AssistantTurn integration', () => {
       expect.stringContaining('hit maxTurns'),
     );
     warnSpy.mockRestore();
+  });
+
+  it('#2b maxTurns follows the maxToolTurns setting: 2 tool turns + forced final', async () => {
+    // The Settings default is 5; drop it to 2 for this run only.
+    runInAction(() => {
+      chatSessionStore.maxToolTurns = 2;
+    });
+    // Engine always returns tool_calls, never a final answer — exhausts maxTurns.
+    if (modelStore.context) {
+      modelStore.context.completion = jest
+        .fn()
+        .mockImplementation(async () => ({
+          text: '',
+          content: '',
+          tool_calls: [
+            {
+              id: 'c0',
+              type: 'function',
+              function: {name: 'unused', arguments: '{}'},
+            },
+          ],
+        }));
+    }
+
+    const {result} = await renderHook(() =>
+      useChatSession({current: null}, textMessage.author, mockAssistant),
+    );
+    await act(async () => {
+      await result.current.handleSendPress(textMessage);
+    });
+
+    // 2 tool turns + 1 forced-final turn = 3 step_started events.
+    expect(chatSessionStore.pushAgentStep).toHaveBeenCalledTimes(3);
+    // hitMaxTurns metadata landed.
+    const calls = (chatSessionStore.updateMessage as jest.Mock).mock.calls;
+    const hitMaxCall = calls.find(c => c[2]?.metadata?.hitMaxTurns === true);
+    expect(hitMaxCall).toBeDefined();
+
+    // Restore the default for the remaining tests.
+    runInAction(() => {
+      chatSessionStore.maxToolTurns = 5;
+    });
   });
 
   it('#3 run_failed: error rollback writes {interrupted, copyable} into assistant_turn metadata (does not lose steps)', async () => {

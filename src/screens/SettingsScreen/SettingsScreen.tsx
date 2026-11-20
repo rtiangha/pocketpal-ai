@@ -56,6 +56,7 @@ import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 import {CacheTypeMenuRow} from './CacheTypeMenuRow';
 import {AutoCompactionRow} from './AutoCompactionRow';
+import {MaxToolTurnsRow} from './MaxToolTurnsRow';
 import {VoiceRow} from './VoiceRow';
 import {useMenuAnchor} from './useMenuAnchor';
 
@@ -496,6 +497,10 @@ export const SettingsScreen: React.FC = observer(() => {
 
               {/* Fork-only: automatic compaction toggle */}
               <AutoCompactionRow />
+              <Divider />
+
+              {/* Fork-only: max tool turns */}
+              <MaxToolTurnsRow />
               <Divider />
 
               {/* Advanced Settings */}

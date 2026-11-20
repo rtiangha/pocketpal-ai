@@ -134,6 +134,14 @@ class ChatSessionRepository {
     return; // Mock: do nothing
   }
 
+  async getMaxToolTurns() {
+    return 5; // Mock: DEFAULT_MAX_TURNS
+  }
+
+  async saveMaxToolTurns(value) {
+    return; // Mock: do nothing
+  }
+
   async deleteMessage(id) {
     return; // Mock: do nothing
   }

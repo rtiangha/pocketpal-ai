@@ -57,6 +57,8 @@
     "modelReloadNotice": "Model reload needed for changes to take effect.",
     "autoCompaction": "Automatic compaction",
     "autoCompactionDescription": "When a conversation nears the context limit, summarize the oldest messages automatically. When off, compact only with /compact or the Compact button.",
+    "maxToolTurns": "Max tool turns",
+    "maxToolTurnsDescription": "Tool-calling turns per reply: {{maxToolTurns}}. The model is told its budget is {{toolBudget}} tool calls; the last turn is kept for the final answer.",
     "advancedSettings": "Advanced Settings",
     "batchSize": "Batch Size",
     "batchSizeDescription": "Batch size: {{batchSize}}{{effectiveBatch}}",

@@ -17,6 +17,12 @@ import type {TalentResult} from '../talents/types';
 
 export const DEFAULT_MAX_TURNS = 5;
 
+// Fork-only bounds for the max tool-turns Settings option. The model is
+// told a budget of maxTurns - 1 (one turn is kept for the final answer),
+// so the minimum of 2 keeps the told budget >= 1.
+export const MIN_TOOL_TURNS = 2;
+export const MAX_TOOL_TURNS = 20;
+
 const MAX_IN_FLIGHT_TOOL_CALLS = 4;
 
 const BUDGET_EXHAUSTED_NUDGE =

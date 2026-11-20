@@ -15,6 +15,11 @@ import {MessageType} from '../utils/types';
 import {CompletionParams} from '../utils/completionTypes';
 import {compactionMarkerPosition} from '../services/compaction';
 import {
+  DEFAULT_MAX_TURNS,
+  MAX_TOOL_TURNS,
+  MIN_TOOL_TURNS,
+} from '../services/agent';
+import {
   defaultCompletionParams,
   migrateCompletionSettings,
 } from '../utils/completionSettingsVersions';
@@ -817,6 +822,57 @@ class ChatSessionRepository {
           .get('global_settings')
           .create((record: any) => {
             record.key = 'autoCompactionEnabled';
+            record.value = JSON.stringify(value);
+          });
+      }
+    });
+  }
+
+  // Get/set the max tool-turns setting. Stored under its own
+  // global_settings key as a JSON number; absent, unparseable or out of
+  // range means the default, so a corrupt row heals to stock behaviour.
+  async getMaxToolTurns(): Promise<number> {
+    const rows = await database.collections
+      .get('global_settings')
+      .query(Q.where('key', 'maxToolTurns'))
+      .fetch();
+
+    if (rows.length === 0) {
+      return DEFAULT_MAX_TURNS;
+    }
+
+    try {
+      const value = JSON.parse((rows[0] as any).value);
+      if (
+        typeof value === 'number' &&
+        Number.isFinite(value) &&
+        value >= MIN_TOOL_TURNS &&
+        value <= MAX_TOOL_TURNS
+      ) {
+        return Math.floor(value);
+      }
+      return DEFAULT_MAX_TURNS;
+    } catch {
+      return DEFAULT_MAX_TURNS;
+    }
+  }
+
+  async saveMaxToolTurns(value: number): Promise<void> {
+    await database.write(async () => {
+      const existingRows = await database.collections
+        .get('global_settings')
+        .query(Q.where('key', 'maxToolTurns'))
+        .fetch();
+
+      if (existingRows.length > 0) {
+        await (existingRows[0] as any).update((record: any) => {
+          record.value = JSON.stringify(value);
+        });
+      } else {
+        await database.collections
+          .get('global_settings')
+          .create((record: any) => {
+            record.key = 'maxToolTurns';
             record.value = JSON.stringify(value);
           });
       }

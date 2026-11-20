@@ -155,6 +155,9 @@ export const mockChatSessionStore = {
   restoreCompaction: jest.fn().mockResolvedValue(true),
   autoCompactionEnabled: false,
   setAutoCompactionEnabled: jest.fn().mockResolvedValue(undefined),
+  // Fork-only max tool turns; 5 matches DEFAULT_MAX_TURNS.
+  maxToolTurns: 5,
+  setMaxToolTurns: jest.fn().mockResolvedValue(undefined),
   resetContextMetrics: jest.fn(),
 };
 
