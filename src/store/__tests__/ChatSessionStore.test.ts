@@ -2942,7 +2942,11 @@ describe('chatSessionStore', () => {
         id: 'search-session',
         title: 'Search Test Session',
         date: new Date().toISOString(),
-        messages,
+        // Tests write messages chronologically (oldest first), but the
+        // session stores them newest-first (DB `position` desc, new
+        // messages `unshift`ed), so reverse to match reality — search
+        // order is only meaningful against the real storage order.
+        messages: [...messages].reverse(),
         completionSettings: defaultCompletionSettings,
         settingsSource: 'pal' as 'pal' | 'custom',
       };
@@ -3231,6 +3235,33 @@ describe('chatSessionStore', () => {
           chunkIndex: 2,
           occurrenceIndex: 1,
         });
+      });
+
+      it('navigates chronologically across authors, oldest first', () => {
+        // Regression test for the reported order bug: session messages
+        // are stored newest-first, and search used to enumerate them
+        // in that order — so the first match was the newest user
+        // message, then the assistant's replies, then the oldest user
+        // message. Navigation must walk the conversation in time
+        // order, oldest first, regardless of author.
+        setupSessionWithMessages([
+          userText('msg1', 'war and peace'),
+          assistantTurn('msg2', 'war is costly'),
+          userText('msg3', 'war again'),
+        ]);
+        chatSessionStore.enterSearchMode();
+        chatSessionStore.setSearchQuery('war');
+        expect(chatSessionStore.searchMatchCount).toBe(3);
+
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg1');
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg2');
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg3');
+        // Wraps back to the oldest.
+        chatSessionStore.goToNextSearchMatch();
+        expect(chatSessionStore.searchCurrentMatchId).toBe('msg1');
       });
 
       it('bumps the scroll nonce on every tap, even with one occurrence', () => {

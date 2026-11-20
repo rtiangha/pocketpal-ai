@@ -1767,13 +1767,19 @@ class ChatSessionStore {
    * Matches on the same text MarkdownView renders (text messages, or
    * each visible step of an assistant turn), so the Nth counted
    * occurrence is the Nth highlighted one.
+   *
+   * Session messages are stored newest-first (DB `position` desc,
+   * new messages `unshift`ed — the inverted list's order), so the
+   * list is reversed here: search navigates chronologically, oldest
+   * match first, like find-in-page in a browser. Without this the
+   * first match was the newest message.
    */
   get searchOccurrences(): SearchOccurrence[] {
     if (!this.isSearchMode || !this.searchQuery.trim()) {
       return [];
     }
     return buildSearchOccurrences(
-      this.currentSessionMessages,
+      [...this.currentSessionMessages].reverse(),
       this.searchQuery,
     );
   }

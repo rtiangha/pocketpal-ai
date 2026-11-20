@@ -197,8 +197,13 @@ Object.defineProperty(mockChatSessionStore, 'searchMatchCount', {
     }
     const messages = (mockChatSessionStore as any)
       .currentSessionMessages as any[];
-    return buildSearchOccurrences(messages, mockChatSessionStore.searchQuery)
-      .length;
+    // Session messages are stored newest-first (like the real store),
+    // so reverse to chronological order before counting, mirroring
+    // ChatSessionStore.searchOccurrences.
+    return buildSearchOccurrences(
+      [...messages].reverse(),
+      mockChatSessionStore.searchQuery,
+    ).length;
   }),
   configurable: true,
 });
@@ -214,9 +219,10 @@ Object.defineProperty(mockChatSessionStore, 'searchCurrentOccurrence', {
     }
     const messages = (mockChatSessionStore as any)
       .currentSessionMessages as any[];
-    return buildSearchOccurrences(messages, mockChatSessionStore.searchQuery)[
-      mockChatSessionStore.searchMatchIndex
-    ];
+    return buildSearchOccurrences(
+      [...messages].reverse(),
+      mockChatSessionStore.searchQuery,
+    )[mockChatSessionStore.searchMatchIndex];
   }),
   configurable: true,
 });
@@ -232,9 +238,10 @@ Object.defineProperty(mockChatSessionStore, 'searchCurrentMatchId', {
     }
     const messages = (mockChatSessionStore as any)
       .currentSessionMessages as any[];
-    return buildSearchOccurrences(messages, mockChatSessionStore.searchQuery)[
-      mockChatSessionStore.searchMatchIndex
-    ]?.messageId;
+    return buildSearchOccurrences(
+      [...messages].reverse(),
+      mockChatSessionStore.searchQuery,
+    )[mockChatSessionStore.searchMatchIndex]?.messageId;
   }),
   configurable: true,
 });
