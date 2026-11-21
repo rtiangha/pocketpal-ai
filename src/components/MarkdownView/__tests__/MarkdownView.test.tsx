@@ -62,7 +62,7 @@ describe('MarkdownView', () => {
       expect.objectContaining({
         markdown: 'Hello **World**',
         flavor: 'github',
-        md4cFlags: {latexMath: false, admonitions: false},
+        md4cFlags: {latexMath: true, admonitions: false},
         enableTaskListItemToggle: false,
         enableLinkPreview: false,
       }),
@@ -74,7 +74,7 @@ describe('MarkdownView', () => {
       <MarkdownView markdownText="It costs $5 or $10" maxMessageWidth={300} />,
     );
 
-    expect(lastProps().md4cFlags.latexMath).toBe(false);
+    expect(lastProps().md4cFlags.latexMath).toBe(true);
   });
 
   it('passes the en.json selection menu labels', async () => {

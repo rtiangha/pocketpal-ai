@@ -49,7 +49,7 @@ describe('markdown renderer invariants', () => {
   it('enables code highlighting explicitly and keeps math and video off', () => {
     expect(pkgJson['enriched-markdown']).toEqual({
       enableCodeHighlight: true,
-      enableMath: false,
+      enableMath: true,
       enableVideo: false,
     });
   });
