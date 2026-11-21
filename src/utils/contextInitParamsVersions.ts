@@ -15,13 +15,15 @@ export const createContextInitParams = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const {state_cache_budget_mb, ...params} = initParams;
 
-  // Convert boolean use_mmap to string format
+  // Convert boolean use_mmap to string format. Missing values resolve to
+  // 'smart' (size-based on Android, on elsewhere) instead of a platform
+  // default so large models get mmap without user action.
   const use_mmap =
     params.use_mmap === true
       ? 'true'
       : params.use_mmap === false
         ? 'false'
-        : (params.use_mmap ?? (Platform.OS === 'android' ? 'false' : 'true'));
+        : (params.use_mmap ?? 'smart');
 
   // Handle flash_attn_type (new) vs flash_attn (old)
   const flash_attn_type =
@@ -225,7 +227,7 @@ export function createDefaultContextInitParams(): ContextInitParams {
     cache_type_v: 'f16',
     n_gpu_layers: 99, // All layers
     use_mlock: false,
-    use_mmap: Platform.OS === 'android' ? 'false' : 'true',
+    use_mmap: 'smart',
 
     // New v2.0 parameters
     devices: undefined, // Auto-select

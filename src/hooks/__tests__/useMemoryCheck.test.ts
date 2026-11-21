@@ -1,6 +1,7 @@
 import DeviceInfo from 'react-native-device-info';
 import {renderHook, act} from '@testing-library/react-native';
 import {runInAction} from 'mobx';
+import NativeHardwareInfo from '../../specs/NativeHardwareInfo';
 
 import {
   basicModel,
@@ -19,8 +20,22 @@ import {hasEnoughMemory, useMemoryCheck} from '../useMemoryCheck';
 import {l10n} from '../../locales';
 
 describe('useMemoryCheck', () => {
+  // Stable identity across renders: the hook keys its effect off the model
+  // object, so an inline literal would retrigger the check every render.
+  const midSizeModel = {size: 3 * 1e9};
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Rebuild native mocks from scratch: clearAllMocks() does not drain
+    // mockRejectedValueOnce queues, so a rejection queued by one test can
+    // leak into the next test and flip its result. Resetting here keeps
+    // every test hermetic.
+    (NativeHardwareInfo.getAvailableMemory as jest.Mock).mockReset();
+    (NativeHardwareInfo.getAvailableMemory as jest.Mock).mockResolvedValue(
+      3 * 1000 * 1000 * 1000,
+    ); // 3GB live free
+    (DeviceInfo.getTotalMemory as jest.Mock).mockReset();
+    (DeviceInfo.getTotalMemory as jest.Mock).mockResolvedValue(4 * 1000 ** 3);
     // Reset calibration data to known state
     runInAction(() => {
       modelStore.availableMemoryCeiling = 5 * 1e9; // 5GB
@@ -76,8 +91,9 @@ describe('useMemoryCheck', () => {
     });
 
     // localModel.size = 2GB, requirement = 2.4GB
-    // availableBytes = max(0, 5GB) = 5GB
-    // 2.4GB <= 5GB → fits
+    // historical base = max(0, 5GB) = 5GB, live reading = 3GB (mock)
+    // effective ceiling = min(3GB, 5GB) = 3GB
+    // 2.4GB <= 3GB → fits
     const {result} = await renderHook(() => useMemoryCheck(localModel));
 
     await act(async () => {});
@@ -98,8 +114,9 @@ describe('useMemoryCheck', () => {
     });
 
     // localModel.size = 2GB, requirement = 2.4GB
-    // ceiling = max(2GB, 5GB) = 5GB
-    // 2.4GB <= 5GB → passes
+    // historical base = max(2GB, 5GB) = 5GB, live reading = 3GB (mock)
+    // effective ceiling = min(3GB, 5GB) = 3GB
+    // 2.4GB <= 3GB → passes
     const {result} = await renderHook(() => useMemoryCheck(localModel));
 
     await act(async () => {});
@@ -110,6 +127,41 @@ describe('useMemoryCheck', () => {
       multimodalWarning: '',
       fitStatus: 'fits',
     });
+  });
+
+  it('prefers a tighter live reading over stale calibration', async () => {
+    // Calibration says 5GB but only 3GB is actually free right now (mock).
+    // A 3GB file needs 3.6GB → stale logic said "fits", honest answer is tight.
+    runInAction(() => {
+      modelStore.availableMemoryCeiling = 5 * 1e9;
+      modelStore.largestSuccessfulLoad = 5 * 1e9;
+    });
+
+    const {result} = await renderHook(() => useMemoryCheck(midSizeModel));
+
+    await act(async () => {});
+
+    // 3.6GB > min(3GB live, 5GB stored) but <= 4GB total (mock) → tight
+    expect(result.current.fitStatus).toBe('tight');
+    expect(result.current.shortMemoryWarning).toBe(l10n.en.memory.memoryTight);
+  });
+
+  it('falls back to stored calibration when the live reading fails', async () => {
+    runInAction(() => {
+      modelStore.availableMemoryCeiling = 5 * 1e9;
+      modelStore.largestSuccessfulLoad = 4 * 1e9;
+    });
+    (NativeHardwareInfo.getAvailableMemory as jest.Mock).mockRejectedValueOnce(
+      new Error('native unavailable'),
+    );
+
+    const {result} = await renderHook(() => useMemoryCheck(localModel));
+
+    await act(async () => {});
+
+    // 2.4GB <= max(4GB, 5GB) = 5GB → fits without live data
+    expect(result.current.fitStatus).toBe('fits');
+    expect(result.current.shortMemoryWarning).toBe('');
   });
 
   it('uses single estimation function for memory requirement', async () => {
