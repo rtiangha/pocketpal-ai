@@ -61,6 +61,16 @@ export const createMarkdownStyle = (
       backgroundColor: colors.surface,
       borderColor: colors.outline,
     },
+    // Math follows the theme text color: without these the library
+    // falls back to its light defaults (dark text, white display
+    // background), which is unreadable for inline math in dark mode.
+    // Transparent display background so display equations blend with
+    // the bubble instead of sitting on a white card.
+    math: {
+      color: text,
+      backgroundColor: 'transparent',
+    },
+    inlineMath: {color: text},
     strikethrough: {color: text},
     underline: {color: text},
     thematicBreak: {
