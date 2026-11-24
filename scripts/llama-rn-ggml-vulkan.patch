@@ -1,0 +1,462 @@
+--- a/ggml-vulkan-types.h
++++ b/ggml-vulkan-types.h
+@@ -21,6 +21,10 @@
+ 
+ DispatchLoaderDynamic & ggml_vk_default_dispatcher();
+ 
++// rnllama: vkGetInstanceProcAddr of the Vulkan loader to use. This is the system loader unless
++// a custom driver (Turnip) was requested through libadrenotools, see ggml-vulkan.cpp.
++PFN_vkGetInstanceProcAddr ggml_vk_get_instance_proc_addr();
++
+ #define VULKAN_HPP_DEFAULT_DISPATCHER ggml_vk_default_dispatcher()
+ 
+ #include <vulkan/vulkan.hpp>
+--- a/ggml-vulkan.cpp
++++ b/ggml-vulkan.cpp
+@@ -1,5 +1,65 @@
+ #include "ggml-vulkan-common.h"
+ 
++#ifdef RNLLAMA_ADRENOTOOLS
++#include <android/log.h>
++// Goes straight to logcat (tag RNLlamaVk), independent of ggml's log callback, which llama.rn
++// only forwards when native logging is switched on.
++#define RNLLAMA_VK_ALOG(prio, ...) __android_log_print(ANDROID_LOG_##prio, "RNLlamaVk", __VA_ARGS__)
++#else
++#define RNLLAMA_VK_ALOG(prio, ...) ((void) 0)
++#endif
++
++#ifdef RNLLAMA_ADRENOTOOLS
++#include <cstdio>
++#include <mutex>
++#include <set>
++// Keeps <RNLLAMA_VK_DRIVER_DIR>/last_pipeline.txt up to date with the shaders the driver is compiling right
++// now. If the driver kills the app inside its shader compiler (it calls exit() on some failures), the file
++// still names the shader(s) that were being compiled; Settings shows it. RNLLAMA_VK_LOG_PIPELINES=1 also
++// logs every compile to logcat.
++static void rnllama_vk_pipeline_mark(const std::string & name, bool begin) {
++    static const char * dir = getenv("RNLLAMA_VK_DRIVER_DIR");
++    static const bool log_all = getenv("RNLLAMA_VK_LOG_PIPELINES") != nullptr;
++    static std::mutex mtx;
++    static std::set<std::string> in_flight;
++    if (dir == nullptr || *dir == '\0') {
++        return;
++    }
++    std::lock_guard<std::mutex> lock(mtx);
++    if (begin) {
++        in_flight.insert(name);
++        if (log_all) {
++            RNLLAMA_VK_ALOG(INFO, "compiling pipeline %s", name.c_str());
++        }
++    } else {
++        in_flight.erase(name);
++    }
++    const std::string path = std::string(dir) + "/last_pipeline.txt";
++    if (FILE * f = fopen(path.c_str(), "wb")) {
++        if (in_flight.empty()) {
++            fputs("ok\n", f);
++        } else {
++            for (const auto & n : in_flight) {
++                fprintf(f, "compiling %s\n", n.c_str());
++            }
++        }
++        fclose(f);
++    }
++}
++#else
++static void rnllama_vk_pipeline_mark(const std::string &, bool) {}
++#endif
++
++// rnllama: Turnip's shader compiler exits the app while compiling the 512-wide soft_max variants. The
++// 128-wide ones handle any row length (they loop over the columns), only a little slower.
++static bool rnllama_vk_no_wg512() {
++    static const bool v = []() {
++        const char * e = getenv("RNLLAMA_VK_NO_WG512");
++        return e != nullptr && *e != '\0' && strcmp(e, "0") != 0;
++    }();
++    return v;
++}
++
+ static vk_device_architecture get_device_architecture(const vk::PhysicalDevice& device) {
+     vk::PhysicalDeviceProperties props = device.getProperties();
+ 
+@@ -771,7 +831,9 @@
+ #endif
+ 
+     try {
++        rnllama_vk_pipeline_mark(pipeline->name, true);
+         pipeline->pipeline = device->device.createComputePipeline(VK_NULL_HANDLE, compute_pipeline_create_info).value;
++        rnllama_vk_pipeline_mark(pipeline->name, false);
+     } catch (const vk::SystemError& e) {
+         std::cerr << "ggml_vulkan: compute pipeline creation failed for " << pipeline->name << ": " << e.what() << std::endl;
+         throw;
+@@ -4889,7 +4951,7 @@
+             device_extensions.push_back("VK_EXT_device_fault");
+         }
+ 
+-        vkGetPhysicalDeviceFeatures2(device->physical_device, &device_features2);
++        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(device->physical_device, &device_features2);
+ 
+         device->device_fault = device->device_fault && fault_features.deviceFault;
+ 
+@@ -4942,7 +5004,15 @@
+                             getenv("GGML_VK_DISABLE_MULTI_ADD") == nullptr;
+ 
+         device->shader_int64 = device_features2.features.shaderInt64;
+-        device->buffer_device_address = vk12_features.bufferDeviceAddress;
++        // rnllama: BDA is only an optimisation and crashed Adreno 660 drivers; opt in with RNLLAMA_VK_ENABLE_BDA
++        // (or RNLLAMA_VK_NO_DEFAULTS=1, which restores the stock behaviour).
++        const char * no_defaults_env = getenv("RNLLAMA_VK_NO_DEFAULTS");
++        const bool bda_wanted = getenv("RNLLAMA_VK_ENABLE_BDA") != nullptr ||
++                                (no_defaults_env != nullptr && *no_defaults_env != '\0' && strcmp(no_defaults_env, "0") != 0);
++        device->buffer_device_address = vk12_features.bufferDeviceAddress && bda_wanted;
++        RNLLAMA_VK_ALOG(INFO, "buffer_device_address=%d (driver reports %d, RNLLAMA_VK_ENABLE_BDA %s)",
++                        (int) device->buffer_device_address, (int) vk12_features.bufferDeviceAddress,
++                        bda_wanted ? "wanted" : "not wanted");
+         device->vulkan_memory_model = vk12_features.vulkanMemoryModel;
+ 
+         if (device->subgroup_size_control) {
+@@ -5087,7 +5157,7 @@
+             std::vector<VkCooperativeMatrixPropertiesKHR> cm_props;
+ 
+             PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR pfn_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR =
+-                (PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR)vkGetInstanceProcAddr(vk_instance.instance, "vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR");
++                (PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR)ggml_vk_get_instance_proc_addr()(vk_instance.instance, "vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR");
+ 
+             uint32_t cm_props_num;
+ 
+@@ -5195,9 +5265,14 @@
+         device_create_info.setPNext(&device_features2);
+         device->device = device->physical_device.createDevice(device_create_info);
+ 
++        // rnllama: load the device-level entry points through vkGetDeviceProcAddr as well. Loading
++        // them only through the instance can leave some null with custom drivers and the backend
++        // then jumps to address 0 (the crash seen in ggml_vk_create_buffer).
++        VULKAN_HPP_DEFAULT_DISPATCHER.init(device->device);
++
+         if (device->device_fault) {
+             device->pfn_vkGetDeviceFaultInfoEXT = (PFN_vkGetDeviceFaultInfoEXT)
+-                vkGetDeviceProcAddr(device->device, "vkGetDeviceFaultInfoEXT");
++                VULKAN_HPP_DEFAULT_DISPATCHER.vkGetDeviceProcAddr(device->device, "vkGetDeviceFaultInfoEXT");
+         }
+ 
+         // Queues
+@@ -5542,7 +5617,7 @@
+     }
+ #endif
+ 
+-    vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
++    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
+ 
+     fp16 = fp16 && vk12_features.shaderFloat16;
+ 
+@@ -5605,6 +5680,9 @@
+     GGML_LOG_DEBUG("ggml_vulkan: %zu = %s (%s) | uma: %d | rebar: %d | fp16: %s | bf16: %d | fp4: %d | warp size: %zu | shared memory: %d | int dot: %d | matrix cores: %s\n",
+               idx, device_name.c_str(), driver_props.driverName.data(), uma, rebar, fp16_str, bf16, fp4, subgroup_size,
+               props2.properties.limits.maxComputeSharedMemorySize, integer_dot_product, matrix_cores.c_str());
++    RNLLAMA_VK_ALOG(INFO, "caps: %zu = %s (%s) | uma: %d | rebar: %d | fp16: %s | bf16: %d | fp4: %d | warp size: %zu | shared memory: %d | int dot: %d | matrix cores: %s",
++                    idx, device_name.c_str(), driver_props.driverName.data(), uma, rebar, fp16_str, bf16, fp4, subgroup_size,
++                    props2.properties.limits.maxComputeSharedMemorySize, integer_dot_product, matrix_cores.c_str());
+ 
+     if (props2.properties.deviceType == vk::PhysicalDeviceType::eCpu) {
+         GGML_LOG_DEBUG("ggml_vulkan: Warning: Device type is CPU. This is probably not the device you want.\n");
+@@ -5617,6 +5695,111 @@
+     return ggml_vk_default_dispatcher_instance;
+ }
+ 
++#ifdef RNLLAMA_ADRENOTOOLS
++#include <dlfcn.h>
++#include <adrenotools/driver.h>
++#endif
++
++// rnllama: choose the Vulkan loader.
++//
++// With RNLLAMA_VK_DRIVER_DIR / RNLLAMA_VK_DRIVER_NAME / RNLLAMA_VK_HOOK_DIR set (RNLlama.java does
++// this when the user enabled a custom driver) a Vulkan loader is opened through libadrenotools so
++// that it loads the custom driver (e.g. Mesa Turnip) instead of the system one. Everything else in
++// this file then has to go through that loader's vkGetInstanceProcAddr, never the linked symbol.
++PFN_vkGetInstanceProcAddr ggml_vk_get_instance_proc_addr() {
++    static PFN_vkGetInstanceProcAddr gipa = []() -> PFN_vkGetInstanceProcAddr {
++#ifdef RNLLAMA_ADRENOTOOLS
++        const char * drv_dir  = getenv("RNLLAMA_VK_DRIVER_DIR");
++        const char * drv_name = getenv("RNLLAMA_VK_DRIVER_NAME");
++        const char * hook_dir = getenv("RNLLAMA_VK_HOOK_DIR");
++        const char * tmp_dir  = getenv("RNLLAMA_VK_TMP_DIR");
++        RNLLAMA_VK_ALOG(INFO, "driver env: dir=%s name=%s hooks=%s tmp=%s",
++                        drv_dir ? drv_dir : "(unset)", drv_name ? drv_name : "(unset)",
++                        hook_dir ? hook_dir : "(unset)", tmp_dir ? tmp_dir : "(unset)");
++        if (drv_dir && drv_dir[0] && drv_name && drv_name[0] && hook_dir && hook_dir[0]) {
++            std::string dir = drv_dir;
++            if (dir.back() != '/') {
++                dir += '/';
++            }
++            GGML_LOG_INFO("ggml_vulkan: opening custom driver %s%s via libadrenotools (hooks: %s)\n",
++                          dir.c_str(), drv_name, hook_dir);
++            void * handle = adrenotools_open_libvulkan(RTLD_NOW | RTLD_LOCAL, ADRENOTOOLS_DRIVER_CUSTOM,
++                                                       (tmp_dir && tmp_dir[0]) ? tmp_dir : nullptr,
++                                                       hook_dir, dir.c_str(), drv_name, nullptr, nullptr);
++            RNLLAMA_VK_ALOG(INFO, "adrenotools_open_libvulkan returned %p", handle);
++            if (handle != nullptr) {
++                auto fn = (PFN_vkGetInstanceProcAddr) dlsym(handle, "vkGetInstanceProcAddr");
++                RNLLAMA_VK_ALOG(INFO, "custom loader vkGetInstanceProcAddr = %p", (void *) fn);
++                if (fn != nullptr) {
++                    return fn;
++                }
++                GGML_LOG_ERROR("ggml_vulkan: custom driver loader has no vkGetInstanceProcAddr, using the system driver\n");
++            } else {
++                GGML_LOG_ERROR("ggml_vulkan: adrenotools_open_libvulkan failed, using the system driver\n");
++            }
++        }
++#endif
++        RNLLAMA_VK_ALOG(WARN, "using the system Vulkan loader");
++        return vkGetInstanceProcAddr;
++    }();
++    return gipa;
++}
++
++// rnllama: comma separated, case insensitive name lists from the environment, used to make the backend
++// refuse some work so the CPU does it instead (workarounds for drivers that miscompute it):
++//   GGML_VK_UNSUPPORTED_TYPES=Q6_K,...  matrix multiplications with weights of those types
++//                                       (e.g. Q6_K on Turnip / Adreno 660)
++//   GGML_VK_UNSUPPORTED_OPS=SSM_CONV,... ops by ggml name (ggml_op_desc), e.g. SSM_CONV, SOFT_MAX,
++//                                       FLASH_ATTN_EXT, ROPE, RMS_NORM, SILU
++static std::vector<std::string> ggml_vk_parse_env_list(const char * name) {
++    std::vector<std::string> out;
++    const char * env = getenv(name);
++    if (env == nullptr) {
++        return out;
++    }
++    std::string cur;
++    for (const char * c = env;; ++c) {
++        if (*c == ',' || *c == ';' || *c == ' ' || *c == '\0') {
++            if (!cur.empty()) {
++                out.push_back(cur);
++                cur.clear();
++            }
++            if (*c == '\0') {
++                break;
++            }
++        } else {
++            cur += (char) toupper((unsigned char) *c);
++        }
++    }
++    return out;
++}
++
++static bool ggml_vk_name_in_list(const std::vector<std::string> & names, const char * value) {
++    if (names.empty() || value == nullptr) {
++        return false;
++    }
++    std::string upper = value;
++    for (auto & ch : upper) {
++        ch = (char) toupper((unsigned char) ch);
++    }
++    for (const auto & n : names) {
++        if (n == upper) {
++            return true;
++        }
++    }
++    return false;
++}
++
++static bool ggml_vk_type_unsupported_by_env(ggml_type type) {
++    static const std::vector<std::string> names = ggml_vk_parse_env_list("GGML_VK_UNSUPPORTED_TYPES");
++    return ggml_vk_name_in_list(names, ggml_type_name(type));
++}
++
++static bool ggml_vk_op_unsupported_by_env(const ggml_tensor * op) {
++    static const std::vector<std::string> names = ggml_vk_parse_env_list("GGML_VK_UNSUPPORTED_OPS");
++    return ggml_vk_name_in_list(names, ggml_op_desc(op));
++}
++
+ void ggml_vk_instance_init() {
+     if (vk_instance_initialized) {
+         return;
+@@ -5624,7 +5807,7 @@
+     VK_LOG_DEBUG("ggml_vk_instance_init()");
+ 
+     // See https://github.com/KhronosGroup/Vulkan-Hpp?tab=readme-ov-file#extensions--per-device-function-pointers-
+-    ggml_vk_default_dispatcher_instance.init(vkGetInstanceProcAddr);
++    ggml_vk_default_dispatcher_instance.init(ggml_vk_get_instance_proc_addr());
+ 
+     // vkEnumerateInstanceVersion is Vulkan 1.1. A null value indicated Vulkan 1.0.
+     if (ggml_vk_default_dispatcher_instance.vkEnumerateInstanceVersion == nullptr) {
+@@ -5633,6 +5816,8 @@
+     }
+ 
+     uint32_t api_version = vk::enumerateInstanceVersion();
++    RNLLAMA_VK_ALOG(INFO, "instance API version %u.%u.%u", VK_API_VERSION_MAJOR(api_version),
++                    VK_API_VERSION_MINOR(api_version), VK_API_VERSION_PATCH(api_version));
+ 
+     if (api_version < VK_API_VERSION_1_2) {
+         GGML_LOG_ERROR("ggml_vulkan: Error: Vulkan 1.2 required.");
+@@ -5687,12 +5872,12 @@
+ 
+     if (debug_utils_ext) {
+         vk_instance.debug_utils_support              = true;
+-        vk_instance.pfn_vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT) vkGetInstanceProcAddr(vk_instance.instance, "vkSetDebugUtilsObjectNameEXT");
+-        vk_instance.pfn_vkQueueBeginDebugUtilsLabelEXT = (PFN_vkQueueBeginDebugUtilsLabelEXT) vkGetInstanceProcAddr(vk_instance.instance, "vkQueueBeginDebugUtilsLabelEXT");
+-        vk_instance.pfn_vkQueueEndDebugUtilsLabelEXT = (PFN_vkQueueEndDebugUtilsLabelEXT) vkGetInstanceProcAddr(vk_instance.instance, "vkQueueEndDebugUtilsLabelEXT");
+-        vk_instance.pfn_vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT) vkGetInstanceProcAddr(vk_instance.instance, "vkCmdBeginDebugUtilsLabelEXT");
+-        vk_instance.pfn_vkCmdEndDebugUtilsLabelEXT =   (PFN_vkCmdEndDebugUtilsLabelEXT) vkGetInstanceProcAddr(vk_instance.instance, "vkCmdEndDebugUtilsLabelEXT");
+-        vk_instance.pfn_vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT) vkGetInstanceProcAddr(vk_instance.instance, "vkCmdInsertDebugUtilsLabelEXT");
++        vk_instance.pfn_vkSetDebugUtilsObjectNameEXT = (PFN_vkSetDebugUtilsObjectNameEXT) ggml_vk_get_instance_proc_addr()(vk_instance.instance, "vkSetDebugUtilsObjectNameEXT");
++        vk_instance.pfn_vkQueueBeginDebugUtilsLabelEXT = (PFN_vkQueueBeginDebugUtilsLabelEXT) ggml_vk_get_instance_proc_addr()(vk_instance.instance, "vkQueueBeginDebugUtilsLabelEXT");
++        vk_instance.pfn_vkQueueEndDebugUtilsLabelEXT = (PFN_vkQueueEndDebugUtilsLabelEXT) ggml_vk_get_instance_proc_addr()(vk_instance.instance, "vkQueueEndDebugUtilsLabelEXT");
++        vk_instance.pfn_vkCmdBeginDebugUtilsLabelEXT = (PFN_vkCmdBeginDebugUtilsLabelEXT) ggml_vk_get_instance_proc_addr()(vk_instance.instance, "vkCmdBeginDebugUtilsLabelEXT");
++        vk_instance.pfn_vkCmdEndDebugUtilsLabelEXT =   (PFN_vkCmdEndDebugUtilsLabelEXT) ggml_vk_get_instance_proc_addr()(vk_instance.instance, "vkCmdEndDebugUtilsLabelEXT");
++        vk_instance.pfn_vkCmdInsertDebugUtilsLabelEXT = (PFN_vkCmdInsertDebugUtilsLabelEXT) ggml_vk_get_instance_proc_addr()(vk_instance.instance, "vkCmdInsertDebugUtilsLabelEXT");
+     }
+ 
+     vk_perf_logger_enabled = getenv("GGML_VK_PERF_LOGGER") != nullptr;
+@@ -5715,6 +5900,21 @@
+ 
+     std::vector<vk::PhysicalDevice> devices = vk_instance.instance.enumeratePhysicalDevices();
+ 
++    RNLLAMA_VK_ALOG(INFO, "physical devices found: %zu", devices.size());
++    for (size_t dbg_i = 0; dbg_i < devices.size(); dbg_i++) {
++        vk::PhysicalDeviceProperties2 dbg_props;
++        vk::PhysicalDeviceDriverProperties dbg_driver;
++        dbg_props.pNext = &dbg_driver;
++        devices[dbg_i].getProperties2(&dbg_props);
++        RNLLAMA_VK_ALOG(INFO, "device %zu: %s type=%d vendor=0x%x driverID=%d api=%u.%u.%u storageBuffer16BitAccess=%d",
++                        dbg_i, dbg_props.properties.deviceName.data(), (int) dbg_props.properties.deviceType,
++                        dbg_props.properties.vendorID, (int) dbg_driver.driverID,
++                        VK_API_VERSION_MAJOR(dbg_props.properties.apiVersion),
++                        VK_API_VERSION_MINOR(dbg_props.properties.apiVersion),
++                        VK_API_VERSION_PATCH(dbg_props.properties.apiVersion),
++                        (int) ggml_vk_device_is_supported(devices[dbg_i]));
++    }
++
+     // Emulate behavior of CUDA_VISIBLE_DEVICES for Vulkan
+     char * devices_env = getenv("GGML_VK_VISIBLE_DEVICES");
+     if (devices_env != nullptr) {
+@@ -9730,10 +9930,10 @@
+         }
+ 
+         if (src0->type == GGML_TYPE_F32 && (src1 == nullptr || src1->type == GGML_TYPE_F32) && dst->type == GGML_TYPE_F32) {
+-            return src0->ne[0] > 1024 ? ctx->device->pipeline_soft_max_f32_wg512 : ctx->device->pipeline_soft_max_f32;
++            return (src0->ne[0] > 1024 && !rnllama_vk_no_wg512()) ? ctx->device->pipeline_soft_max_f32_wg512 : ctx->device->pipeline_soft_max_f32;
+         }
+         if (src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_F16 && dst->type == GGML_TYPE_F32) {
+-            return src0->ne[0] > 1024 ? ctx->device->pipeline_soft_max_f32_f16_wg512 : ctx->device->pipeline_soft_max_f32_f16;
++            return (src0->ne[0] > 1024 && !rnllama_vk_no_wg512()) ? ctx->device->pipeline_soft_max_f32_f16_wg512 : ctx->device->pipeline_soft_max_f32_f16;
+         }
+         return nullptr;
+     case GGML_OP_SOFT_MAX_BACK:
+@@ -16191,13 +16391,67 @@
+     };
+ }
+ 
++#ifdef RNLLAMA_ADRENOTOOLS
++// rnllama: GPU self-test (android/src/main/rnllama/vk-selftest.cpp); runs when RNLLAMA_VK_SELFTEST is set.
++extern "C" void rnllama_vk_selftest_run();
++#endif
++
+ static ggml_backend_t ggml_backend_vk_device_init(ggml_backend_dev_t dev, const char * params) {
+     UNUSED(params);
+     ggml_backend_vk_device_context * ctx = (ggml_backend_vk_device_context *)dev->context;
+-    return ggml_backend_vk_init(ctx->device);
++    ggml_backend_t backend = ggml_backend_vk_init(ctx->device);
++#ifdef RNLLAMA_ADRENOTOOLS
++    if (backend != nullptr && getenv("RNLLAMA_VK_SELFTEST") != nullptr) {
++        rnllama_vk_selftest_run();
++    }
++#endif
++    return backend;
+ }
+ 
+ static bool ggml_backend_vk_device_supports_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
++    if (ggml_vk_op_unsupported_by_env(op)) {
++        return false;
++    }
++    // rnllama: GGML_VK_ALLOWED_OPS=MUL_MAT,ADD,... lets only those ops (and no-op views) run on the GPU;
++    // everything else runs on the CPU. For bisecting which op a driver gets wrong.
++    static const std::vector<std::string> allowed_ops = ggml_vk_parse_env_list("GGML_VK_ALLOWED_OPS");
++    if (!allowed_ops.empty()) {
++        switch (op->op) {
++            case GGML_OP_NONE:
++            case GGML_OP_RESHAPE:
++            case GGML_OP_VIEW:
++            case GGML_OP_PERMUTE:
++            case GGML_OP_TRANSPOSE:
++                break;
++            default:
++                if (!ggml_vk_name_in_list(allowed_ops, ggml_op_desc(op))) {
++                    return false;
++                }
++        }
++    }
++    if ((op->op == GGML_OP_MUL_MAT || op->op == GGML_OP_MUL_MAT_ID || op->op == GGML_OP_GET_ROWS) &&
++        op->src[0] != nullptr && ggml_vk_type_unsupported_by_env(op->src[0]->type)) {
++        return false;
++    }
++    // rnllama: GGML_VK_DISABLE_QUANT_GET_ROWS makes get_rows on quantized weights (token embedding
++    // lookups) run on the CPU. Turnip on Adreno 660 returns wrong rows for Q4_0, Q8_0 and Q4_K there.
++    static const bool disable_quant_get_rows = []() {
++        const char * e = getenv("GGML_VK_DISABLE_QUANT_GET_ROWS");
++        return e != nullptr && *e != '\0' && strcmp(e, "0") != 0;
++    }();
++    if (disable_quant_get_rows && op->op == GGML_OP_GET_ROWS && op->src[0] != nullptr &&
++        ggml_is_quantized(op->src[0]->type)) {
++        return false;
++    }
++    // Same for writes into a quantized KV cache (set_rows to Q8_0 / Q4_0 was wrong on Adreno 660).
++    static const bool disable_quant_set_rows = []() {
++        const char * e = getenv("GGML_VK_DISABLE_QUANT_SET_ROWS");
++        return e != nullptr && *e != '\0' && strcmp(e, "0") != 0;
++    }();
++    if (disable_quant_set_rows && op->op == GGML_OP_SET_ROWS && ggml_is_quantized(op->type)) {
++        return false;
++    }
++
+     ggml_backend_vk_device_context * ctx = (ggml_backend_vk_device_context *)dev->context;
+     const vk_device& device = ggml_vk_get_device(ctx->device);
+ 
+@@ -17102,14 +17356,18 @@
+     };
+     try {
+         ggml_vk_instance_init();
++        RNLLAMA_VK_ALOG(INFO, "ggml_backend_vk_reg ok, %zu usable device(s)", vk_instance.device_indices.size());
+         return &reg;
+     } catch (const vk::SystemError& e) {
++        RNLLAMA_VK_ALOG(ERROR, "ggml_backend_vk_reg failed: system error: %s", e.what());
+         VK_LOG_DEBUG("ggml_backend_vk_reg() -> Error: System error: " << e.what());
+         return nullptr;
+     } catch (const std::exception &e) {
++        RNLLAMA_VK_ALOG(ERROR, "ggml_backend_vk_reg failed: %s", e.what());
+         VK_LOG_DEBUG("ggml_backend_vk_reg() -> Error: " << e.what());
+         return nullptr;
+     } catch (...) {
++        RNLLAMA_VK_ALOG(ERROR, "ggml_backend_vk_reg failed: unknown exception");
+         VK_LOG_DEBUG("ggml_backend_vk_reg() -> Error: unknown exception during Vulkan init");
+         return nullptr;
+     }
+@@ -17173,7 +17431,7 @@
+     vk11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+     device_features2.pNext = &vk11_features;
+ 
+-    vkGetPhysicalDeviceFeatures2(vkdev, &device_features2);
++    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(vkdev, &device_features2);
+ 
+     return vk11_features.storageBuffer16BitAccess;
+ }
+--- a/ggml-vulkan-buffers.cpp
++++ b/ggml-vulkan-buffers.cpp
+@@ -504,7 +504,7 @@
+     VkBufferCopy buf_copy{ 0, offset, copy_size };
+ 
+     ggml_vk_sync_buffers(ctx, subctx);
+-    vkCmdCopyBuffer(subctx->s->buffer->buf, (VkBuffer)staging->buffer, (VkBuffer)dst->buffer, 1, &buf_copy);
++    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyBuffer(subctx->s->buffer->buf, (VkBuffer)staging->buffer, (VkBuffer)dst->buffer, 1, &buf_copy);
+ 
+     for (uint64_t i3 = 0; i3 < ne3; i3++) {
+         for (uint64_t i2 = 0; i2 < ne2; i2++) {
+@@ -764,7 +764,7 @@
+ 
+     VkBufferCopy bc{ src_offset, dst_offset, size };
+ 
+-    vkCmdCopyBuffer(ctx->s->buffer->buf, (VkBuffer)src->buffer, (VkBuffer)dst->buffer, 1, &bc);
++    VULKAN_HPP_DEFAULT_DISPATCHER.vkCmdCopyBuffer(ctx->s->buffer->buf, (VkBuffer)src->buffer, (VkBuffer)dst->buffer, 1, &bc);
+ }
+ 
+ void ggml_vk_buffer_copy(vk_buffer& dst, size_t dst_offset, vk_buffer& src, size_t src_offset, size_t size) {

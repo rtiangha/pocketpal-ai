@@ -623,6 +623,11 @@ class ModelStore {
     const flash_attn_type =
       this.contextInitParams.flash_attn_type ?? flashAttnModeDefault;
 
+    // Writes into a quantized KV cache give wrong results (or crash) with the Vulkan (Turnip)
+    // driver, so the cache stays F16 whenever the Vulkan GPU is selected.
+    const selectedDevices = this.contextInitParams.devices ?? [];
+    const usesVulkan = selectedDevices.some(d => d.startsWith('Vulkan'));
+
     // Build the params object, filtering out undefined values
     const params: Partial<Omit<ContextParams, 'model'>> = {
       n_ctx: effectiveContext,
@@ -630,8 +635,12 @@ class ModelStore {
       n_ubatch: effectiveUBatch,
       n_threads: this.contextInitParams.n_threads,
       flash_attn_type, // NEW: replaces flash_attn boolean
-      cache_type_k: this.contextInitParams.cache_type_k,
-      cache_type_v: this.contextInitParams.cache_type_v,
+      cache_type_k: usesVulkan
+        ? CacheType.F16
+        : this.contextInitParams.cache_type_k,
+      cache_type_v: usesVulkan
+        ? CacheType.F16
+        : this.contextInitParams.cache_type_v,
       n_gpu_layers: this.contextInitParams.n_gpu_layers ?? 99,
       devices: this.contextInitParams.devices?.slice(),
       kv_unified: this.contextInitParams.kv_unified ?? true, // NEW (default true!)

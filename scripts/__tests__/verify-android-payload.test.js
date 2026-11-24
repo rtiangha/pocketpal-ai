@@ -232,7 +232,7 @@ describe('the variant allowlist', () => {
     const {status, output} = runGate(['--print-variants']);
     expect(status).toBe(0);
     expect(output.trim()).toBe(
-      'rnllama,rnllama_v8,rnllama_v8_2,rnllama_v8_2_dotprod,rnllama_v8_2_dotprod_i8mm,rnllama_v8_2_dotprod_i8mm_hexagon_opencl,rnllama_x86_64',
+      'rnllama,rnllama_v8,rnllama_v8_2,rnllama_v8_2_dotprod,rnllama_v8_2_dotprod_i8mm,rnllama_v8_2_dotprod_i8mm_hexagon_opencl,rnllama_v8_2_dotprod_vulkan,rnllama_x86_64',
     );
   });
 

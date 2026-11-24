@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# Run patch-package first
+# llama.rn's npm package does not ship ggml-vulkan; fetch it (and apply the driver-loading
+# edits) before patch-package, whose llama.rn patch and the Vulkan build rely on it.
+./scripts/fetch-ggml-vulkan.sh || exit 1
+
+# Run patch-package
 npx patch-package --error-on-fail || exit 1
 
 # Clone OpenCL headers if building llama.rn from source

@@ -1,4 +1,5 @@
 import {Platform} from 'react-native';
+import {getBackendDevicesInfo} from 'llama.rn';
 import DeviceInfo from 'react-native-device-info';
 import NativeHardwareInfo from '../specs/NativeHardwareInfo';
 import type {CPUInfo, GPUInfo} from '../specs/NativeHardwareInfo';
@@ -46,11 +47,25 @@ export interface CpuInfo {
 }
 
 /**
+ * True when llama.rn reports a Vulkan device, i.e. the custom (Turnip) driver is on and
+ * working. That path needs no i8mm CPU feature.
+ */
+async function hasVulkanGpuDevice(): Promise<boolean> {
+  try {
+    const devices = await getBackendDevicesInfo();
+    return devices.some(d => d.deviceName?.startsWith('Vulkan'));
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Check if the device supports GPU acceleration.
  *
  * Requirements:
  * - iOS: Requires iOS 18 or higher for Metal acceleration
- * - Android: Requires Adreno GPU + i8mm CPU feature + dotprod CPU feature for OpenCL
+ * - Android: Requires Adreno GPU + i8mm CPU feature + dotprod CPU feature for OpenCL, or
+ *   Adreno GPU + dotprod + a working Vulkan device (custom Turnip driver)
  *
  * @returns Promise<GpuCapabilities> GPU support status and details
  */
@@ -91,8 +106,9 @@ export async function checkGpuSupport(): Promise<GpuCapabilities> {
       const hasI8mm = cpuInfo.hasI8mm ?? false;
       const hasDotProd = cpuInfo.hasDotProd ?? false;
 
-      // All three conditions must be met for OpenCL support
-      const isSupported = hasAdreno && hasI8mm && hasDotProd;
+      // OpenCL needs all three; the Vulkan (Turnip) path needs no i8mm.
+      const hasVulkanGpu = await hasVulkanGpuDevice();
+      const isSupported = hasAdreno && hasDotProd && (hasI8mm || hasVulkanGpu);
 
       let reason: GpuCapabilities['reason'];
       if (!isSupported) {
