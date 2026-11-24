@@ -63,7 +63,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**', 'scripts/postinstall.sh', 'scripts/fetch-ggml-vulkan.sh', 'scripts/llama-rn-ggml-vulkan.patch') }}
 
       # Step 2: Set up Node.js environment
       - name: Set up Node.js
@@ -130,7 +130,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**', 'scripts/postinstall.sh', 'scripts/fetch-ggml-vulkan.sh', 'scripts/llama-rn-ggml-vulkan.patch') }}
 
       - name: Compare render performance with the base
         env:
@@ -155,6 +155,11 @@ jobs:
       # android/gradle.properties sets rnllamaBuildFromSource, and a subproject's
       # value beats the root project's, so only an environment property or -P wins.
       ORG_GRADLE_PROJECT_rnllamaBuildFromSource: 'true'
+      # Git tags of the header-only dependencies the Vulkan variant (custom Turnip driver
+      # support) fetches at CMake configure time. Forwarded to CMake by the llama.rn patch and
+      # part of the native build cache key below, so changing them rebuilds from scratch.
+      ORG_GRADLE_PROJECT_rnllamaVulkanHeadersTag: 'vulkan-sdk-1.4.363.0'
+      ORG_GRADLE_PROJECT_rnllamaSpirvHeadersTag: 'vulkan-sdk-1.4.363.0'
     steps:
       - name: Check out code
         uses: actions/checkout@v3
@@ -179,7 +184,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**', 'scripts/postinstall.sh', 'scripts/fetch-ggml-vulkan.sh', 'scripts/llama-rn-ggml-vulkan.patch') }}
 
       - name: Install Yarn
         run: npm install -g yarn
@@ -206,7 +211,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: node_modules/llama.rn/android/.cxx
-          key: ${{ runner.os }}-cxx-${{ hashFiles('yarn.lock', 'patches/**', 'scripts/android-payload-manifest.json') }}
+          key: ${{ runner.os }}-cxx-${{ env.ORG_GRADLE_PROJECT_rnllamaVulkanHeadersTag }}-${{ env.ORG_GRADLE_PROJECT_rnllamaSpirvHeadersTag }}-${{ hashFiles('yarn.lock', 'patches/**', 'scripts/fetch-ggml-vulkan.sh', 'scripts/llama-rn-ggml-vulkan.patch', 'scripts/android-payload-manifest.json') }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -297,7 +302,16 @@ jobs:
             echo "::error::ORG_GRADLE_PROJECT_rnllamaBuildFromSource is '${ORG_GRADLE_PROJECT_rnllamaBuildFromSource:-<unset>}', expected 'true'. Building from prebuilts is the documented escape hatch, but it must be a deliberate edit to this workflow."
             exit 1
           fi
-          ./gradlew assembleProdRelease 2>&1 | tee android-build.log
+          ./gradlew assembleProdRelease --stacktrace 2>&1 | tee android-build.log
+
+      # Diagnostics for packaging failures (the "failure occurred while executing
+      # PackageAndroidArtifact" message hides the cause, and running out of disk is one candidate).
+      - name: Disk usage (on failure)
+        if: failure()
+        run: |
+          df -h || true
+          du -sh node_modules/llama.rn/android/build android/app/build android/build "$HOME/.gradle" 2>/dev/null || true
+          find android/app/build -name '*.apk' -o -name '*.aab' 2>/dev/null | xargs -r ls -la || true
 
       - name: ccache statistics
         if: always()
@@ -413,7 +427,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**') }}
+          key: ${{ runner.os }}-node-${{ hashFiles('yarn.lock', 'patches/**', 'scripts/postinstall.sh', 'scripts/fetch-ggml-vulkan.sh', 'scripts/llama-rn-ggml-vulkan.patch') }}
 
       - name: Install Yarn
         run: npm install -g yarn
