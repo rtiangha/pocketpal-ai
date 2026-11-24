@@ -56,6 +56,7 @@ import {useTheme} from '../../hooks';
 import {createStyles} from './styles';
 import {CacheTypeMenuRow} from './CacheTypeMenuRow';
 import {AutoCompactionRow} from './AutoCompactionRow';
+import {TurnipDriverRow} from './TurnipDriverRow';
 import {MaxToolTurnsRow} from './MaxToolTurnsRow';
 import {VoiceRow} from './VoiceRow';
 import {useMenuAnchor} from './useMenuAnchor';
@@ -431,6 +432,9 @@ export const SettingsScreen: React.FC = observer(() => {
                     </Text>
                   </>
                 )}
+
+                {/* Custom Vulkan (Turnip) driver, Android only */}
+                {Platform.OS === 'android' && <TurnipDriverRow />}
 
                 {/* OpenCL quantization note for Android */}
                 {Platform.OS === 'android' &&

@@ -101,6 +101,14 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.pocketpal"
+
+    // libadrenotools (custom Turnip Vulkan driver) loads its hook libraries from
+    // nativeLibraryDir, which only exists on disk with legacy (extracted) packaging.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
     defaultConfig {
         applicationId "com.pocketpalai"
         minSdkVersion rootProject.ext.minSdkVersion

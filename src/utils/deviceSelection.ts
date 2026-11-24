@@ -73,6 +73,17 @@ export async function resolveDeviceSelection(selection: {
 }
 
 /**
+ * A Vulkan device (custom Turnip driver). Vulkan reports integrated GPUs such as the
+ * Adreno in phones as type 'igpu', not 'gpu', so both are accepted.
+ */
+function isVulkanGpu(device: NativeBackendDeviceInfo): boolean {
+  return (
+    (device.deviceName?.startsWith('Vulkan') ?? false) &&
+    (device.type === 'gpu' || device.type === 'igpu')
+  );
+}
+
+/**
  * Get device selection options based on platform and available devices
  * @returns Array of device options for UI presentation
  */
@@ -128,7 +139,7 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
   // Android: Build options based on available devices
   const devices = await getAvailableDevices();
   const hexagonDevice = selectHexagonDevice(devices);
-  const gpuDev = devices.find(d => d.type === 'gpu');
+  const gpuDev = devices.find(d => d.type === 'gpu' || isVulkanGpu(d));
 
   // Option 1: CPU (always available, recommended for reliability)
   // CPU supports all flash attention types
@@ -144,21 +155,40 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
     platform: 'android',
   });
 
-  // Option 2: GPU/OpenCL (if available)
+  // Option 2: GPU (if available). Either OpenCL, or Vulkan when the custom (Turnip)
+  // driver is enabled and the Vulkan build of llama.rn was loaded.
   if (gpuDev) {
-    // According to FLASH_ATTN.md Matrix 1: OpenCL only supports 'off' flash attention
-    options.push({
-      id: 'gpu',
-      label: `GPU (OpenCL)`,
-      description: 'OpenCL GPU acceleration (Only for Q4_0/Q6_K models)',
-      devices: [gpuDev.deviceName!],
-      n_gpu_layers: 99,
-      default_flash_attn_type: 'off', // Required for OpenCL
-      valid_flash_attn_types: ['off'], // OpenCL only supports 'off'
-      tag: 'Fastest',
-      platform: 'android',
-      deviceInfo: gpuDev,
-    });
+    if (gpuDev.deviceName?.startsWith('Vulkan')) {
+      options.push({
+        id: 'gpu',
+        label: 'GPU (Vulkan)',
+        description:
+          'Vulkan GPU acceleration through the custom driver (Experimental)',
+        devices: [gpuDev.deviceName],
+        n_gpu_layers: 99,
+        // Flash attention misbehaves on some Adreno drivers, so keep it off by default.
+        default_flash_attn_type: 'off',
+        valid_flash_attn_types: ['auto', 'on', 'off'],
+        tag: 'Experimental',
+        experimental: true,
+        platform: 'android',
+        deviceInfo: gpuDev,
+      });
+    } else {
+      // According to FLASH_ATTN.md Matrix 1: OpenCL only supports 'off' flash attention
+      options.push({
+        id: 'gpu',
+        label: `GPU (OpenCL)`,
+        description: 'OpenCL GPU acceleration (Only for Q4_0/Q6_K models)',
+        devices: [gpuDev.deviceName!],
+        n_gpu_layers: 99,
+        default_flash_attn_type: 'off', // Required for OpenCL
+        valid_flash_attn_types: ['off'], // OpenCL only supports 'off'
+        tag: 'Fastest',
+        platform: 'android',
+        deviceInfo: gpuDev,
+      });
+    }
   }
 
   // Option 3: Hexagon (if available)
@@ -314,7 +344,7 @@ export async function isHexagonAvailable(): Promise<boolean> {
  */
 export async function isGpuAvailable(): Promise<boolean> {
   const devices = await getAvailableDevices();
-  return devices.some(d => d.type === 'gpu');
+  return devices.some(d => d.type === 'gpu' || isVulkanGpu(d));
 }
 
 /**
