@@ -12,6 +12,9 @@
  *   import_error.txt  why the last package import failed, if it did; llama.rn writes it
  *                     and deletes it when an import succeeds, and the row's Dismiss
  *                     button deletes it once the user has seen it
+ *   pipeline_cache.bin  compiled Vulkan pipelines, saved by the patched llama.rn
+ *                     (RNLLAMA_VK_PIPELINE_CACHE) so the next model load does not
+ *                     recompile them; the row shows its size and can clear it
  *
  * A failed package import keeps the previously installed driver: the old driver_name
  * and meta.json are only replaced once the new package has unpacked successfully.
@@ -34,6 +37,7 @@ const ENV_FILE = `${TURNIP_DIR}/env`;
 const SELFTEST_FILE = `${TURNIP_DIR}/selftest.txt`;
 const PIPELINE_FILE = `${TURNIP_DIR}/last_pipeline.txt`;
 const ERROR_FILE = `${TURNIP_DIR}/import_error.txt`;
+const PIPELINE_CACHE_FILE = `${TURNIP_DIR}/pipeline_cache.bin`;
 
 export interface TurnipState {
   /** The user wants the custom driver (applies after the next app start). */
@@ -165,6 +169,32 @@ export async function clearTurnipSelfTest(): Promise<void> {
 export async function clearTurnipImportError(): Promise<void> {
   if (isSupported) {
     await removeIfExists(ERROR_FILE);
+  }
+}
+
+/**
+ * Disk size of the saved compiled pipelines in bytes, or null when there is no
+ * cache file yet. The native side writes the file when a model loads on the Vulkan
+ * GPU; it is read at the next load instead of recompiling the shaders.
+ */
+export async function getTurnipPipelineCacheSize(): Promise<number | null> {
+  if (!isSupported) {
+    return null;
+  }
+  try {
+    return (await RNFS.stat(PIPELINE_CACHE_FILE)).size;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Deletes the saved compiled pipelines. The next model load recompiles them from
+ * scratch; a model that is already loaded is unaffected.
+ */
+export async function clearTurnipPipelineCache(): Promise<void> {
+  if (isSupported) {
+    await removeIfExists(PIPELINE_CACHE_FILE);
   }
 }
 

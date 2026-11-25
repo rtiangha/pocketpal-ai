@@ -11,9 +11,18 @@
  #define VULKAN_HPP_DEFAULT_DISPATCHER ggml_vk_default_dispatcher()
  
  #include <vulkan/vulkan.hpp>
+@@ -711,6 +715,8 @@
+     bool pipeline_robustness;
+     bool memory_priority;
+     vk::Device device;
++    // rnllama: persistent pipeline cache, loaded from RNLLAMA_VK_PIPELINE_CACHE (see ggml-vulkan.cpp).
++    vk::PipelineCache pipeline_cache;
+     uint32_t vendor_id;
+     vk::DriverId driver_id;
+     vk_device_architecture architecture;
 --- a/ggml-vulkan.cpp
 +++ b/ggml-vulkan.cpp
-@@ -1,5 +1,65 @@
+@@ -1,5 +1,218 @@
  #include "ggml-vulkan-common.h"
  
 +#ifdef RNLLAMA_ADRENOTOOLS
@@ -76,20 +85,191 @@
 +    return v;
 +}
 +
++#include <cstdint>
++#include <cstdio>
++#include <cstring>
++#include <vector>
++
++// rnllama: persistent Vulkan pipeline cache (RNLLAMA_VK_PIPELINE_CACHE=<path>).
++// Turnip's shader compiler is slow: a model load spends about half its time compiling pipelines
++// (~2.7 s of a ~6 s load on Adreno 660), so the compiled pipelines are saved to disk and reloaded
++// on the next run. The file starts with a small header (magic + format version + the device ids);
++// anything that does not match is ignored and the pipelines compile from scratch, exactly as
++// without a cache. The driver also validates the cache blob itself (vendor/device/driver/UUID) and
++// rejects it when it does not match. Without the environment variable the feature is off and
++// nothing changes.
++static const char * rnllama_vk_pipeline_cache_path() {
++    static const char * path = getenv("RNLLAMA_VK_PIPELINE_CACHE");
++    return (path != nullptr && *path != '\0') ? path : nullptr;
++}
++
++struct rnllama_vk_pipeline_cache_header {
++    char magic[8];
++    uint32_t version;
++    uint32_t vendor_id;
++    uint32_t device_id;
++    uint32_t driver_version;
++};
++
++// The blob as last written to disk (or as loaded from it), so a save that
++// would write identical bytes can be skipped: on a cold launch every
++// pipeline creation hits the cache and the blob never changes, so without
++// this every per-compile save rewrites the same file.
++static std::vector<uint8_t> s_pipeline_cache_last_saved;
++static std::mutex s_pipeline_cache_mutex;
++
++static void rnllama_vk_pipeline_cache_load(vk_device_struct & device) {
++    const char * path = rnllama_vk_pipeline_cache_path();
++    if (path == nullptr) {
++        return;
++    }
++    // An empty cache collects this run's compiles even when there is no file yet (or the file is
++    // stale); the save step then writes it out.
++    auto create_empty_cache = [&]() {
++        {
++            std::lock_guard<std::mutex> lock(s_pipeline_cache_mutex);
++            s_pipeline_cache_last_saved.clear();
++        }
++        try {
++            device.pipeline_cache = device.device.createPipelineCache(vk::PipelineCacheCreateInfo());
++        } catch (const std::exception & e) {
++            RNLLAMA_VK_ALOG(WARN, "pipeline cache: could not create cache: %s", e.what());
++        }
++    };
++    FILE * f = fopen(path, "rb");
++    if (f == nullptr) {
++        create_empty_cache();
++        return;
++    }
++    rnllama_vk_pipeline_cache_header header;
++    bool ok = fread(&header, sizeof(header), 1, f) == 1 &&
++              memcmp(header.magic, "GGVKPC01", 8) == 0 &&
++              header.version == 1 &&
++              header.vendor_id == device.properties.vendorID &&
++              header.device_id == device.properties.deviceID &&
++              header.driver_version == device.properties.driverVersion;
++    std::vector<uint8_t> blob;
++    if (ok) {
++        uint8_t buf[8192];
++        size_t n;
++        while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
++            blob.insert(blob.end(), buf, buf + n);
++        }
++        ok = !ferror(f) && !blob.empty();
++    }
++    fclose(f);
++    if (!ok) {
++        RNLLAMA_VK_ALOG(INFO, "pipeline cache: %s is missing, stale or corrupt, ignoring", path);
++        create_empty_cache();
++        return;
++    }
++    try {
++        device.pipeline_cache = device.device.createPipelineCache(
++            vk::PipelineCacheCreateInfo({}, blob.size(), blob.data()));
++        // Seed the last-saved blob from the driver's own serialization, not
++        // from the file: the driver re-serializes a loaded cache (same size,
++        // different bytes), so seeding from the file would make the first
++        // save after load always rewrite it. A failure to read it back must
++        // not invalidate the loaded cache, hence the inner try/catch: the
++        // worst case is one redundant write, as before.
++        try {
++            std::vector<uint8_t> current = device.device.getPipelineCacheData(device.pipeline_cache);
++            std::lock_guard<std::mutex> lock(s_pipeline_cache_mutex);
++            s_pipeline_cache_last_saved = std::move(current);
++        } catch (const std::exception & e) {
++            RNLLAMA_VK_ALOG(WARN, "pipeline cache: could not read cache data after load: %s", e.what());
++        }
++        RNLLAMA_VK_ALOG(INFO, "pipeline cache: loaded %zu bytes from %s", blob.size(), path);
++    } catch (const std::exception & e) {
++        RNLLAMA_VK_ALOG(WARN, "pipeline cache: driver rejected %s (%s), compiling from scratch", path, e.what());
++        create_empty_cache();
++    }
++}
++
++static void rnllama_vk_pipeline_cache_save(vk_device_struct & device) {
++    // Saves can run on any thread that just compiled a pipeline; serialize
++    // them so two threads never write the same temp file at once. The same
++    // mutex guards the last-saved blob, which the load step seeds.
++    std::lock_guard<std::mutex> save_lock(s_pipeline_cache_mutex);
++    const char * path = rnllama_vk_pipeline_cache_path();
++    if (path == nullptr || !device.pipeline_cache) {
++        return;
++    }
++    std::vector<uint8_t> blob;
++    try {
++        blob = device.device.getPipelineCacheData(device.pipeline_cache);
++    } catch (const std::exception & e) {
++        RNLLAMA_VK_ALOG(WARN, "pipeline cache: could not read cache data: %s", e.what());
++        return;
++    }
++    if (blob.empty()) {
++        return;
++    }
++    if (blob == s_pipeline_cache_last_saved) {
++        return;
++    }
++    // Write to a temp file and rename, so a crash mid-write never leaves a half-written cache.
++    const std::string tmp_path = std::string(path) + ".tmp";
++    FILE * f = fopen(tmp_path.c_str(), "wb");
++    if (f == nullptr) {
++        RNLLAMA_VK_ALOG(WARN, "pipeline cache: could not write %s", tmp_path.c_str());
++        return;
++    }
++    rnllama_vk_pipeline_cache_header header;
++    memcpy(header.magic, "GGVKPC01", 8);
++    header.version = 1;
++    header.vendor_id = device.properties.vendorID;
++    header.device_id = device.properties.deviceID;
++    header.driver_version = device.properties.driverVersion;
++    bool ok = fwrite(&header, sizeof(header), 1, f) == 1;
++    ok = fwrite(blob.data(), 1, blob.size(), f) == blob.size() && ok;
++    ok = fclose(f) == 0 && ok;
++    if (!ok) {
++        remove(tmp_path.c_str());
++        RNLLAMA_VK_ALOG(WARN, "pipeline cache: could not write %s", tmp_path.c_str());
++        return;
++    }
++    if (rename(tmp_path.c_str(), path) != 0) {
++        remove(tmp_path.c_str());
++        RNLLAMA_VK_ALOG(WARN, "pipeline cache: could not install %s", path);
++        return;
++    }
++    s_pipeline_cache_last_saved = blob;
++    RNLLAMA_VK_ALOG(INFO, "pipeline cache: saved %zu bytes to %s", blob.size(), path);
++}
++
  static vk_device_architecture get_device_architecture(const vk::PhysicalDevice& device) {
      vk::PhysicalDeviceProperties props = device.getProperties();
  
-@@ -771,7 +831,9 @@
+@@ -771,7 +984,9 @@
  #endif
  
      try {
+-        pipeline->pipeline = device->device.createComputePipeline(VK_NULL_HANDLE, compute_pipeline_create_info).value;
 +        rnllama_vk_pipeline_mark(pipeline->name, true);
-         pipeline->pipeline = device->device.createComputePipeline(VK_NULL_HANDLE, compute_pipeline_create_info).value;
++        pipeline->pipeline = device->device.createComputePipeline(device->pipeline_cache, compute_pipeline_create_info).value;
 +        rnllama_vk_pipeline_mark(pipeline->name, false);
      } catch (const vk::SystemError& e) {
          std::cerr << "ggml_vulkan: compute pipeline creation failed for " << pipeline->name << ": " << e.what() << std::endl;
          throw;
-@@ -4889,7 +4951,7 @@
+@@ -4353,6 +4568,16 @@
+             return wait_pipeline->compiled.load();
+         });
+     }
++
++    // Compilation is lazy in this llama.cpp version: the device-init call
++    // passes requested = nullptr and compiles nothing, so the save after it
++    // only ever sees an empty cache. Persist the pipeline this call just
++    // compiled instead; after warm-up no more pipelines compile and no more
++    // saves happen. If the process dies, the file still holds everything
++    // compiled so far.
++    if (has_claimed_task) {
++        rnllama_vk_pipeline_cache_save(*device);
++    }
+ }
+ 
+ static bool ggml_vk_external_memory_host_usable(vk::DriverId driver_id) {
+@@ -4889,7 +5114,7 @@
              device_extensions.push_back("VK_EXT_device_fault");
          }
  
@@ -98,7 +278,7 @@
  
          device->device_fault = device->device_fault && fault_features.deviceFault;
  
-@@ -4942,7 +5004,15 @@
+@@ -4942,7 +5167,15 @@
                              getenv("GGML_VK_DISABLE_MULTI_ADD") == nullptr;
  
          device->shader_int64 = device_features2.features.shaderInt64;
@@ -115,7 +295,7 @@
          device->vulkan_memory_model = vk12_features.vulkanMemoryModel;
  
          if (device->subgroup_size_control) {
-@@ -5087,7 +5157,7 @@
+@@ -5087,7 +5320,7 @@
              std::vector<VkCooperativeMatrixPropertiesKHR> cm_props;
  
              PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR pfn_vkGetPhysicalDeviceCooperativeMatrixPropertiesKHR =
@@ -124,7 +304,7 @@
  
              uint32_t cm_props_num;
  
-@@ -5195,9 +5265,14 @@
+@@ -5195,9 +5428,14 @@
          device_create_info.setPNext(&device_features2);
          device->device = device->physical_device.createDevice(device_create_info);
  
@@ -140,7 +320,22 @@
          }
  
          // Queues
-@@ -5542,7 +5617,7 @@
+@@ -5307,7 +5545,14 @@
+                                  (device->subgroup_size == 32 && device->coopmat_support_16x16x16_f32acc && (getenv("GGML_VK_FORCE_XE_FA") != nullptr)));
+ #endif
+ 
++        rnllama_vk_pipeline_cache_load(*device);
+         ggml_vk_load_shaders(device);
++        // No save here on purpose: the device-init call passes requested =
++        // null and compiles nothing, and the driver re-serializes a loaded
++        // cache, so a save here would only ever rewrite (near-)identical
++        // bytes. Compiles are persisted by the save at the end of
++        // ggml_vk_load_shaders instead, and the destructor save is the
++        // backstop.
+ 
+         // Prefer a dedicated transfer queue on AMD dGPUs (non-GCN) when graphics queue use is disabled.
+         const bool prefers_transfer_queue =
+@@ -5542,7 +5787,7 @@
      }
  #endif
  
@@ -149,7 +344,7 @@
  
      fp16 = fp16 && vk12_features.shaderFloat16;
  
-@@ -5605,6 +5680,9 @@
+@@ -5605,6 +5850,9 @@
      GGML_LOG_DEBUG("ggml_vulkan: %zu = %s (%s) | uma: %d | rebar: %d | fp16: %s | bf16: %d | fp4: %d | warp size: %zu | shared memory: %d | int dot: %d | matrix cores: %s\n",
                idx, device_name.c_str(), driver_props.driverName.data(), uma, rebar, fp16_str, bf16, fp4, subgroup_size,
                props2.properties.limits.maxComputeSharedMemorySize, integer_dot_product, matrix_cores.c_str());
@@ -159,7 +354,7 @@
  
      if (props2.properties.deviceType == vk::PhysicalDeviceType::eCpu) {
          GGML_LOG_DEBUG("ggml_vulkan: Warning: Device type is CPU. This is probably not the device you want.\n");
-@@ -5617,6 +5695,111 @@
+@@ -5617,6 +5865,111 @@
      return ggml_vk_default_dispatcher_instance;
  }
  
@@ -271,7 +466,7 @@
  void ggml_vk_instance_init() {
      if (vk_instance_initialized) {
          return;
-@@ -5624,7 +5807,7 @@
+@@ -5624,7 +5977,7 @@
      VK_LOG_DEBUG("ggml_vk_instance_init()");
  
      // See https://github.com/KhronosGroup/Vulkan-Hpp?tab=readme-ov-file#extensions--per-device-function-pointers-
@@ -280,7 +475,7 @@
  
      // vkEnumerateInstanceVersion is Vulkan 1.1. A null value indicated Vulkan 1.0.
      if (ggml_vk_default_dispatcher_instance.vkEnumerateInstanceVersion == nullptr) {
-@@ -5633,6 +5816,8 @@
+@@ -5633,6 +5986,8 @@
      }
  
      uint32_t api_version = vk::enumerateInstanceVersion();
@@ -289,7 +484,7 @@
  
      if (api_version < VK_API_VERSION_1_2) {
          GGML_LOG_ERROR("ggml_vulkan: Error: Vulkan 1.2 required.");
-@@ -5687,12 +5872,12 @@
+@@ -5687,12 +6042,12 @@
  
      if (debug_utils_ext) {
          vk_instance.debug_utils_support              = true;
@@ -308,7 +503,7 @@
      }
  
      vk_perf_logger_enabled = getenv("GGML_VK_PERF_LOGGER") != nullptr;
-@@ -5715,6 +5900,21 @@
+@@ -5715,6 +6070,21 @@
  
      std::vector<vk::PhysicalDevice> devices = vk_instance.instance.enumeratePhysicalDevices();
  
@@ -330,7 +525,7 @@
      // Emulate behavior of CUDA_VISIBLE_DEVICES for Vulkan
      char * devices_env = getenv("GGML_VK_VISIBLE_DEVICES");
      if (devices_env != nullptr) {
-@@ -9730,10 +9930,10 @@
+@@ -9730,10 +10100,10 @@
          }
  
          if (src0->type == GGML_TYPE_F32 && (src1 == nullptr || src1->type == GGML_TYPE_F32) && dst->type == GGML_TYPE_F32) {
@@ -343,7 +538,7 @@
          }
          return nullptr;
      case GGML_OP_SOFT_MAX_BACK:
-@@ -16191,13 +16391,67 @@
+@@ -16191,13 +16561,67 @@
      };
  }
  
@@ -412,7 +607,7 @@
      ggml_backend_vk_device_context * ctx = (ggml_backend_vk_device_context *)dev->context;
      const vk_device& device = ggml_vk_get_device(ctx->device);
  
-@@ -17102,14 +17356,18 @@
+@@ -17102,14 +17526,18 @@
      };
      try {
          ggml_vk_instance_init();
@@ -431,7 +626,7 @@
          VK_LOG_DEBUG("ggml_backend_vk_reg() -> Error: unknown exception during Vulkan init");
          return nullptr;
      }
-@@ -17173,7 +17431,7 @@
+@@ -17173,7 +17601,7 @@
      vk11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
      device_features2.pNext = &vk11_features;
  
@@ -440,6 +635,19 @@
  
      return vk11_features.storageBuffer16BitAccess;
  }
+@@ -17310,6 +17738,12 @@
+ 
+     VK_LOG_DEBUG("destroy device " << name);
+ 
++    // Save the pipelines compiled lazily since init (first prompt), then drop the cache handle.
++    rnllama_vk_pipeline_cache_save(*this);
++    if (pipeline_cache) {
++        device.destroyPipelineCache(pipeline_cache);
++    }
++
+     device.destroyFence(fence);
+ 
+     ggml_vk_destroy_buffer(sync_staging);
 --- a/ggml-vulkan-buffers.cpp
 +++ b/ggml-vulkan-buffers.cpp
 @@ -504,7 +504,7 @@

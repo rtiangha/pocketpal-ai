@@ -56,6 +56,12 @@ function installFs(RNFS: any, initial: Record<string, string>) {
       contents.set(dest, contents.get(src)!);
     }
   });
+  RNFS.stat.mockImplementation(async (path: string) => {
+    if (!contents.has(path)) {
+      throw new Error(`File does not exist: ${path}`);
+    }
+    return {size: contents.get(path)!.length};
+  });
   return {existing, contents};
 }
 
@@ -203,6 +209,30 @@ describe('turnipDriver (android)', () => {
     });
   });
 
+  describe('pipeline cache', () => {
+    it('returns the cache size when the file exists', async () => {
+      fs = installFs(RNFS, {
+        [`${dir}/pipeline_cache.bin`]: 'x'.repeat(2355),
+      });
+      await expect(api.getTurnipPipelineCacheSize()).resolves.toBe(2355);
+    });
+
+    it('returns null when there is no cache file', async () => {
+      await expect(api.getTurnipPipelineCacheSize()).resolves.toBeNull();
+    });
+
+    it('clears the cache', async () => {
+      fs = installFs(RNFS, {[`${dir}/pipeline_cache.bin`]: 'cache'});
+      await api.clearTurnipPipelineCache();
+      expect(fs.existing.has(`${dir}/pipeline_cache.bin`)).toBe(false);
+      await expect(api.getTurnipPipelineCacheSize()).resolves.toBeNull();
+    });
+
+    it('is a no-op when there is no cache file', async () => {
+      await expect(api.clearTurnipPipelineCache()).resolves.toBeUndefined();
+    });
+  });
+
   describe('setTurnipEnabled', () => {
     it('writes the marker when on and removes it when off', async () => {
       await api.setTurnipEnabled(true);
@@ -345,6 +375,8 @@ describe('turnipDriver (ios)', () => {
     await api.setTurnipEnabled(true);
     await api.setTurnipEnv('GGML_VK_DISABLE_F16=1');
     await api.clearTurnipImportError();
+    await expect(api.getTurnipPipelineCacheSize()).resolves.toBeNull();
+    await api.clearTurnipPipelineCache();
     expect(RNFS.writeFile).not.toHaveBeenCalled();
     expect(RNFS.unlink).not.toHaveBeenCalled();
     expect(picker.pick).not.toHaveBeenCalled();

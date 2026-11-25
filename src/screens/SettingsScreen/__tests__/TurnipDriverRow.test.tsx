@@ -5,9 +5,11 @@ import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
 
 import {
   clearTurnipImportError,
+  clearTurnipPipelineCache,
   clearTurnipSelfTest,
   getTurnipEnv,
   getTurnipLastPipeline,
+  getTurnipPipelineCacheSize,
   getTurnipSelfTest,
   getTurnipState,
   importTurnipDriver,
@@ -24,8 +26,10 @@ jest.mock('../../../utils/turnipDriver', () => ({
   setTurnipEnv: jest.fn(),
   getTurnipSelfTest: jest.fn(),
   getTurnipLastPipeline: jest.fn(),
+  getTurnipPipelineCacheSize: jest.fn(),
   clearTurnipSelfTest: jest.fn(),
   clearTurnipImportError: jest.fn(),
+  clearTurnipPipelineCache: jest.fn(),
   setTurnipEnabled: jest.fn(),
   importTurnipDriver: jest.fn(),
   removeTurnipDriver: jest.fn(),
@@ -51,6 +55,8 @@ describe('TurnipDriverRow', () => {
     (getTurnipEnv as jest.Mock).mockResolvedValue('');
     (getTurnipSelfTest as jest.Mock).mockResolvedValue('');
     (getTurnipLastPipeline as jest.Mock).mockResolvedValue('');
+    (getTurnipPipelineCacheSize as jest.Mock).mockResolvedValue(null);
+    (clearTurnipPipelineCache as jest.Mock).mockResolvedValue(undefined);
     (setTurnipEnabled as jest.Mock).mockResolvedValue(undefined);
     (setTurnipEnv as jest.Mock).mockResolvedValue(undefined);
     (clearTurnipSelfTest as jest.Mock).mockResolvedValue(undefined);
@@ -193,6 +199,31 @@ describe('TurnipDriverRow', () => {
     expect(clearTurnipSelfTest).toHaveBeenCalled();
     await waitFor(() => {
       expect(queryByText(/mul_mat: OK/)).toBeNull();
+    });
+  });
+
+  it('shows the shader cache size', async () => {
+    (getTurnipPipelineCacheSize as jest.Mock).mockResolvedValue(2355200);
+    const {findByText} = await render(<TurnipDriverRow />);
+    expect(await findByText('Shader cache: 2.2 MB')).toBeTruthy();
+  });
+
+  it('shows no shader cache yet when there is no file', async () => {
+    const {findByText, queryByTestId} = await render(<TurnipDriverRow />);
+    expect(await findByText('Shader cache: none yet')).toBeTruthy();
+    expect(queryByTestId('turnip-pipeline-cache-clear')).toBeNull();
+  });
+
+  it('clears the shader cache', async () => {
+    (getTurnipPipelineCacheSize as jest.Mock).mockResolvedValue(2355200);
+    const {findByTestId, getByTestId, queryByTestId} = await render(
+      <TurnipDriverRow />,
+    );
+    await findByTestId('turnip-pipeline-cache-clear');
+    await fireEvent.press(getByTestId('turnip-pipeline-cache-clear'));
+    expect(clearTurnipPipelineCache).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(queryByTestId('turnip-pipeline-cache-clear')).toBeNull();
     });
   });
 

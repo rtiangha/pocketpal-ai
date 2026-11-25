@@ -13,9 +13,11 @@ import {Button, Switch, Text, TextInput} from 'react-native-paper';
 import {useTheme} from '../../hooks';
 import {
   clearTurnipImportError,
+  clearTurnipPipelineCache,
   clearTurnipSelfTest,
   getTurnipEnv,
   getTurnipLastPipeline,
+  getTurnipPipelineCacheSize,
   getTurnipSelfTest,
   getTurnipState,
   importTurnipDriver,
@@ -153,6 +155,20 @@ const ENV_HELP: Array<[string, string]> = [
  *
  * Kept in its own file so upstream syncs never touch it.
  */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(1)} ${units[unit]}`;
+}
+
 export const TurnipDriverRow: React.FC = () => {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -163,6 +179,9 @@ export const TurnipDriverRow: React.FC = () => {
   const [envDirty, setEnvDirty] = useState(false);
   const [selfTest, setSelfTest] = useState('');
   const [lastPipeline, setLastPipeline] = useState('');
+  const [pipelineCacheSize, setPipelineCacheSize] = useState<number | null>(
+    null,
+  );
   const [helpVisible, setHelpVisible] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -170,6 +189,7 @@ export const TurnipDriverRow: React.FC = () => {
       setState(await getTurnipState());
       setSelfTest(await getTurnipSelfTest());
       setLastPipeline(await getTurnipLastPipeline());
+      setPipelineCacheSize(await getTurnipPipelineCacheSize());
     } catch (error) {
       console.warn('Failed to read the custom driver state:', error);
     }
@@ -244,6 +264,17 @@ export const TurnipDriverRow: React.FC = () => {
       setState(prev => (prev ? {...prev, importError: null} : prev));
     } catch (error) {
       console.warn('Failed to dismiss the driver import error:', error);
+    }
+  };
+
+  // Clearing the cache needs no restart notice: it only affects the next model
+  // load, which recompiles the shaders from scratch.
+  const onClearPipelineCache = async () => {
+    try {
+      await clearTurnipPipelineCache();
+      setPipelineCacheSize(null);
+    } catch (error) {
+      console.warn('Failed to clear the pipeline cache:', error);
     }
   };
 
@@ -436,6 +467,24 @@ export const TurnipDriverRow: React.FC = () => {
           </View>
         </>
       )}
+      <View style={localStyles.errorRow}>
+        <Text
+          testID="turnip-pipeline-cache-size"
+          variant="labelSmall"
+          style={[styles.textDescription, localStyles.errorText]}>
+          {pipelineCacheSize === null
+            ? 'Shader cache: none yet'
+            : `Shader cache: ${formatBytes(pipelineCacheSize)}`}
+        </Text>
+        {pipelineCacheSize !== null && (
+          <Button
+            testID="turnip-pipeline-cache-clear"
+            compact
+            onPress={onClearPipelineCache}>
+            Clear
+          </Button>
+        )}
+      </View>
       <Modal
         visible={helpVisible}
         transparent

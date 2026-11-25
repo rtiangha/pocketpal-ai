@@ -255,7 +255,7 @@ index da47b6c..09b9509 100644
    private static final Pattern SNAPDRAGON_8_SERIES_NAME_PATTERN =
      Pattern.compile("SNAPDRAGON\\s*8");
    private static final Pattern HEXAGON_CODENAME_PATTERN =
-@@ -171,6 +171,219 @@ public class RNLlama {
+@@ -171,6 +171,220 @@ public class RNLlama {
      }
    }
  
@@ -389,6 +389,7 @@ index da47b6c..09b9509 100644
 +      android.system.Os.setenv("RNLLAMA_VK_DRIVER_NAME", name, true);
 +      android.system.Os.setenv("RNLLAMA_VK_HOOK_DIR", context.getApplicationInfo().nativeLibraryDir, true);
 +      android.system.Os.setenv("RNLLAMA_VK_TMP_DIR", tmp.getAbsolutePath(), true);
++      android.system.Os.setenv("RNLLAMA_VK_PIPELINE_CACHE", new File(dir, "pipeline_cache.bin").getAbsolutePath(), true);
 +      // Extra variables from the app's Settings screen (<filesDir>/turnip/env, KEY=VALUE per line).
 +      // RNLLAMA_VK_SELFTEST is one-shot: it is removed from the file once applied, so a self-test that
 +      // takes the GPU driver down does not turn into a crash on every launch.
