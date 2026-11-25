@@ -557,10 +557,10 @@ index 2b1b324..eaa0858 100644
      # x86_64 target
 diff --git a/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp b/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp
 new file mode 100644
-index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
+index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
 --- /dev/null
 +++ b/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp
-@@ -0,0 +1,772 @@
+@@ -0,0 +1,887 @@
 +// GPU self-test for the Vulkan variant (custom Turnip driver), ported from the OfflineLLM project.
 +//
 +// Runs a few ggml ops on the CPU backend and on the Vulkan backend with identical deterministic
@@ -595,8 +595,11 @@ index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 +    // standard deterministic fill for this case's inputs, and check()
 +    // replaces the normalised-error comparison. check() gets the raw result
 +    // bytes of the CPU reference and the GPU result and returns "" on a
-+    // match or a one-line description of the first mismatch. Byte-exact
-+    // cases are reported OK/BAD only, never WARN.
++    // match, or a multi-line string on a mismatch: the first line is the
++    // one-line verdict (same text as v1), and the further lines are the
++    // detail dump (first mismatches + per-block/per-row summaries) that
++    // the caller emits as its own lines. Byte-exact cases are reported
++    // OK/BAD only, never WARN.
 +    std::function<void(std::vector<ggml_tensor *> &)> fill;
 +    std::function<std::string(const std::vector<uint8_t> &, const std::vector<uint8_t> &)> check;
 +};
@@ -902,18 +905,29 @@ index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 +            // at (r, j) means the qs byte (block j/32, byte (j%32)/2, low/high
 +            // by j parity) was mis-loaded; the GPU nibble (got + 8) says
 +            // which value came back instead.
++            // The return is multi-line: line 1 is the one-line verdict (same
++            // text as v1), then the first 10 mismatches and the right-output
++            // count per global block (128 blocks, 8 lines of 16). The dump
++            // is what discriminates the x2 address scaling from a +2 offset:
++            // under x2 the 2nd mismatch is nibble 4 (byte 6 loaded) and only
++            // blocks 0 and 15 (mod 16) have any right outputs (8 each);
++            // under +2 the 2nd mismatch is nibble 3 (byte 5 loaded) and
++            // every block has ~14 right outputs. See BYTE-ACCESS-DUMP-NOTES.txt.
 +            const size_t n = ref.size() / sizeof(float);
 +            const float * rf = (const float *) ref.data();
 +            const float * gf = (const float *) got.data();
 +            size_t bad = 0;
 +            char buf[256];
 +            std::string first;
++            std::string dump;
++            size_t rightPerBlock[128] = {};
++            size_t dumped = 0;
 +            for (size_t f = 0; f < n; f++) {
++                const size_t r = f / 512, j = f % 512;
++                const size_t blk = j / 32, k = (j % 32) / 2;
++                const uint8_t byte = (uint8_t) ((((r * 16 + blk) * 16 + k) & 0xFF));
 +                if (rf[f] != gf[f]) {
 +                    if (bad == 0) {
-+                        const size_t r = f / 512, j = f % 512;
-+                        const size_t blk = j / 32, k = (j % 32) / 2;
-+                        const uint8_t byte = (uint8_t) ((((r * 16 + blk) * 16 + k) & 0xFF));
 +                        snprintf(buf, sizeof(buf),
 +                                 "first mismatch out[row %zu][elem %zu] (block %zu, qs byte %zu, %s nibble, byte should be 0x%02x): "
 +                                 "CPU %.1f (nibble %.0f) GPU %.1f (nibble %.0f)",
@@ -921,14 +935,38 @@ index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 +                                 rf[f], rf[f] + 8.0f, gf[f], gf[f] + 8.0f);
 +                        first = buf;
 +                    }
++                    if (dumped < 10) {
++                        char line[192];
++                        snprintf(line, sizeof(line),
++                                 "  mm[%zu] out[%zu] row %zu elem %zu blk %zu qs %zu %s: byte 0x%02x exp nib %.0f got nib %.0f",
++                                 dumped, f, r, j, blk, k, (j % 2 == 0) ? "low" : "high", byte,
++                                 rf[f] + 8.0f, gf[f] + 8.0f);
++                        dump += line;
++                        dump += "\n";
++                        dumped++;
++                    }
 +                    bad++;
++                } else {
++                    rightPerBlock[r * 16 + blk]++;
 +                }
 +            }
 +            if (bad == 0) {
 +                return "";
 +            }
 +            snprintf(buf, sizeof(buf), "%zu/%zu outputs wrong; %s", bad, n, first.c_str());
-+            return buf;
++            std::string out = buf;
++            out += "\n";
++            out += dump;
++            for (size_t g = 0; g < 128; g += 16) {
++                char line[192];
++                int w = snprintf(line, sizeof(line), "  right/blk %zu-%zu:", g, g + 15);
++                for (size_t b = g; b < g + 16; b++) {
++                    w += snprintf(line + w, sizeof(line) - (size_t) w, " %2zu", rightPerBlock[b]);
++                }
++                out += line;
++                out += "\n";
++            }
++            return out;
 +        }});
 +    cases.push_back(SelfTestCase{
 +        "byte-access set_rows F32->Q8_0",
@@ -963,16 +1001,27 @@ index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 +            // Result is Q8_0 [256, 64]: 8 blocks of 34 bytes per row (f16 d,
 +            // then 32 qs bytes). Only rows 0..3 are written; compare those
 +            // rows' raw bytes, which are exactly the bytes the GPU stored.
++            // The return is multi-line: line 1 is the one-line verdict (same
++            // text as v1), then the first 10 mismatches, the wrong-byte count
++            // per row, and the wrong-byte count per block (4 lines of 8).
++            // Under x2 the mismatches start at byte 1 (scale d hi, 0x20 ->
++            // 0x00) and every row has 217 wrong; under +2 they start at byte
++            // 0 (scale d lo) and every row has 268 wrong. See
++            // BYTE-ACCESS-DUMP-NOTES.txt.
 +            const size_t rowBytes = 8 * 34;
 +            size_t bad = 0;
 +            char buf[256];
 +            std::string first;
++            std::string dump;
++            size_t wrongPerRow[4] = {};
++            size_t wrongPerBlock[32] = {};
++            size_t dumped = 0;
 +            for (size_t r = 0; r < 4; r++) {
 +                for (size_t off = 0; off < rowBytes; off++) {
 +                    const size_t i = r * rowBytes + off;
 +                    if (ref[i] != got[i]) {
++                        const size_t blk = off / 34, k = off % 34;
 +                        if (bad == 0) {
-+                            const size_t blk = off / 34, k = off % 34;
 +                            char where[32];
 +                            if (k < 2) {
 +                                snprintf(where, sizeof(where), "scale d");
@@ -984,7 +1033,26 @@ index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 +                                     r, off, blk, where, ref[i], got[i]);
 +                            first = buf;
 +                        }
++                        if (dumped < 10) {
++                            char where[32];
++                            if (k == 0) {
++                                snprintf(where, sizeof(where), "scale d lo");
++                            } else if (k == 1) {
++                                snprintf(where, sizeof(where), "scale d hi");
++                            } else {
++                                snprintf(where, sizeof(where), "qs[%zu]", k - 2);
++                            }
++                            char line[192];
++                            snprintf(line, sizeof(line),
++                                     "  mm[%zu] row %zu byte %zu blk %zu %s: exp 0x%02x got 0x%02x",
++                                     dumped, r, off, blk, where, ref[i], got[i]);
++                            dump += line;
++                            dump += "\n";
++                            dumped++;
++                        }
 +                        bad++;
++                        wrongPerRow[r]++;
++                        wrongPerBlock[r * 8 + blk]++;
 +                    }
 +                }
 +            }
@@ -992,7 +1060,28 @@ index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 +                return "";
 +            }
 +            snprintf(buf, sizeof(buf), "%zu/%zu bytes wrong in rows 0..3; %s", bad, 4 * rowBytes, first.c_str());
-+            return buf;
++            std::string out = buf;
++            out += "\n";
++            out += dump;
++            {
++                char line[192];
++                int w = snprintf(line, sizeof(line), "  wrong/row:");
++                for (size_t r = 0; r < 4; r++) {
++                    w += snprintf(line + w, sizeof(line) - (size_t) w, " %zu", wrongPerRow[r]);
++                }
++                out += line;
++                out += "\n";
++            }
++            for (size_t r = 0; r < 4; r++) {
++                char line[192];
++                int w = snprintf(line, sizeof(line), "  wrong/blk row %zu:", r);
++                for (size_t b = 0; b < 8; b++) {
++                    w += snprintf(line + w, sizeof(line) - (size_t) w, " %2zu", wrongPerBlock[r * 8 + b]);
++                }
++                out += line;
++                out += "\n";
++            }
++            return out;
 +        }});
 +
 +    const size_t heavyStart = cases.size();
@@ -1285,8 +1374,34 @@ index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 +                                snprintf(line, sizeof(line), "%s: OK (byte-exact)", c.name.c_str());
 +                                nOk++;
 +                            } else {
-+                                snprintf(line, sizeof(line), "%s: BAD (%s)", c.name.c_str(), mismatch.c_str());
++                                // check() returns a multi-line string: the first
++                                // line is the one-line verdict, the rest is the
++                                // detail dump (first mismatches + summaries).
++                                // The 256-byte line buffer would truncate the
++                                // dump, so it is emitted line by line here
++                                // instead of being snprintf'd into line.
++                                const size_t nl = mismatch.find('\n');
++                                const std::string head =
++                                    (nl == std::string::npos) ? mismatch : mismatch.substr(0, nl);
++                                snprintf(line, sizeof(line), "%s: BAD (%s)", c.name.c_str(), head.c_str());
 +                                nBad++;
++                                emit(report, line);
++                                if (nl != std::string::npos) {
++                                    size_t pos = nl + 1;
++                                    while (pos < mismatch.size()) {
++                                        const size_t eol = mismatch.find('\n', pos);
++                                        const std::string dl = mismatch.substr(
++                                            pos, eol == std::string::npos ? std::string::npos : eol - pos);
++                                        if (!dl.empty()) {
++                                            emit(report, dl.c_str());
++                                        }
++                                        if (eol == std::string::npos) {
++                                            break;
++                                        }
++                                        pos = eol + 1;
++                                    }
++                                }
++                                continue;  // verdict + dump already emitted; skip the emit() below
 +                            }
 +                        }
 +                    } else {
