@@ -557,10 +557,10 @@ index 2b1b324..eaa0858 100644
      # x86_64 target
 diff --git a/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp b/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp
 new file mode 100644
-index 0000000..1afcfd1
+index 0000000..5073a2bb16431ea38f6fa58e7d7663e769b23b09
 --- /dev/null
 +++ b/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp
-@@ -0,0 +1,599 @@
+@@ -0,0 +1,772 @@
 +// GPU self-test for the Vulkan variant (custom Turnip driver), ported from the OfflineLLM project.
 +//
 +// Runs a few ggml ops on the CPU backend and on the Vulkan backend with identical deterministic
@@ -591,6 +591,14 @@ index 0000000..1afcfd1
 +    std::string name;
 +    std::function<ggml_tensor *(ggml_context *, std::vector<ggml_tensor *> &)> build;
 +    bool heavy = false;  // realistic (large) sizes: only run at RNLLAMA_VK_SELFTEST=2, may hang a weak GPU driver
++    // Byte-exact mode (byte-access tests): when set, fill() replaces the
++    // standard deterministic fill for this case's inputs, and check()
++    // replaces the normalised-error comparison. check() gets the raw result
++    // bytes of the CPU reference and the GPU result and returns "" on a
++    // match or a one-line description of the first mismatch. Byte-exact
++    // cases are reported OK/BAD only, never WARN.
++    std::function<void(std::vector<ggml_tensor *> &)> fill;
++    std::function<std::string(const std::vector<uint8_t> &, const std::vector<uint8_t> &)> check;
 +};
 +
 +void fillTensorDeterministic(ggml_tensor * t, uint32_t seed) {
@@ -652,7 +660,9 @@ index 0000000..1afcfd1
 +}
 +
 +// Returns 1 = computed, 0 = failed, -1 = op not supported by this backend.
-+int runSelfTestCase(ggml_backend_t backend, const SelfTestCase & c, std::vector<float> & out) {
++// When rawOut is given it also receives the result tensor's raw bytes.
++int runSelfTestCase(ggml_backend_t backend, const SelfTestCase & c, std::vector<float> & out,
++                    std::vector<uint8_t> * rawOut = nullptr) {
 +    ggml_init_params ip = {ggml_tensor_overhead() * 32 + ggml_graph_overhead(), nullptr, true};
 +    ggml_context * ctx = ggml_init(ip);
 +    if (ctx == nullptr) {
@@ -668,11 +678,19 @@ index 0000000..1afcfd1
 +        if (!ggml_backend_supports_op(backend, result)) {
 +            status = -1;
 +        } else {
-+            for (size_t i = 0; i < inputs.size(); i++) {
-+                fillTensorDeterministic(inputs[i], (uint32_t) (1 + i));
++            if (c.fill) {
++                c.fill(inputs);
++            } else {
++                for (size_t i = 0; i < inputs.size(); i++) {
++                    fillTensorDeterministic(inputs[i], (uint32_t) (1 + i));
++                }
 +            }
 +            if (ggml_backend_graph_compute(backend, gf) == GGML_STATUS_SUCCESS) {
 +                status = readResultAsFloat(result, out) ? 1 : 0;
++                if (status == 1 && rawOut != nullptr) {
++                    rawOut->resize(ggml_nbytes(result));
++                    ggml_backend_tensor_get(result, rawOut->data(), 0, rawOut->size());
++                }
 +            }
 +        }
 +        ggml_backend_buffer_free(buf);
@@ -837,6 +855,145 @@ index 0000000..1afcfd1
 +                             return ggml_get_rows(ctx, w, idx);
 +                         }});
 +    }
++
++    // ---- byte-access isolation (Turnip isam (u8) byte-load / stib byte-store hypothesis) ----
++    // The IR3 for the get_rows / set_rows shaders is verified correct offline
++    // (dequant/quantize ALU, addresses, stores), so a mismatch in these cases
++    // isolates the 8-bit memory access: the output directly encodes the byte
++    // that was loaded/stored. Both cases fill their inputs with a KNOWN byte
++    // pattern (not the standard quantize-of-random-floats fill) and compare
++    // byte-exactly, reporting the first mismatch with its location.
++    cases.push_back(SelfTestCase{
++        "byte-access get_rows Q4_0",
++        [](ggml_context * ctx, std::vector<ggml_tensor *> & in) {
++            ggml_tensor * w = ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0, 512, 64);
++            ggml_tensor * idx = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 8);
++            in = {w, idx};
++            return ggml_get_rows(ctx, w, idx);
++        },
++        false,
++        [](std::vector<ggml_tensor *> & in) {
++            // Q4_0 weight [512, 64]: 16 blocks of 32 per row, 18 bytes per
++            // block (f16 scale d, then 16 qs bytes). Every block gets d = 1.0
++            // and qs bytes = the global qs-byte index & 0xFF, so the output
++            // for element j is exactly (nibble - 8.0f) and the nibble
++            // identifies the byte that was loaded.
++            ggml_tensor * w = in[0];
++            ggml_tensor * idx = in[1];
++            std::vector<uint8_t> bytes(ggml_nbytes(w));
++            float one = 1.0f;
++            ggml_fp16_t d16;
++            ggml_fp32_to_fp16_row(&one, &d16, 1);
++            for (int64_t r = 0; r < 64; r++) {
++                for (int64_t b = 0; b < 16; b++) {
++                    const size_t off = ((size_t) r * 16 + (size_t) b) * 18;
++                    memcpy(&bytes[off], &d16, sizeof(d16));
++                    for (int64_t k = 0; k < 16; k++) {
++                        bytes[off + 2 + (size_t) k] = (uint8_t) ((((size_t) r * 16 + (size_t) b) * 16 + (size_t) k) & 0xFF);
++                    }
++                }
++            }
++            ggml_backend_tensor_set(w, bytes.data(), 0, bytes.size());
++            std::vector<int32_t> rows = {0, 1, 2, 3, 4, 5, 6, 7};
++            ggml_backend_tensor_set(idx, rows.data(), 0, rows.size() * sizeof(int32_t));
++        },
++        [](const std::vector<uint8_t> & ref, const std::vector<uint8_t> & got) -> std::string {
++            // Result is F32 [512, 8]: out[r][j] = nibble - 8.0f. A mismatch
++            // at (r, j) means the qs byte (block j/32, byte (j%32)/2, low/high
++            // by j parity) was mis-loaded; the GPU nibble (got + 8) says
++            // which value came back instead.
++            const size_t n = ref.size() / sizeof(float);
++            const float * rf = (const float *) ref.data();
++            const float * gf = (const float *) got.data();
++            size_t bad = 0;
++            char buf[256];
++            std::string first;
++            for (size_t f = 0; f < n; f++) {
++                if (rf[f] != gf[f]) {
++                    if (bad == 0) {
++                        const size_t r = f / 512, j = f % 512;
++                        const size_t blk = j / 32, k = (j % 32) / 2;
++                        const uint8_t byte = (uint8_t) ((((r * 16 + blk) * 16 + k) & 0xFF));
++                        snprintf(buf, sizeof(buf),
++                                 "first mismatch out[row %zu][elem %zu] (block %zu, qs byte %zu, %s nibble, byte should be 0x%02x): "
++                                 "CPU %.1f (nibble %.0f) GPU %.1f (nibble %.0f)",
++                                 r, j, blk, k, (j % 2 == 0) ? "low" : "high", byte,
++                                 rf[f], rf[f] + 8.0f, gf[f], gf[f] + 8.0f);
++                        first = buf;
++                    }
++                    bad++;
++                }
++            }
++            if (bad == 0) {
++                return "";
++            }
++            snprintf(buf, sizeof(buf), "%zu/%zu outputs wrong; %s", bad, n, first.c_str());
++            return buf;
++        }});
++    cases.push_back(SelfTestCase{
++        "byte-access set_rows F32->Q8_0",
++        [](ggml_context * ctx, std::vector<ggml_tensor *> & in) {
++            ggml_tensor * dst = ggml_new_tensor_2d(ctx, GGML_TYPE_Q8_0, 256, 64);
++            ggml_tensor * src = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, 256, 4);
++            ggml_tensor * idx = ggml_new_tensor_1d(ctx, GGML_TYPE_I64, 4);
++            in = {dst, src, idx};
++            return ggml_set_rows(ctx, dst, src, idx);
++        },
++        false,
++        [](std::vector<ggml_tensor *> & in) {
++            // src values cycle {-1.0, -0.25, 0.0, 0.25, 1.0}: every 32-element
++            // block contains -1.0 and 1.0, so amax = 1.0, d = 1/127, and the
++            // quantized bytes are exactly {-127, -32, 0, 32, 127} — no
++            // rounding ties. dst starts zeroed; only rows 0..3 are written.
++            ggml_tensor * dst = in[0];
++            ggml_tensor * src = in[1];
++            ggml_tensor * idx = in[2];
++            std::vector<uint8_t> zeros(ggml_nbytes(dst), 0);
++            ggml_backend_tensor_set(dst, zeros.data(), 0, zeros.size());
++            const float vals[5] = {-1.0f, -0.25f, 0.0f, 0.25f, 1.0f};
++            std::vector<float> s(256 * 4);
++            for (size_t i = 0; i < s.size(); i++) {
++                s[i] = vals[i % 5];
++            }
++            ggml_backend_tensor_set(src, s.data(), 0, s.size() * sizeof(float));
++            std::vector<int64_t> rows = {0, 1, 2, 3};
++            ggml_backend_tensor_set(idx, rows.data(), 0, rows.size() * sizeof(int64_t));
++        },
++        [](const std::vector<uint8_t> & ref, const std::vector<uint8_t> & got) -> std::string {
++            // Result is Q8_0 [256, 64]: 8 blocks of 34 bytes per row (f16 d,
++            // then 32 qs bytes). Only rows 0..3 are written; compare those
++            // rows' raw bytes, which are exactly the bytes the GPU stored.
++            const size_t rowBytes = 8 * 34;
++            size_t bad = 0;
++            char buf[256];
++            std::string first;
++            for (size_t r = 0; r < 4; r++) {
++                for (size_t off = 0; off < rowBytes; off++) {
++                    const size_t i = r * rowBytes + off;
++                    if (ref[i] != got[i]) {
++                        if (bad == 0) {
++                            const size_t blk = off / 34, k = off % 34;
++                            char where[32];
++                            if (k < 2) {
++                                snprintf(where, sizeof(where), "scale d");
++                            } else {
++                                snprintf(where, sizeof(where), "qs[%zu]", k - 2);
++                            }
++                            snprintf(buf, sizeof(buf),
++                                     "first mismatch row %zu byte %zu (block %zu, %s): CPU 0x%02x GPU 0x%02x",
++                                     r, off, blk, where, ref[i], got[i]);
++                            first = buf;
++                        }
++                        bad++;
++                    }
++                }
++            }
++            if (bad == 0) {
++                return "";
++            }
++            snprintf(buf, sizeof(buf), "%zu/%zu bytes wrong in rows 0..3; %s", bad, 4 * rowBytes, first.c_str());
++            return buf;
++        }});
 +
 +    const size_t heavyStart = cases.size();
 +    // ---- realistic sizes ----
@@ -1107,8 +1264,9 @@ index 0000000..1afcfd1
 +                    writeReport(report, c.name.c_str());
 +                    __android_log_print(ANDROID_LOG_INFO, "RNLlamaVk", "selftest: running %s", c.name.c_str());
 +                    std::vector<float> ref, got;
-+                    const int rc = runSelfTestCase(beCpu, c, ref);
-+                    const int gc = runSelfTestCase(beGpu, c, got);
++                    std::vector<uint8_t> refRaw, gotRaw;
++                    const int rc = runSelfTestCase(beCpu, c, ref, &refRaw);
++                    const int gc = runSelfTestCase(beGpu, c, got, &gotRaw);
 +                    if (gc < 0 || rc <= 0) {
 +                        snprintf(line, sizeof(line), "%s: skipped (%s)", c.name.c_str(),
 +                                 gc < 0 ? "GPU does not support this op" : "CPU reference failed");
@@ -1116,6 +1274,21 @@ index 0000000..1afcfd1
 +                    } else if (gc == 0 || got.size() != ref.size()) {
 +                        snprintf(line, sizeof(line), "%s: BAD (GPU compute failed)", c.name.c_str());
 +                        nBad++;
++                    } else if (c.check) {
++                        // Byte-exact case: compare the raw result bytes CPU vs GPU.
++                        if (gotRaw.size() != refRaw.size()) {
++                            snprintf(line, sizeof(line), "%s: BAD (result size differs)", c.name.c_str());
++                            nBad++;
++                        } else {
++                            const std::string mismatch = c.check(refRaw, gotRaw);
++                            if (mismatch.empty()) {
++                                snprintf(line, sizeof(line), "%s: OK (byte-exact)", c.name.c_str());
++                                nOk++;
++                            } else {
++                                snprintf(line, sizeof(line), "%s: BAD (%s)", c.name.c_str(), mismatch.c_str());
++                                nBad++;
++                            }
++                        }
 +                    } else {
 +                        double num = 0.0, den = 0.0;
 +                        size_t nonFinite = 0;
