@@ -255,7 +255,7 @@ index da47b6c..09b9509 100644
    private static final Pattern SNAPDRAGON_8_SERIES_NAME_PATTERN =
      Pattern.compile("SNAPDRAGON\\s*8");
    private static final Pattern HEXAGON_CODENAME_PATTERN =
-@@ -171,6 +171,202 @@ public class RNLlama {
+@@ -171,6 +171,219 @@ public class RNLlama {
      }
    }
  
@@ -267,6 +267,7 @@ index da47b6c..09b9509 100644
 +  //   driver_name  file name of the driver library inside that directory (written by the app for
 +  //                a raw .so import, or by installPendingTurnipImport for a zip)
 +  //   import.zip   a driver package (meta.json + library) waiting to be unpacked
++  //   import_error.txt  why the last package import failed, if it did
 +  // Changes take effect the next time the app starts, because the Vulkan variant is chosen here, once.
 +  // ---------------------------------------------------------------------------------------------
 +  private static final String TURNIP_DIR_NAME = "turnip";
@@ -278,10 +279,20 @@ index da47b6c..09b9509 100644
 +    }
 +  }
 +
++  private static void writeTurnipImportError(File errorFile, String message) {
++    try (java.io.FileWriter w = new java.io.FileWriter(errorFile, false)) {
++      w.write(message);
++    } catch (Throwable t) {
++      Log.w(TAG, "Could not write Turnip import error", t);
++    }
++    Log.w(TAG, message);
++  }
++
 +  private static void installPendingTurnipImport(File dir) {
 +    File zip = new File(dir, "import.zip");
 +    if (!zip.exists()) return;
 +    File nameFile = new File(dir, "driver_name");
++    File errorFile = new File(dir, "import_error.txt");
 +    try {
 +      String libraryName = null;
 +      byte[] meta = null;
@@ -298,15 +309,13 @@ index da47b6c..09b9509 100644
 +          }
 +        }
 +      }
-+      if (meta != null) {
-+        // Keep meta.json: the app's Settings screen shows its driverVersion.
-+        try (FileOutputStream metaOut = new FileOutputStream(new File(dir, "meta.json"))) {
-+          metaOut.write(meta);
-+        }
-+        libraryName = new org.json.JSONObject(new String(meta, "UTF-8")).optString("libraryName", null);
++      if (meta == null) {
++        writeTurnipImportError(errorFile, "Driver package has no meta.json");
++        return;
 +      }
++      libraryName = new org.json.JSONObject(new String(meta, "UTF-8")).optString("libraryName", null);
 +      if (libraryName == null || libraryName.isEmpty() || libraryName.contains("/")) {
-+        Log.w(TAG, "Turnip package has no usable meta.json libraryName; ignoring it");
++        writeTurnipImportError(errorFile, "Driver package has no usable meta.json libraryName");
 +        return;
 +      }
 +      boolean extracted = false;
@@ -320,22 +329,30 @@ index da47b6c..09b9509 100644
 +            int n;
 +            while ((n = zin.read(buf)) != -1) fos.write(buf, 0, n);
 +          }
-+          out.setReadable(true, false);
-+          out.setExecutable(true, false);
++          out.setReadable(true, true);
++          out.setExecutable(true, true);
 +          extracted = true;
 +          break;
 +        }
 +      }
 +      if (extracted) {
++        // Only now replace the previously installed driver: a bad package must not
++        // leave the user with no driver.
++        try (FileOutputStream metaOut = new FileOutputStream(new File(dir, "meta.json"))) {
++          metaOut.write(meta);
++        }
 +        try (java.io.FileWriter w = new java.io.FileWriter(nameFile, false)) {
 +          w.write(libraryName);
 +        }
++        //noinspection ResultOfMethodCallIgnored
++        errorFile.delete();
 +        Log.i(TAG, "Installed Turnip driver " + libraryName + " from import.zip");
 +      } else {
-+        Log.w(TAG, "Turnip package does not contain " + libraryName);
++        writeTurnipImportError(errorFile, "Driver package does not contain " + libraryName);
 +      }
 +    } catch (Throwable t) {
 +      Log.w(TAG, "Failed to install Turnip driver package", t);
++      writeTurnipImportError(errorFile, "Could not install the driver package: " + t.getMessage());
 +    } finally {
 +      //noinspection ResultOfMethodCallIgnored
 +      zip.delete();
@@ -361,8 +378,8 @@ index da47b6c..09b9509 100644
 +        Log.w(TAG, "Turnip driver file is missing: " + driver);
 +        return false;
 +      }
-+      driver.setReadable(true, false);
-+      driver.setExecutable(true, false);
++      driver.setReadable(true, true);
++      driver.setExecutable(true, true);
 +
 +      File tmp = new File(context.getCacheDir(), "turnip-tmp");
 +      //noinspection ResultOfMethodCallIgnored

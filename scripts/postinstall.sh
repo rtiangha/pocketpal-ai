@@ -2,7 +2,13 @@
 
 # llama.rn's npm package does not ship ggml-vulkan; fetch it (and apply the driver-loading
 # edits) before patch-package, whose llama.rn patch and the Vulkan build rely on it.
-./scripts/fetch-ggml-vulkan.sh || exit 1
+# A failed fetch does not stop the install: the Vulkan variant's CMake step fails loudly
+# if it is built without the sources, but an install that never builds that variant
+# (offline, or JS-only work) should still succeed. Run scripts/fetch-ggml-vulkan.sh
+# once the network is available; until then the Vulkan variant cannot be built.
+if ! ./scripts/fetch-ggml-vulkan.sh; then
+  echo "warning: ggml-vulkan was not fetched (see above). The Vulkan variant of llama.rn cannot be built until scripts/fetch-ggml-vulkan.sh succeeds." >&2
+fi
 
 # Run patch-package
 npx patch-package --error-on-fail || exit 1

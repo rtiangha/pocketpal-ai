@@ -1,7 +1,11 @@
 import {Platform} from 'react-native';
 import {getBackendDevicesInfo} from 'llama.rn';
 
-import {getDeviceOptions, resolveDeviceSelection} from '../deviceSelection';
+import {
+  getDeviceOptions,
+  isGpuAvailable,
+  resolveDeviceSelection,
+} from '../deviceSelection';
 
 const discover = getBackendDevicesInfo as jest.Mock;
 const device = (deviceName: string) => ({
@@ -119,5 +123,60 @@ describe('Hexagon device selection', () => {
       n_gpu_layers: 99,
       valid_flash_attn_types: ['off'],
     });
+  });
+});
+
+describe('Vulkan (Turnip) device selection', () => {
+  const originalOS = Platform.OS;
+
+  beforeEach(() => {
+    Platform.OS = 'android';
+    discover.mockReset().mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    Platform.OS = originalOS;
+  });
+
+  const vulkanDevice = (deviceName: string, type = 'igpu') => ({
+    backend: 'Vulkan',
+    type,
+    deviceName,
+    maxMemorySize: 0,
+  });
+
+  it.each([['igpu'], ['gpu']])(
+    'offers a GPU (Vulkan) option for a Vulkan %s device',
+    async type => {
+      const devices = [vulkanDevice('Vulkan0', type)];
+      discover.mockResolvedValue(devices);
+      expect((await getDeviceOptions()).find(o => o.id === 'gpu')).toEqual({
+        id: 'gpu',
+        label: 'GPU (Vulkan)',
+        description:
+          'Vulkan GPU acceleration through the custom driver (Experimental)',
+        devices: ['Vulkan0'],
+        n_gpu_layers: 99,
+        default_flash_attn_type: 'off',
+        valid_flash_attn_types: ['auto', 'on', 'off'],
+        tag: 'Experimental',
+        experimental: true,
+        platform: 'android',
+        deviceInfo: devices[0],
+      });
+      expect(await isGpuAvailable()).toBe(true);
+    },
+  );
+
+  it('does not treat a Vulkan-named CPU device as a GPU', async () => {
+    discover.mockResolvedValue([vulkanDevice('Vulkan0', 'cpu')]);
+    expect((await getDeviceOptions()).map(o => o.id)).toEqual(['cpu']);
+    expect(await isGpuAvailable()).toBe(false);
+  });
+
+  it('does not treat a non-Vulkan igpu device as a GPU', async () => {
+    discover.mockResolvedValue([vulkanDevice('Adreno (TM) 840', 'igpu')]);
+    expect((await getDeviceOptions()).map(o => o.id)).toEqual(['cpu']);
+    expect(await isGpuAvailable()).toBe(false);
   });
 });

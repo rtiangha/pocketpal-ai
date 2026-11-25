@@ -9,6 +9,11 @@
  *   enabled       marker file: present = the user turned the custom driver on
  *   driver_name   file name of the driver library in this directory
  *   import.zip    a driver package (meta.json + library) that llama.rn unpacks at startup
+ *   import_error.txt  why the last package import failed, if it did; llama.rn writes it
+ *                     and deletes it when an import succeeds
+ *
+ * A failed package import keeps the previously installed driver: the old driver_name
+ * and meta.json are only replaced once the new package has unpacked successfully.
  */
 import {Platform} from 'react-native';
 import * as RNFS from '@dr.pogodin/react-native-fs';
@@ -27,6 +32,7 @@ const META_FILE = `${TURNIP_DIR}/meta.json`;
 const ENV_FILE = `${TURNIP_DIR}/env`;
 const SELFTEST_FILE = `${TURNIP_DIR}/selftest.txt`;
 const PIPELINE_FILE = `${TURNIP_DIR}/last_pipeline.txt`;
+const ERROR_FILE = `${TURNIP_DIR}/import_error.txt`;
 
 export interface TurnipState {
   /** The user wants the custom driver (applies after the next app start). */
@@ -37,6 +43,8 @@ export interface TurnipState {
   pendingImport: boolean;
   /** `driverVersion` from the driver's meta.json, if it has one. */
   driverVersion: string | null;
+  /** Why the last driver package import failed, if it did. */
+  importError: string | null;
 }
 
 export interface TurnipImportResult {
@@ -66,6 +74,7 @@ export async function getTurnipState(): Promise<TurnipState> {
       driverName: null,
       pendingImport: false,
       driverVersion: null,
+      importError: null,
     };
   }
   const [enabled, pendingImport, hasName] = await Promise.all([
@@ -92,7 +101,14 @@ export async function getTurnipState(): Promise<TurnipState> {
       // Unreadable meta.json: the version is shown as unknown.
     }
   }
-  return {enabled, driverName, pendingImport, driverVersion};
+  let importError: string | null = null;
+  if (await RNFS.exists(ERROR_FILE)) {
+    const text = (await RNFS.readFile(ERROR_FILE, 'utf8')).trim();
+    if (text) {
+      importError = text;
+    }
+  }
+  return {enabled, driverName, pendingImport, driverVersion, importError};
 }
 
 /**
@@ -198,11 +214,11 @@ export async function importTurnipDriver(): Promise<TurnipImportResult | null> {
   await ensureDir();
   if (isZip) {
     // Unpacked by llama.rn at the next start; meta.json tells it which library to use.
+    // The previously installed driver stays in place until the new package has unpacked
+    // successfully, so a bad package cannot leave the user with no driver.
     await removeIfExists(PENDING_ZIP);
     await RNFS.copyFile(file.uri, PENDING_ZIP);
-    await removeIfExists(NAME_FILE);
-    // llama.rn writes the package's meta.json when it unpacks it.
-    await removeIfExists(META_FILE);
+    await removeIfExists(ERROR_FILE);
     return {name, pending: true};
   }
 
@@ -212,6 +228,7 @@ export async function importTurnipDriver(): Promise<TurnipImportResult | null> {
   await RNFS.writeFile(NAME_FILE, name, 'utf8');
   await removeIfExists(PENDING_ZIP);
   await removeIfExists(META_FILE);
+  await removeIfExists(ERROR_FILE);
   if (metaFile) {
     await RNFS.copyFile(metaFile.uri, META_FILE);
   }

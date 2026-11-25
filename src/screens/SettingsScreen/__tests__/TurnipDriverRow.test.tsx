@@ -1,0 +1,242 @@
+import React from 'react';
+import {Alert, Platform} from 'react-native';
+
+import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
+
+import {
+  clearTurnipSelfTest,
+  getTurnipEnv,
+  getTurnipLastPipeline,
+  getTurnipSelfTest,
+  getTurnipState,
+  importTurnipDriver,
+  removeTurnipDriver,
+  setTurnipEnabled,
+  setTurnipEnv,
+} from '../../../utils/turnipDriver';
+
+import {TurnipDriverRow} from '../TurnipDriverRow';
+
+jest.mock('../../../utils/turnipDriver', () => ({
+  getTurnipState: jest.fn(),
+  getTurnipEnv: jest.fn(),
+  setTurnipEnv: jest.fn(),
+  getTurnipSelfTest: jest.fn(),
+  getTurnipLastPipeline: jest.fn(),
+  clearTurnipSelfTest: jest.fn(),
+  setTurnipEnabled: jest.fn(),
+  importTurnipDriver: jest.fn(),
+  removeTurnipDriver: jest.fn(),
+}));
+
+const state = (overrides = {}) => ({
+  enabled: false,
+  driverName: null,
+  pendingImport: false,
+  driverVersion: null,
+  importError: null,
+  ...overrides,
+});
+
+describe('TurnipDriverRow', () => {
+  const originalOS = Platform.OS;
+  const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Platform.OS = 'android';
+    (getTurnipState as jest.Mock).mockResolvedValue(state());
+    (getTurnipEnv as jest.Mock).mockResolvedValue('');
+    (getTurnipSelfTest as jest.Mock).mockResolvedValue('');
+    (getTurnipLastPipeline as jest.Mock).mockResolvedValue('');
+    (setTurnipEnabled as jest.Mock).mockResolvedValue(undefined);
+    (setTurnipEnv as jest.Mock).mockResolvedValue(undefined);
+    (clearTurnipSelfTest as jest.Mock).mockResolvedValue(undefined);
+    (importTurnipDriver as jest.Mock).mockResolvedValue({
+      name: 'turnip.zip',
+      pending: true,
+    });
+    (removeTurnipDriver as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    Platform.OS = originalOS;
+  });
+
+  it('renders nothing off Android', async () => {
+    Platform.OS = 'ios';
+    const {queryByTestId} = await render(<TurnipDriverRow />);
+    expect(queryByTestId('turnip-driver-switch')).toBeNull();
+  });
+
+  it('shows no driver and disables the switch and self-test without one', async () => {
+    const {findByTestId, findByText, getByTestId} = await render(
+      <TurnipDriverRow />,
+    );
+    await findByTestId('turnip-driver-switch');
+    expect(await findByText('No driver imported yet.')).toBeTruthy();
+    // Paper's Switch/Button forward `disabled` as accessibilityState, not as
+    // a `disabled` prop on the host element found by testID.
+    expect(
+      getByTestId('turnip-driver-switch').props.accessibilityState.disabled,
+    ).toBe(true);
+    expect(
+      getByTestId('turnip-selftest-button').props.accessibilityState.disabled,
+    ).toBe(true);
+    expect(
+      getByTestId('turnip-selftest-extended-button').props.accessibilityState
+        .disabled,
+    ).toBe(true);
+    expect(await findByText('Import driver')).toBeTruthy();
+  });
+
+  it('shows the driver name and version when installed', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({
+        driverName: 'libvulkan_freedreno.so',
+        driverVersion: '25.1.0',
+      }),
+    );
+    const {findByText} = await render(<TurnipDriverRow />);
+    expect(await findByText('Driver: libvulkan_freedreno.so')).toBeTruthy();
+    expect(await findByText('Vulkan Ver: 25.1.0')).toBeTruthy();
+  });
+
+  it('keeps the self-test buttons disabled while the driver switch is off', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({driverName: 'libvulkan_freedreno.so'}),
+    );
+    const {findByTestId, getByTestId} = await render(<TurnipDriverRow />);
+    await findByTestId('turnip-driver-switch');
+    expect(
+      getByTestId('turnip-driver-switch').props.accessibilityState.disabled,
+    ).toBe(false);
+    expect(
+      getByTestId('turnip-selftest-button').props.accessibilityState.disabled,
+    ).toBe(true);
+    expect(
+      getByTestId('turnip-selftest-extended-button').props.accessibilityState
+        .disabled,
+    ).toBe(true);
+  });
+
+  it('enables the self-test buttons once the driver is on', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({enabled: true, driverName: 'libvulkan_freedreno.so'}),
+    );
+    const {findByTestId, getByTestId} = await render(<TurnipDriverRow />);
+    await findByTestId('turnip-driver-switch');
+    expect(
+      getByTestId('turnip-selftest-button').props.accessibilityState.disabled,
+    ).toBe(false);
+    expect(
+      getByTestId('turnip-selftest-extended-button').props.accessibilityState
+        .disabled,
+    ).toBe(false);
+  });
+
+  it('shows a restart notice after toggling the driver on', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({driverName: 'libvulkan_freedreno.so'}),
+    );
+    const {findByTestId, findByText, getByTestId} = await render(
+      <TurnipDriverRow />,
+    );
+    const toggle = await findByTestId('turnip-driver-switch');
+    fireEvent(toggle, 'onValueChange', true);
+    expect(setTurnipEnabled).toHaveBeenCalledWith(true);
+    expect(
+      await findByText('Restart the app for the change to take effect.'),
+    ).toBeTruthy();
+    expect(getByTestId('turnip-restart-notice')).toBeTruthy();
+  });
+
+  it('shows the last import failure', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({
+        driverName: 'libvulkan_freedreno.so',
+        importError: 'Driver package has no meta.json',
+      }),
+    );
+    const {findByTestId} = await render(<TurnipDriverRow />);
+    expect(await findByTestId('turnip-import-error')).toBeTruthy();
+  });
+
+  it('shows the pending state while a package waits to unpack', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({pendingImport: true}),
+    );
+    const {findByText} = await render(<TurnipDriverRow />);
+    expect(
+      await findByText(
+        'Driver package imported, it is unpacked the next time the app starts.',
+      ),
+    ).toBeTruthy();
+    expect(
+      await findByText('Vulkan Ver: available after the app restarts'),
+    ).toBeTruthy();
+  });
+
+  it('imports a driver on press', async () => {
+    const {findByTestId, getByTestId} = await render(<TurnipDriverRow />);
+    await findByTestId('turnip-driver-switch');
+    await fireEvent.press(getByTestId('turnip-import-button'));
+    expect(importTurnipDriver).toHaveBeenCalled();
+  });
+
+  it('schedules a self-test and clears the old report', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({enabled: true, driverName: 'libvulkan_freedreno.so'}),
+    );
+    (getTurnipEnv as jest.Mock).mockResolvedValue('GGML_VK_DISABLE_F16=1');
+    const {findByTestId, getByTestId} = await render(<TurnipDriverRow />);
+    await findByTestId('turnip-driver-switch');
+    await fireEvent.press(getByTestId('turnip-selftest-button'));
+    expect(setTurnipEnv).toHaveBeenCalledWith(
+      'GGML_VK_DISABLE_F16=1\nRNLLAMA_VK_SELFTEST=1',
+    );
+    expect(clearTurnipSelfTest).toHaveBeenCalled();
+  });
+
+  it('saves edited environment variables', async () => {
+    (getTurnipEnv as jest.Mock).mockResolvedValue('GGML_VK_DISABLE_F16=1');
+    const {findByTestId, getByTestId} = await render(<TurnipDriverRow />);
+    await findByTestId('turnip-env-input');
+    fireEvent.changeText(
+      getByTestId('turnip-env-input'),
+      'GGML_VK_DISABLE_F16=1\nGGML_VK_UNSUPPORTED_OPS=SSM_CONV',
+    );
+    // The state update from the text change is not flushed synchronously.
+    await waitFor(() => {
+      expect(
+        getByTestId('turnip-env-save-button').props.accessibilityState.disabled,
+      ).toBe(false);
+    });
+    await fireEvent.press(getByTestId('turnip-env-save-button'));
+    await waitFor(() => {
+      expect(setTurnipEnv).toHaveBeenCalledWith(
+        'GGML_VK_DISABLE_F16=1\nGGML_VK_UNSUPPORTED_OPS=SSM_CONV',
+      );
+    });
+  });
+
+  it('asks before removing the driver', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({driverName: 'libvulkan_freedreno.so'}),
+    );
+    const {findByTestId, getByTestId} = await render(<TurnipDriverRow />);
+    await findByTestId('turnip-driver-switch');
+    await fireEvent.press(getByTestId('turnip-remove-button'));
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Remove driver',
+      'Delete the imported driver and its environment variables, and turn the custom driver off?',
+      expect.any(Array),
+    );
+    const buttons = alertSpy.mock.calls[0][2] as Array<{
+      text: string;
+      onPress?: () => void;
+    }>;
+    await buttons.find(b => b.text === 'Remove')?.onPress?.();
+    expect(removeTurnipDriver).toHaveBeenCalled();
+  });
+});

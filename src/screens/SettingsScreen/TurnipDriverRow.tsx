@@ -207,7 +207,7 @@ export const TurnipDriverRow: React.FC = () => {
     run(async () => {
       const lines = envText
         .split('\n')
-        .filter(line => !line.startsWith('RNLLAMA_VK_SELFTEST='));
+        .filter(line => !line.trim().startsWith('RNLLAMA_VK_SELFTEST='));
       const next = [...lines, `RNLLAMA_VK_SELFTEST=${level}`].join('\n').trim();
       await setTurnipEnv(next);
       await clearTurnipSelfTest();
@@ -234,7 +234,7 @@ export const TurnipDriverRow: React.FC = () => {
   const onRemove = () =>
     Alert.alert(
       'Remove driver',
-      'Delete the imported driver and turn the custom driver off?',
+      'Delete the imported driver and its environment variables, and turn the custom driver off?',
       [
         {text: 'Cancel', style: 'cancel'},
         {
@@ -252,7 +252,8 @@ export const TurnipDriverRow: React.FC = () => {
       : 'No driver imported yet.';
 
   const versionValue =
-    state.driverVersion ?? 'unknown (select meta.json with the .so)';
+    state.driverVersion ??
+    'unknown (import a package with meta.json for the version)';
   const versionText = state.pendingImport
     ? 'Vulkan Ver: available after the app restarts'
     : `Vulkan Ver: ${versionValue}`;
@@ -285,6 +286,14 @@ export const TurnipDriverRow: React.FC = () => {
           variant="labelSmall"
           style={styles.textDescription}>
           {versionText}
+        </Text>
+      )}
+      {state.importError !== null && (
+        <Text
+          testID="turnip-import-error"
+          variant="labelSmall"
+          style={[styles.textDescription, {color: theme.colors.error}]}>
+          {`Driver import failed: ${state.importError}`}
         </Text>
       )}
       <View style={localStyles.buttonRow}>
@@ -358,13 +367,13 @@ export const TurnipDriverRow: React.FC = () => {
       <Button
         testID="turnip-selftest-button"
         mode="outlined"
-        disabled={busy || !hasDriver}
+        disabled={busy || !hasDriver || !state.enabled}
         onPress={() => onRunSelfTest(1)}>
         Run GPU self-test on next launch
       </Button>
       <Button
         testID="turnip-selftest-extended-button"
-        disabled={busy || !hasDriver}
+        disabled={busy || !hasDriver || !state.enabled}
         onPress={() => onRunSelfTest(2)}>
         Extended self-test (large sizes, may crash the app)
       </Button>
@@ -415,10 +424,11 @@ export const TurnipDriverRow: React.FC = () => {
         </View>
       </Modal>
       {changed && (
-        <Text variant="labelSmall" style={styles.textDescription}>
-          Defaults: Set all known workarounds. Stock: Set no options. Safe:
-          Stock plus known safe options. With the Vulkan GPU the KV cache is
-          always F16.
+        <Text
+          testID="turnip-restart-notice"
+          variant="labelSmall"
+          style={styles.textDescription}>
+          Restart the app for the change to take effect.
         </Text>
       )}
     </View>

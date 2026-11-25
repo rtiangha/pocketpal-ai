@@ -49,12 +49,24 @@ export const types = {
   xlsx: 'org.openxmlformats.spreadsheetml.sheet',
 };
 
+export const errorCodes = {
+  OPERATION_CANCELED: 'OPERATION_CANCELED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  UNABLE_TO_OPEN_FILE_TYPE: 'UNABLE_TO_OPEN_FILE_TYPE',
+  UNKNOWN: 'UNKNOWN',
+};
+
+export const isErrorWithCode = error =>
+  error != null && typeof error === 'object' && 'code' in error;
+
 const DocumentPicker = {
   pick,
   pickMultiple,
   pickDirectory,
   pickSingle,
   types,
+  errorCodes,
+  isErrorWithCode,
 };
 
 export default DocumentPicker;
