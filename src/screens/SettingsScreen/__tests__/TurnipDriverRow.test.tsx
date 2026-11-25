@@ -4,6 +4,7 @@ import {Alert, Platform} from 'react-native';
 import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
 
 import {
+  clearTurnipImportError,
   clearTurnipSelfTest,
   getTurnipEnv,
   getTurnipLastPipeline,
@@ -24,6 +25,7 @@ jest.mock('../../../utils/turnipDriver', () => ({
   getTurnipSelfTest: jest.fn(),
   getTurnipLastPipeline: jest.fn(),
   clearTurnipSelfTest: jest.fn(),
+  clearTurnipImportError: jest.fn(),
   setTurnipEnabled: jest.fn(),
   importTurnipDriver: jest.fn(),
   removeTurnipDriver: jest.fn(),
@@ -52,6 +54,7 @@ describe('TurnipDriverRow', () => {
     (setTurnipEnabled as jest.Mock).mockResolvedValue(undefined);
     (setTurnipEnv as jest.Mock).mockResolvedValue(undefined);
     (clearTurnipSelfTest as jest.Mock).mockResolvedValue(undefined);
+    (clearTurnipImportError as jest.Mock).mockResolvedValue(undefined);
     (importTurnipDriver as jest.Mock).mockResolvedValue({
       name: 'turnip.zip',
       pending: true,
@@ -160,6 +163,37 @@ describe('TurnipDriverRow', () => {
     );
     const {findByTestId} = await render(<TurnipDriverRow />);
     expect(await findByTestId('turnip-import-error')).toBeTruthy();
+  });
+
+  it('dismisses the import failure and it stays gone', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({
+        driverName: 'libvulkan_freedreno.so',
+        importError: 'Driver package has no meta.json',
+      }),
+    );
+    const {findByTestId, getByTestId, queryByTestId} = await render(
+      <TurnipDriverRow />,
+    );
+    await findByTestId('turnip-import-error');
+    await fireEvent.press(getByTestId('turnip-import-error-dismiss'));
+    expect(clearTurnipImportError).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(queryByTestId('turnip-import-error')).toBeNull();
+    });
+  });
+
+  it('dismisses the self-test report', async () => {
+    (getTurnipSelfTest as jest.Mock).mockResolvedValue('mul_mat: OK\n');
+    const {findByText, getByTestId, queryByText} = await render(
+      <TurnipDriverRow />,
+    );
+    await findByText(/mul_mat: OK/);
+    await fireEvent.press(getByTestId('turnip-selftest-dismiss'));
+    expect(clearTurnipSelfTest).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(queryByText(/mul_mat: OK/)).toBeNull();
+    });
   });
 
   it('shows the pending state while a package waits to unpack', async () => {

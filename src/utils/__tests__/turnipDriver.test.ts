@@ -186,6 +186,23 @@ describe('turnipDriver (android)', () => {
     });
   });
 
+  describe('clearTurnipImportError', () => {
+    it('deletes the import failure file', async () => {
+      fs = installFs(RNFS, {
+        [`${dir}/import_error.txt`]: 'Driver package has no meta.json',
+      });
+      await api.clearTurnipImportError();
+      expect(fs.existing.has(`${dir}/import_error.txt`)).toBe(false);
+      await expect(api.getTurnipState()).resolves.toMatchObject({
+        importError: null,
+      });
+    });
+
+    it('is a no-op when there is no import failure', async () => {
+      await expect(api.clearTurnipImportError()).resolves.toBeUndefined();
+    });
+  });
+
   describe('setTurnipEnabled', () => {
     it('writes the marker when on and removes it when off', async () => {
       await api.setTurnipEnabled(true);
@@ -327,7 +344,9 @@ describe('turnipDriver (ios)', () => {
     await expect(api.importTurnipDriver()).resolves.toBeNull();
     await api.setTurnipEnabled(true);
     await api.setTurnipEnv('GGML_VK_DISABLE_F16=1');
+    await api.clearTurnipImportError();
     expect(RNFS.writeFile).not.toHaveBeenCalled();
+    expect(RNFS.unlink).not.toHaveBeenCalled();
     expect(picker.pick).not.toHaveBeenCalled();
   });
 });

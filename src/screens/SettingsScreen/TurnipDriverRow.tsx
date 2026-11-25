@@ -12,6 +12,7 @@ import {Button, Switch, Text, TextInput} from 'react-native-paper';
 
 import {useTheme} from '../../hooks';
 import {
+  clearTurnipImportError,
   clearTurnipSelfTest,
   getTurnipEnv,
   getTurnipLastPipeline,
@@ -29,6 +30,8 @@ import {createStyles} from './styles';
 const localStyles = StyleSheet.create({
   buttonRow: {flexDirection: 'row', marginTop: 8},
   envInput: {marginTop: 8},
+  errorRow: {flexDirection: 'row', alignItems: 'center', marginTop: 4},
+  errorText: {flex: 1},
   report: {marginTop: 8, fontFamily: 'monospace'},
   helpBackdrop: {flex: 1, justifyContent: 'center', padding: 16},
   helpCard: {borderRadius: 16, padding: 16, maxHeight: '90%'},
@@ -226,6 +229,24 @@ export const TurnipDriverRow: React.FC = () => {
       setEnvDirty(false);
     });
 
+  const onDismissSelfTest = async () => {
+    try {
+      await clearTurnipSelfTest();
+      setSelfTest('');
+    } catch (error) {
+      console.warn('Failed to dismiss the self-test report:', error);
+    }
+  };
+
+  const onDismissImportError = async () => {
+    try {
+      await clearTurnipImportError();
+      setState(prev => (prev ? {...prev, importError: null} : prev));
+    } catch (error) {
+      console.warn('Failed to dismiss the driver import error:', error);
+    }
+  };
+
   const onImport = () =>
     run(async () => {
       await importTurnipDriver();
@@ -289,12 +310,24 @@ export const TurnipDriverRow: React.FC = () => {
         </Text>
       )}
       {state.importError !== null && (
-        <Text
-          testID="turnip-import-error"
-          variant="labelSmall"
-          style={[styles.textDescription, {color: theme.colors.error}]}>
-          {`Driver import failed: ${state.importError}`}
-        </Text>
+        <View style={localStyles.errorRow}>
+          <Text
+            testID="turnip-import-error"
+            variant="labelSmall"
+            style={[
+              styles.textDescription,
+              {color: theme.colors.error},
+              localStyles.errorText,
+            ]}>
+            {`Driver import failed: ${state.importError}`}
+          </Text>
+          <Button
+            testID="turnip-import-error-dismiss"
+            compact
+            onPress={onDismissImportError}>
+            Dismiss
+          </Button>
+        </View>
       )}
       <View style={localStyles.buttonRow}>
         <Button
@@ -386,12 +419,22 @@ export const TurnipDriverRow: React.FC = () => {
         </Text>
       )}
       {selfTest !== '' && (
-        <Text
-          selectable
-          variant="labelSmall"
-          style={[styles.textDescription, localStyles.report]}>
-          {selfTest}
-        </Text>
+        <>
+          <Text
+            selectable
+            variant="labelSmall"
+            style={[styles.textDescription, localStyles.report]}>
+            {selfTest}
+          </Text>
+          <View style={localStyles.buttonRow}>
+            <Button
+              testID="turnip-selftest-dismiss"
+              compact
+              onPress={onDismissSelfTest}>
+              Dismiss
+            </Button>
+          </View>
+        </>
       )}
       <Modal
         visible={helpVisible}

@@ -10,7 +10,8 @@
  *   driver_name   file name of the driver library in this directory
  *   import.zip    a driver package (meta.json + library) that llama.rn unpacks at startup
  *   import_error.txt  why the last package import failed, if it did; llama.rn writes it
- *                     and deletes it when an import succeeds
+ *                     and deletes it when an import succeeds, and the row's Dismiss
+ *                     button deletes it once the user has seen it
  *
  * A failed package import keeps the previously installed driver: the old driver_name
  * and meta.json are only replaced once the new package has unpacked successfully.
@@ -157,6 +158,13 @@ export async function getTurnipLastPipeline(): Promise<string> {
 export async function clearTurnipSelfTest(): Promise<void> {
   if (isSupported) {
     await removeIfExists(SELFTEST_FILE);
+  }
+}
+
+/** Deletes the last import failure shown in Settings, once the user has seen it. */
+export async function clearTurnipImportError(): Promise<void> {
+  if (isSupported) {
+    await removeIfExists(ERROR_FILE);
   }
 }
 
