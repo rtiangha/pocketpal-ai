@@ -531,9 +531,11 @@ describe('BenchmarkScreen', () => {
         benchmarkStore.results = [mockResult, mockSubmittedResult];
       });
 
-      // wait for the dialog to be closed
-      await waitForElementToBeRemoved(
-        () => queryByTestId('share-benchmark-dialog'),
+      // wait for the dialog to be closed (it may already be gone by now)
+      await waitFor(
+        () => {
+          expect(queryByTestId('share-benchmark-dialog')).toBeNull();
+        },
         {timeout: 4000},
       );
 

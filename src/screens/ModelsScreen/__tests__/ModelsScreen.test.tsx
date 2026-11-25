@@ -154,15 +154,15 @@ describe('ModelsScreen', () => {
         }
         return true;
       });
-      const {getByTestId} = render(<ModelsScreen />);
-      fireEvent.press(getByTestId('fab-group'));
+      const {getByTestId} = await render(<ModelsScreen />);
+      await fireEvent.press(getByTestId('fab-group'));
       await waitFor(() =>
         expect(
           getByTestId('local-fab', {includeHiddenElements: true}),
         ).toBeTruthy(),
       );
       await act(async () => {
-        fireEvent.press(
+        await fireEvent.press(
           getByTestId('local-fab', {includeHiddenElements: true}),
         );
       });
