@@ -41,6 +41,7 @@ const state = (overrides = {}) => ({
   pendingImport: false,
   driverVersion: null,
   importError: null,
+  systemDriver: false,
   ...overrides,
 });
 
@@ -78,17 +79,21 @@ describe('TurnipDriverRow', () => {
     expect(queryByTestId('turnip-driver-switch')).toBeNull();
   });
 
-  it('shows no driver and disables the switch and self-test without one', async () => {
+  it('shows no driver, leaves the switch on for the system driver, and keeps the self-test disabled while off', async () => {
     const {findByTestId, findByText, getByTestId} = await render(
       <TurnipDriverRow />,
     );
     await findByTestId('turnip-driver-switch');
-    expect(await findByText('No driver imported yet.')).toBeTruthy();
+    expect(
+      await findByText(
+        'No driver imported yet. Turn the switch on for the system driver.',
+      ),
+    ).toBeTruthy();
     // Paper's Switch/Button forward `disabled` as accessibilityState, not as
     // a `disabled` prop on the host element found by testID.
     expect(
       getByTestId('turnip-driver-switch').props.accessibilityState.disabled,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       getByTestId('turnip-selftest-button').props.accessibilityState.disabled,
     ).toBe(true);
@@ -97,6 +102,30 @@ describe('TurnipDriverRow', () => {
         .disabled,
     ).toBe(true);
     expect(await findByText('Import driver')).toBeTruthy();
+  });
+
+  it('shows the system driver when enabled with no driver imported', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({enabled: true, systemDriver: true}),
+    );
+    const {findByTestId, findByText, getByTestId} = await render(
+      <TurnipDriverRow />,
+    );
+    await findByTestId('turnip-driver-switch');
+    expect(await findByText('System driver (Qualcomm).')).toBeTruthy();
+    expect(await findByText('Vulkan Ver: system driver')).toBeTruthy();
+    expect(
+      await findByText(
+        'System driver mode: the run is a clean control — only the self-test variables apply, and the Turnip workarounds are ignored.',
+      ),
+    ).toBeTruthy();
+    expect(
+      getByTestId('turnip-selftest-button').props.accessibilityState.disabled,
+    ).toBe(false);
+    expect(
+      getByTestId('turnip-selftest-extended-button').props.accessibilityState
+        .disabled,
+    ).toBe(false);
   });
 
   it('shows the driver name and version when installed', async () => {
@@ -206,6 +235,17 @@ describe('TurnipDriverRow', () => {
     (getTurnipPipelineCacheSize as jest.Mock).mockResolvedValue(2355200);
     const {findByText} = await render(<TurnipDriverRow />);
     expect(await findByText('Shader cache: 2.2 MB')).toBeTruthy();
+    expect(getTurnipPipelineCacheSize).toHaveBeenCalledWith(false);
+  });
+
+  it('shows the system shader cache size in system mode', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({enabled: true, systemDriver: true}),
+    );
+    (getTurnipPipelineCacheSize as jest.Mock).mockResolvedValue(1234567);
+    const {findByText} = await render(<TurnipDriverRow />);
+    expect(await findByText('Shader cache: 1.2 MB')).toBeTruthy();
+    expect(getTurnipPipelineCacheSize).toHaveBeenCalledWith(true);
   });
 
   it('shows no shader cache yet when there is no file', async () => {
@@ -221,7 +261,23 @@ describe('TurnipDriverRow', () => {
     );
     await findByTestId('turnip-pipeline-cache-clear');
     await fireEvent.press(getByTestId('turnip-pipeline-cache-clear'));
-    expect(clearTurnipPipelineCache).toHaveBeenCalled();
+    expect(clearTurnipPipelineCache).toHaveBeenCalledWith(false);
+    await waitFor(() => {
+      expect(queryByTestId('turnip-pipeline-cache-clear')).toBeNull();
+    });
+  });
+
+  it('clears the system shader cache in system mode', async () => {
+    (getTurnipState as jest.Mock).mockResolvedValue(
+      state({enabled: true, systemDriver: true}),
+    );
+    (getTurnipPipelineCacheSize as jest.Mock).mockResolvedValue(1234567);
+    const {findByTestId, getByTestId, queryByTestId} = await render(
+      <TurnipDriverRow />,
+    );
+    await findByTestId('turnip-pipeline-cache-clear');
+    await fireEvent.press(getByTestId('turnip-pipeline-cache-clear'));
+    expect(clearTurnipPipelineCache).toHaveBeenCalledWith(true);
     await waitFor(() => {
       expect(queryByTestId('turnip-pipeline-cache-clear')).toBeNull();
     });

@@ -149,8 +149,9 @@ const ENV_HELP: Array<[string, string]> = [
 ];
 
 /**
- * Fork-only settings row (Android): use a custom Vulkan driver (Mesa Turnip) through
- * libadrenotools. The switch and the imported driver are stored as files that the patched
+ * Fork-only settings row (Android): use a Vulkan driver — an imported Mesa Turnip driver
+ * through libadrenotools, or the system (Qualcomm) driver when no driver is imported.
+ * The switch and the imported driver are stored as files that the patched
  * llama.rn reads when the app starts, so every change needs an app restart.
  *
  * Kept in its own file so upstream syncs never touch it.
@@ -186,10 +187,13 @@ export const TurnipDriverRow: React.FC = () => {
 
   const refresh = useCallback(async () => {
     try {
-      setState(await getTurnipState());
+      const nextState = await getTurnipState();
+      setState(nextState);
       setSelfTest(await getTurnipSelfTest());
       setLastPipeline(await getTurnipLastPipeline());
-      setPipelineCacheSize(await getTurnipPipelineCacheSize());
+      setPipelineCacheSize(
+        await getTurnipPipelineCacheSize(nextState.systemDriver),
+      );
     } catch (error) {
       console.warn('Failed to read the custom driver state:', error);
     }
@@ -271,7 +275,7 @@ export const TurnipDriverRow: React.FC = () => {
   // load, which recompiles the shaders from scratch.
   const onClearPipelineCache = async () => {
     try {
-      await clearTurnipPipelineCache();
+      await clearTurnipPipelineCache(state?.systemDriver ?? false);
       setPipelineCacheSize(null);
     } catch (error) {
       console.warn('Failed to clear the pipeline cache:', error);
@@ -299,45 +303,56 @@ export const TurnipDriverRow: React.FC = () => {
 
   const driverText = state.pendingImport
     ? 'Driver package imported, it is unpacked the next time the app starts.'
-    : state.driverName
-      ? `Driver: ${state.driverName}`
-      : 'No driver imported yet.';
+    : state.systemDriver
+      ? 'System driver (Qualcomm).'
+      : state.driverName
+        ? `Driver: ${state.driverName}`
+        : 'No driver imported yet. Turn the switch on for the system driver.';
 
   const versionValue =
     state.driverVersion ??
     'unknown (import a package with meta.json for the version)';
   const versionText = state.pendingImport
     ? 'Vulkan Ver: available after the app restarts'
-    : `Vulkan Ver: ${versionValue}`;
+    : state.systemDriver
+      ? 'Vulkan Ver: system driver'
+      : `Vulkan Ver: ${versionValue}`;
 
   return (
     <View>
       <View style={styles.switchContainer}>
         <View style={styles.textContainer}>
           <Text variant="titleMedium" style={styles.textLabel}>
-            Custom Vulkan driver (Turnip)
+            Vulkan driver
           </Text>
           <Text variant="labelSmall" style={styles.textDescription}>
-            Loads an imported Mesa Turnip driver through libadrenotools and adds
-            a Vulkan GPU option to the device selection. Experimental.
+            With a driver imported, loads it through libadrenotools; with none
+            imported, uses the system (Qualcomm) driver. Adds a Vulkan GPU
+            option to the device selection. Experimental.
           </Text>
         </View>
         <Switch
           testID="turnip-driver-switch"
           value={state.enabled}
-          disabled={busy || !hasDriver}
+          disabled={busy}
           onValueChange={onToggle}
         />
       </View>
       <Text variant="labelSmall" style={styles.textDescription}>
         {driverText}
       </Text>
-      {hasDriver && (
+      {(hasDriver || state.systemDriver) && (
         <Text
           testID="turnip-driver-version"
           variant="labelSmall"
           style={styles.textDescription}>
           {versionText}
+        </Text>
+      )}
+      {state.systemDriver && (
+        <Text variant="labelSmall" style={styles.textDescription}>
+          System driver mode: the run is a clean control — only the self-test
+          variables apply, and the Turnip workarounds are ignored.
         </Text>
       )}
       {state.importError !== null && (
@@ -431,13 +446,13 @@ export const TurnipDriverRow: React.FC = () => {
       <Button
         testID="turnip-selftest-button"
         mode="outlined"
-        disabled={busy || !hasDriver || !state.enabled}
+        disabled={busy || !state.enabled}
         onPress={() => onRunSelfTest(1)}>
         Run GPU self-test on next launch
       </Button>
       <Button
         testID="turnip-selftest-extended-button"
-        disabled={busy || !hasDriver || !state.enabled}
+        disabled={busy || !state.enabled}
         onPress={() => onRunSelfTest(2)}>
         Extended self-test (large sizes, may crash the app)
       </Button>

@@ -86,6 +86,7 @@ describe('turnipDriver (android)', () => {
         pendingImport: false,
         driverVersion: null,
         importError: null,
+        systemDriver: false,
       });
     });
 
@@ -105,6 +106,34 @@ describe('turnipDriver (android)', () => {
         pendingImport: false,
         driverVersion: '25.1.0',
         importError: null,
+        systemDriver: false,
+      });
+    });
+
+    it('reports the system driver when enabled with no driver installed', async () => {
+      fs = installFs(RNFS, {[`${dir}/enabled`]: '1'});
+      await expect(api.getTurnipState()).resolves.toMatchObject({
+        enabled: true,
+        driverName: null,
+        systemDriver: true,
+      });
+    });
+
+    it('does not report the system driver with a pending import', async () => {
+      fs = installFs(RNFS, {
+        [`${dir}/enabled`]: '1',
+        [`${dir}/import.zip`]: 'zip',
+      });
+      await expect(api.getTurnipState()).resolves.toMatchObject({
+        pendingImport: true,
+        systemDriver: false,
+      });
+    });
+
+    it('does not report the system driver when the switch is off', async () => {
+      await expect(api.getTurnipState()).resolves.toMatchObject({
+        enabled: false,
+        systemDriver: false,
       });
     });
 
@@ -214,22 +243,37 @@ describe('turnipDriver (android)', () => {
       fs = installFs(RNFS, {
         [`${dir}/pipeline_cache.bin`]: 'x'.repeat(2355),
       });
-      await expect(api.getTurnipPipelineCacheSize()).resolves.toBe(2355);
+      await expect(api.getTurnipPipelineCacheSize(false)).resolves.toBe(2355);
     });
 
     it('returns null when there is no cache file', async () => {
-      await expect(api.getTurnipPipelineCacheSize()).resolves.toBeNull();
+      await expect(api.getTurnipPipelineCacheSize(false)).resolves.toBeNull();
     });
 
     it('clears the cache', async () => {
       fs = installFs(RNFS, {[`${dir}/pipeline_cache.bin`]: 'cache'});
-      await api.clearTurnipPipelineCache();
+      await api.clearTurnipPipelineCache(false);
       expect(fs.existing.has(`${dir}/pipeline_cache.bin`)).toBe(false);
-      await expect(api.getTurnipPipelineCacheSize()).resolves.toBeNull();
+      await expect(api.getTurnipPipelineCacheSize(false)).resolves.toBeNull();
     });
 
     it('is a no-op when there is no cache file', async () => {
-      await expect(api.clearTurnipPipelineCache()).resolves.toBeUndefined();
+      await expect(
+        api.clearTurnipPipelineCache(false),
+      ).resolves.toBeUndefined();
+    });
+
+    it('reads and clears the system driver cache separately', async () => {
+      fs = installFs(RNFS, {
+        [`${dir}/pipeline_cache.bin`]: 'turnip',
+        [`${dir}/pipeline_cache_system.bin`]: 'x'.repeat(1234),
+      });
+      await expect(api.getTurnipPipelineCacheSize(true)).resolves.toBe(1234);
+      await api.clearTurnipPipelineCache(true);
+      expect(fs.existing.has(`${dir}/pipeline_cache_system.bin`)).toBe(false);
+      // The Turnip cache is untouched by clearing the system cache.
+      expect(fs.existing.has(`${dir}/pipeline_cache.bin`)).toBe(true);
+      await expect(api.getTurnipPipelineCacheSize(true)).resolves.toBeNull();
     });
   });
 
@@ -370,13 +414,14 @@ describe('turnipDriver (ios)', () => {
       pendingImport: false,
       driverVersion: null,
       importError: null,
+      systemDriver: false,
     });
     await expect(api.importTurnipDriver()).resolves.toBeNull();
     await api.setTurnipEnabled(true);
     await api.setTurnipEnv('GGML_VK_DISABLE_F16=1');
     await api.clearTurnipImportError();
-    await expect(api.getTurnipPipelineCacheSize()).resolves.toBeNull();
-    await api.clearTurnipPipelineCache();
+    await expect(api.getTurnipPipelineCacheSize(false)).resolves.toBeNull();
+    await api.clearTurnipPipelineCache(false);
     expect(RNFS.writeFile).not.toHaveBeenCalled();
     expect(RNFS.unlink).not.toHaveBeenCalled();
     expect(picker.pick).not.toHaveBeenCalled();

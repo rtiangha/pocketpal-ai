@@ -241,7 +241,7 @@ index 0000000..6315268
 +    message(STATUS "rnllama Vulkan backend enabled for ${target_name}")
 +endfunction()
 diff --git a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
-index da47b6c..09b9509 100644
+index da47b6c..29b8ec9 100644
 --- a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
 +++ b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
 @@ -33,8 +33,8 @@ public class RNLlama {
@@ -255,7 +255,7 @@ index da47b6c..09b9509 100644
    private static final Pattern SNAPDRAGON_8_SERIES_NAME_PATTERN =
      Pattern.compile("SNAPDRAGON\\s*8");
    private static final Pattern HEXAGON_CODENAME_PATTERN =
-@@ -171,6 +171,220 @@ public class RNLlama {
+@@ -171,6 +171,280 @@ public class RNLlama {
      }
    }
  
@@ -263,14 +263,28 @@ index da47b6c..09b9509 100644
 +  // Custom Vulkan driver (Turnip) support.
 +  //
 +  // The app (JS side) controls it through plain files under <filesDir>/turnip/:
-+  //   enabled      marker file; present = the user turned the custom driver on
++  //   enabled      marker file; present = the user turned the Vulkan driver on
 +  //   driver_name  file name of the driver library inside that directory (written by the app for
 +  //                a raw .so import, or by installPendingTurnipImport for a zip)
 +  //   import.zip   a driver package (meta.json + library) waiting to be unpacked
 +  //   import_error.txt  why the last package import failed, if it did
++  // With the switch on but no driver installed, the Vulkan variant still loads, on the system
++  // driver (system mode): ggml-vulkan falls through to the system Vulkan loader when the driver
++  // env vars are absent, so the same self-test runs against the Qualcomm blob driver as a control.
 +  // Changes take effect the next time the app starts, because the Vulkan variant is chosen here, once.
 +  // ---------------------------------------------------------------------------------------------
 +  private static final String TURNIP_DIR_NAME = "turnip";
++
++  /** Vulkan driver mode: off, a custom (Turnip) driver, or the system (Qualcomm) driver. */
++  private static final int TURNIP_MODE_OFF = 0;
++  private static final int TURNIP_MODE_CUSTOM = 1;
++  private static final int TURNIP_MODE_SYSTEM = 2;
++  private static int turnipMode = TURNIP_MODE_OFF;
++
++  private static String turnipModeName() {
++    return turnipMode == TURNIP_MODE_CUSTOM ? "custom"
++        : turnipMode == TURNIP_MODE_SYSTEM ? "system" : "off";
++  }
 +
 +  private static String readSmallFile(File file) throws IOException {
 +    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
@@ -359,25 +373,112 @@ index da47b6c..09b9509 100644
 +    }
 +  }
 +
-+  /** @return true when the Vulkan variant with the custom driver should be loaded. */
++  /**
++   * Extra variables from the app's Settings screen (<filesDir>/turnip/env, KEY=VALUE per line).
++   * RNLLAMA_VK_SELFTEST is one-shot: it is removed from the file once applied, so a self-test that
++   * takes the GPU driver down does not turn into a crash on every launch.
++   *
++   * In system mode only the self-test variables apply (RNLLAMA_VK_SELFTEST / SELFTEST_ONLY /
++   * SELFTEST_SKIP and RNLLAMA_VK_LOG_PIPELINES): the run is a clean control, so driver
++   * workarounds from the env box are ignored and logged as such. Ignored lines are kept in the
++   * file, so switching back to a custom driver keeps them.
++   */
++  private static void applyTurnipEnv(File dir, boolean systemMode) {
++    File envFile = new File(dir, "env");
++    if (!envFile.isFile()) return;
++    java.util.List<String> keptLines = new java.util.ArrayList<>();
++    boolean consumedSelfTest = false;
++    try (BufferedReader envReader = new BufferedReader(new FileReader(envFile))) {
++      String envLine;
++      while ((envLine = envReader.readLine()) != null) {
++        String trimmed = envLine.trim();
++        int eq = trimmed.indexOf('=');
++        if (trimmed.isEmpty() || trimmed.startsWith("#") || eq <= 0) {
++          keptLines.add(envLine);
++          continue;
++        }
++        String key = trimmed.substring(0, eq).trim();
++        String value = trimmed.substring(eq + 1).trim();
++        if (!key.matches("(GGML|RNLLAMA)_[A-Z0-9_]+")) {
++          Log.w(TAG, "Ignoring environment variable " + key + " (only GGML_* and RNLLAMA_* are allowed)");
++          keptLines.add(envLine);
++          continue;
++        }
++        if (systemMode && !isSystemModeEnvKey(key)) {
++          Log.i(TAG, "System driver: ignoring environment variable " + key + " (driver workarounds do not apply)");
++          keptLines.add(envLine);
++          continue;
++        }
++        android.system.Os.setenv(key, value, true);
++        Log.i(TAG, "Environment from turnip/env: " + key + "=" + value);
++        if (key.equals("RNLLAMA_VK_SELFTEST")) {
++          consumedSelfTest = true;  // do not keep it for the next launch
++        } else {
++          keptLines.add(envLine);
++        }
++      }
++    } catch (Throwable t) {
++      Log.w(TAG, "Could not read turnip/env", t);
++      consumedSelfTest = false;
++    }
++    if (consumedSelfTest) {
++      try (java.io.FileWriter envWriter = new java.io.FileWriter(envFile, false)) {
++        envWriter.write(android.text.TextUtils.join("\n", keptLines));
++      } catch (Throwable t) {
++        Log.w(TAG, "Could not update turnip/env", t);
++      }
++    }
++  }
++
++  /** Variables that apply in system-driver mode: the self-test trigger, its filters, and pipeline logging. */
++  private static boolean isSystemModeEnvKey(String key) {
++    return key.equals("RNLLAMA_VK_SELFTEST")
++        || key.equals("RNLLAMA_VK_SELFTEST_ONLY")
++        || key.equals("RNLLAMA_VK_SELFTEST_SKIP")
++        || key.equals("RNLLAMA_VK_LOG_PIPELINES");
++  }
++
++  /** @return true when the Vulkan variant should be loaded (custom driver or system driver). */
 +  private static boolean prepareTurnipDriver(ReactApplicationContext context) {
++    turnipMode = TURNIP_MODE_OFF;
 +    try {
 +      File dir = new File(context.getFilesDir(), TURNIP_DIR_NAME);
 +      if (!new File(dir, "enabled").exists()) return false;
 +
 +      installPendingTurnipImport(dir);
 +
++      String name = null;
++      File driver = null;
 +      File nameFile = new File(dir, "driver_name");
-+      if (!nameFile.exists()) {
-+        Log.w(TAG, "Turnip is enabled but no driver is installed");
-+        return false;
++      if (nameFile.exists()) {
++        String read = readSmallFile(nameFile);
++        File candidate = new File(dir, read);
++        if (!read.isEmpty() && !read.contains("/") && candidate.isFile()) {
++          name = read;
++          driver = candidate;
++        } else {
++          Log.w(TAG, "Turnip driver file is missing: " + candidate);
++        }
 +      }
-+      String name = readSmallFile(nameFile);
-+      File driver = new File(dir, name);
-+      if (name.isEmpty() || name.contains("/") || !driver.isFile()) {
-+        Log.w(TAG, "Turnip driver file is missing: " + driver);
-+        return false;
++
++      if (driver == null) {
++        // System mode: the switch is on but no custom driver is installed. Load the Vulkan
++        // variant without the driver env vars, so ggml-vulkan falls through to the system
++        // Vulkan loader (the Qualcomm blob driver). RNLLAMA_VK_DRIVER_DIR is still set to the
++        // turnip dir, so the self-test report (and last_pipeline.txt) land where the Settings
++        // screen reads them; ggml_vk_get_instance_proc_addr() needs the driver NAME too, so a
++        // dir alone does not trigger the custom-driver path. No Turnip workarounds: the run is
++        // a clean control. The pipeline cache gets its own file, so the blob run never touches
++        // the Turnip cache.
++        turnipMode = TURNIP_MODE_SYSTEM;
++        android.system.Os.setenv("RNLLAMA_VK_DRIVER_DIR", dir.getAbsolutePath(), true);
++        android.system.Os.setenv("RNLLAMA_VK_PIPELINE_CACHE",
++            new File(dir, "pipeline_cache_system.bin").getAbsolutePath(), true);
++        applyTurnipEnv(dir, true);
++        Log.i(TAG, "System Vulkan driver enabled (no custom driver installed)");
++        return true;
 +      }
++
 +      driver.setReadable(true, true);
 +      driver.setExecutable(true, true);
 +
@@ -390,49 +491,7 @@ index da47b6c..09b9509 100644
 +      android.system.Os.setenv("RNLLAMA_VK_HOOK_DIR", context.getApplicationInfo().nativeLibraryDir, true);
 +      android.system.Os.setenv("RNLLAMA_VK_TMP_DIR", tmp.getAbsolutePath(), true);
 +      android.system.Os.setenv("RNLLAMA_VK_PIPELINE_CACHE", new File(dir, "pipeline_cache.bin").getAbsolutePath(), true);
-+      // Extra variables from the app's Settings screen (<filesDir>/turnip/env, KEY=VALUE per line).
-+      // RNLLAMA_VK_SELFTEST is one-shot: it is removed from the file once applied, so a self-test that
-+      // takes the GPU driver down does not turn into a crash on every launch.
-+      File envFile = new File(dir, "env");
-+      if (envFile.isFile()) {
-+        java.util.List<String> keptLines = new java.util.ArrayList<>();
-+        boolean consumedSelfTest = false;
-+        try (BufferedReader envReader = new BufferedReader(new FileReader(envFile))) {
-+          String envLine;
-+          while ((envLine = envReader.readLine()) != null) {
-+            String trimmed = envLine.trim();
-+            int eq = trimmed.indexOf('=');
-+            if (trimmed.isEmpty() || trimmed.startsWith("#") || eq <= 0) {
-+              keptLines.add(envLine);
-+              continue;
-+            }
-+            String key = trimmed.substring(0, eq).trim();
-+            String value = trimmed.substring(eq + 1).trim();
-+            if (!key.matches("(GGML|RNLLAMA)_[A-Z0-9_]+")) {
-+              Log.w(TAG, "Ignoring environment variable " + key + " (only GGML_* and RNLLAMA_* are allowed)");
-+              keptLines.add(envLine);
-+              continue;
-+            }
-+            android.system.Os.setenv(key, value, true);
-+            Log.i(TAG, "Environment from turnip/env: " + key + "=" + value);
-+            if (key.equals("RNLLAMA_VK_SELFTEST")) {
-+              consumedSelfTest = true;  // do not keep it for the next launch
-+            } else {
-+              keptLines.add(envLine);
-+            }
-+          }
-+        } catch (Throwable t) {
-+          Log.w(TAG, "Could not read turnip/env", t);
-+          consumedSelfTest = false;
-+        }
-+        if (consumedSelfTest) {
-+          try (java.io.FileWriter envWriter = new java.io.FileWriter(envFile, false)) {
-+            envWriter.write(android.text.TextUtils.join("\n", keptLines));
-+          } catch (Throwable t) {
-+            Log.w(TAG, "Could not update turnip/env", t);
-+          }
-+        }
-+      }
++      applyTurnipEnv(dir, false);
 +      // Automatic workarounds for the Turnip / Adreno 660 driver, found with the GPU self-test. Each one only
 +      // applies when its variable is not set already, and RNLLAMA_VK_NO_DEFAULTS=1 switches all of them off
 +      // (stock behaviour; variables from the env box still apply).
@@ -466,6 +525,7 @@ index da47b6c..09b9509 100644
 +        hooks.append(hook).append(hookFile.isFile() ? "=ok " : "=MISSING ");
 +      }
 +      Log.i(TAG, "Hook libraries in " + context.getApplicationInfo().nativeLibraryDir + ": " + hooks);
++      turnipMode = TURNIP_MODE_CUSTOM;
 +      return true;
 +    } catch (Throwable t) {
 +      Log.w(TAG, "Could not prepare the custom Vulkan driver", t);
@@ -476,7 +536,7 @@ index da47b6c..09b9509 100644
    public static synchronized boolean loadNative(ReactApplicationContext context) {
      if (libsLoaded) return true;
  
-@@ -193,12 +389,20 @@ public class RNLlama {
+@@ -193,12 +467,20 @@ public class RNLlama {
  
      boolean hasAdreno = hasAdrenoGpuHint();
      boolean hasHexagon = isHexagonSupported();
@@ -498,12 +558,12 @@ index da47b6c..09b9509 100644
            if (tryLoadLibrary("rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl")) {
              jniLoaded = true;
              loadedLib = "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl";
-@@ -258,6 +462,8 @@ public class RNLlama {
+@@ -258,6 +540,8 @@ public class RNLlama {
        }
  
        System.loadLibrary("rnllama");
 +      Log.i(TAG, "Loaded native library: " + loadedLib + " (dotprod=" + hasDotProd + ", adreno=" + hasAdreno
-+          + ", turnipRequested=" + useTurnipVulkan + ")");
++          + ", turnipMode=" + turnipModeName() + ")");
        nativeSetLoadedLibrary(loadedLib);
        libsLoaded = true;
        return true;

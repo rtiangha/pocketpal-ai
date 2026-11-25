@@ -6,7 +6,7 @@
  * Vulkan build of the inference library with the driver injected through libadrenotools.
  * Changes therefore only take effect after the app has been restarted.
  *
- *   enabled       marker file: present = the user turned the custom driver on
+ *   enabled       marker file: present = the user turned the Vulkan driver on
  *   driver_name   file name of the driver library in this directory
  *   import.zip    a driver package (meta.json + library) that llama.rn unpacks at startup
  *   import_error.txt  why the last package import failed, if it did; llama.rn writes it
@@ -15,6 +15,12 @@
  *   pipeline_cache.bin  compiled Vulkan pipelines, saved by the patched llama.rn
  *                     (RNLLAMA_VK_PIPELINE_CACHE) so the next model load does not
  *                     recompile them; the row shows its size and can clear it
+ *   pipeline_cache_system.bin  same, for the system driver (see below)
+ *
+ * System driver mode: with the switch on but no driver installed, the Vulkan variant still
+ * loads, on the system (Qualcomm) driver — the native side falls through to the system Vulkan
+ * loader. The self-test report lands in the same selftest.txt, so the row shows it exactly
+ * like a Turnip run. No Turnip workarounds apply in system mode (the run is a clean control).
  *
  * A failed package import keeps the previously installed driver: the old driver_name
  * and meta.json are only replaced once the new package has unpacked successfully.
@@ -38,6 +44,7 @@ const SELFTEST_FILE = `${TURNIP_DIR}/selftest.txt`;
 const PIPELINE_FILE = `${TURNIP_DIR}/last_pipeline.txt`;
 const ERROR_FILE = `${TURNIP_DIR}/import_error.txt`;
 const PIPELINE_CACHE_FILE = `${TURNIP_DIR}/pipeline_cache.bin`;
+const PIPELINE_CACHE_SYSTEM_FILE = `${TURNIP_DIR}/pipeline_cache_system.bin`;
 
 export interface TurnipState {
   /** The user wants the custom driver (applies after the next app start). */
@@ -50,6 +57,8 @@ export interface TurnipState {
   driverVersion: string | null;
   /** Why the last driver package import failed, if it did. */
   importError: string | null;
+  /** Enabled with no custom driver installed: the Vulkan variant loads on the system driver. */
+  systemDriver: boolean;
 }
 
 export interface TurnipImportResult {
@@ -80,6 +89,7 @@ export async function getTurnipState(): Promise<TurnipState> {
       pendingImport: false,
       driverVersion: null,
       importError: null,
+      systemDriver: false,
     };
   }
   const [enabled, pendingImport, hasName] = await Promise.all([
@@ -113,7 +123,16 @@ export async function getTurnipState(): Promise<TurnipState> {
       importError = text;
     }
   }
-  return {enabled, driverName, pendingImport, driverVersion, importError};
+  return {
+    enabled,
+    driverName,
+    pendingImport,
+    driverVersion,
+    importError,
+    // Enabled with no driver installed (and no package waiting to unpack):
+    // the Vulkan variant loads on the system driver instead of a custom one.
+    systemDriver: enabled && driverName === null && !pendingImport,
+  };
 }
 
 /**
@@ -175,26 +194,37 @@ export async function clearTurnipImportError(): Promise<void> {
 /**
  * Disk size of the saved compiled pipelines in bytes, or null when there is no
  * cache file yet. The native side writes the file when a model loads on the Vulkan
- * GPU; it is read at the next load instead of recompiling the shaders.
+ * GPU; it is read at the next load instead of recompiling the shaders. The system
+ * driver has its own cache file, so a blob run never touches the Turnip cache.
  */
-export async function getTurnipPipelineCacheSize(): Promise<number | null> {
+export async function getTurnipPipelineCacheSize(
+  systemDriver: boolean,
+): Promise<number | null> {
   if (!isSupported) {
     return null;
   }
   try {
-    return (await RNFS.stat(PIPELINE_CACHE_FILE)).size;
+    return (
+      await RNFS.stat(
+        systemDriver ? PIPELINE_CACHE_SYSTEM_FILE : PIPELINE_CACHE_FILE,
+      )
+    ).size;
   } catch {
     return null;
   }
 }
 
 /**
- * Deletes the saved compiled pipelines. The next model load recompiles them from
- * scratch; a model that is already loaded is unaffected.
+ * Deletes the saved compiled pipelines for the active driver. The next model load
+ * recompiles them from scratch; a model that is already loaded is unaffected.
  */
-export async function clearTurnipPipelineCache(): Promise<void> {
+export async function clearTurnipPipelineCache(
+  systemDriver: boolean,
+): Promise<void> {
   if (isSupported) {
-    await removeIfExists(PIPELINE_CACHE_FILE);
+    await removeIfExists(
+      systemDriver ? PIPELINE_CACHE_SYSTEM_FILE : PIPELINE_CACHE_FILE,
+    );
   }
 }
 
