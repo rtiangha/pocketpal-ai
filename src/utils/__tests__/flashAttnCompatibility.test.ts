@@ -80,6 +80,19 @@ describe('flashAttnCompatibility', () => {
         expect(await inferBackendType(['HTP:0'])).toBe('hexagon');
         expect(await inferBackendType(['HTP:1'])).toBe('hexagon');
       });
+
+      it('should return vulkan when devices array starts with Vulkan', async () => {
+        expect(await inferBackendType(['Vulkan Adreno (TM) 660'])).toBe(
+          'vulkan',
+        );
+        expect(await inferBackendType(['Vulkan'])).toBe('vulkan');
+        expect(await inferBackendType(['vulkan'])).toBe('vulkan');
+      });
+
+      it('should not mistake other Android GPUs for Vulkan', async () => {
+        expect(await inferBackendType(['Adreno 730'])).toBe('opencl');
+        expect(await inferBackendType(['Mali-G78'])).toBe('opencl');
+      });
     });
   });
 
@@ -234,6 +247,7 @@ describe('flashAttnCompatibility', () => {
       const backends: BackendType[] = [
         'metal',
         'opencl',
+        'vulkan',
         'cpu',
         'hexagon',
         'blas',
@@ -270,6 +284,34 @@ describe('flashAttnCompatibility', () => {
       options.forEach(option => {
         expect(option.disabled).toBe(false);
       });
+    });
+
+    it('should enable all options for Vulkan with flash_attn=on', () => {
+      const options = getAllowedCacheTypeVOptions('on', 'vulkan');
+
+      options.forEach(option => {
+        expect(option.disabled).toBe(false);
+      });
+    });
+
+    it('should enable all options for Vulkan with flash_attn=auto', () => {
+      const options = getAllowedCacheTypeVOptions('auto', 'vulkan');
+
+      options.forEach(option => {
+        expect(option.disabled).toBe(false);
+      });
+    });
+
+    it('should disable quantized options for Vulkan with flash_attn=off', () => {
+      // Quantized V genuinely requires flash attention (llama.cpp), so
+      // 'off' still blocks it on Vulkan -- the user must pick 'auto'/'on'.
+      const options = getAllowedCacheTypeVOptions('off', 'vulkan');
+      const f16Option = options.find(o => o.value === CacheType.F16);
+      const q8Option = options.find(o => o.value === CacheType.Q8_0);
+
+      expect(f16Option?.disabled).toBe(false);
+      expect(q8Option?.disabled).toBe(true);
+      expect(q8Option?.reason).toContain('requires flash attention');
     });
 
     it('should disable quantized options for OpenCL with flash_attn=on', () => {
@@ -317,6 +359,7 @@ describe('flashAttnCompatibility', () => {
       const backends: BackendType[] = [
         'metal',
         'opencl',
+        'vulkan',
         'cpu',
         'hexagon',
         'blas',
@@ -430,6 +473,34 @@ describe('flashAttnCompatibility', () => {
 
       it('should validate Experimental configuration as risky', () => {
         const vResult = isCacheTypeVSafe(CacheType.Q8_0, 'auto', 'hexagon');
+        expect(vResult.safe).toBe(false);
+      });
+    });
+
+    describe('Android Vulkan GPU', () => {
+      it('should validate F16 configuration as safe with flash_attn=off', () => {
+        const kResult = isCacheTypeKSafe(CacheType.F16, 'off', 'vulkan');
+        const vResult = isCacheTypeVSafe(CacheType.F16, 'off', 'vulkan');
+
+        expect(kResult.safe).toBe(true);
+        expect(vResult.safe).toBe(true);
+      });
+
+      it('should validate Q8 KV as safe with flash_attn=auto', () => {
+        // Vulkan supports flash attention, so quantized V is allowed
+        // once flash attention is on/auto -- unlike OpenCL, which never
+        // supports it.
+        const kResult = isCacheTypeKSafe(CacheType.Q8_0, 'auto', 'vulkan');
+        const vResult = isCacheTypeVSafe(CacheType.Q8_0, 'auto', 'vulkan');
+
+        expect(kResult.safe).toBe(true);
+        expect(vResult.safe).toBe(true);
+      });
+
+      it('should validate Q8 V as unsafe with flash_attn=off', () => {
+        // Quantized V genuinely requires flash attention, so 'off'
+        // still blocks it even on Vulkan.
+        const vResult = isCacheTypeVSafe(CacheType.Q8_0, 'off', 'vulkan');
         expect(vResult.safe).toBe(false);
       });
     });

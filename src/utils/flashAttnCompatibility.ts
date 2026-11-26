@@ -8,7 +8,8 @@ import {CacheType} from './types';
 import {getAvailableDevices} from './deviceSelection';
 
 export type FlashAttnType = 'auto' | 'on' | 'off';
-export type BackendType = 'metal' | 'opencl' | 'hexagon' | 'cpu' | 'blas';
+export type BackendType =
+  'metal' | 'opencl' | 'vulkan' | 'hexagon' | 'cpu' | 'blas';
 
 /**
  * Determines the backend type based ONLY on the devices array
@@ -37,7 +38,16 @@ export async function inferBackendType(
       return 'hexagon';
     }
 
-    // Any other device on Android is assumed to be GPU (OpenCL/Vulkan)
+    // Vulkan GPU (custom Turnip driver). The device name starts with
+    // 'Vulkan' (e.g. 'Vulkan Adreno (TM) 660'). This must come before
+    // the generic Android GPU fallback below: Vulkan supports flash
+    // attention, OpenCL does not, so lumping them together wrongly
+    // disables quantized V cache on Vulkan.
+    if (deviceLower.startsWith('vulkan')) {
+      return 'vulkan';
+    }
+
+    // Any other device on Android is assumed to be GPU (OpenCL)
     // (e.g., "Adreno 730", "Mali-G78", etc.)
     if (Platform.OS === 'android') {
       return 'opencl';
@@ -120,7 +130,7 @@ export function isCacheTypeVSafe(
           'Hexagon flash attention support varies by device (use "off" with F16/F32 for safety)',
       };
     }
-    // Metal, CPU, BLAS: safe with 'on'
+    // Metal, Vulkan, CPU, BLAS: safe with 'on'
     return {safe: true};
   }
 
@@ -147,7 +157,7 @@ export function isCacheTypeVSafe(
     };
   }
 
-  // Metal, CPU, BLAS + 'auto' + quantized V = ✅ Safe
+  // Metal, Vulkan, CPU, BLAS + 'auto' + quantized V = ✅ Safe
   // These backends reliably support flash attention with 'auto'
   return {safe: true};
 }
