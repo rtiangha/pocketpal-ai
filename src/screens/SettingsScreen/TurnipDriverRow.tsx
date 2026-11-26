@@ -61,15 +61,15 @@ const ENV_HELP: Array<[string, string]> = [
   ],
   [
     'GGML_VK_UNSUPPORTED_TYPES=Q6_K,Q2_K',
-    'Weight types whose matrix multiplications run on the CPU. Default: Q6_K, Q2_K, Q3_K, IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S, IQ4_XS (wrong results on this driver). Set it empty to run everything on the GPU.',
+    'Weight types whose matrix multiplications run on the CPU. Default: Q6_K, Q2_K, Q3_K, IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S, IQ4_XS (wrong results on this driver). Set it empty to run everything on the GPU. On a driver with the 8-bit SSBO fix these types compute correctly on the GPU, so the list can be emptied (use the Stock preset).',
   ],
   [
     'GGML_VK_DISABLE_QUANT_GET_ROWS=0',
-    'Default 1: get_rows (token embedding lookups) on quantized weights run on the CPU because the GPU returns wrong rows. 0 runs them on the GPU.',
+    'Default 1: get_rows (token embedding lookups) on quantized weights run on the CPU because the GPU returns wrong rows. 0 runs them on the GPU. On a driver with the 8-bit SSBO fix the GPU returns correct rows, so 0 is safe there.',
   ],
   [
     'GGML_VK_DISABLE_QUANT_SET_ROWS=0',
-    'Default 1: writes into a quantized KV cache run on the CPU because the GPU writes wrong data. 0 runs them on the GPU. The app keeps the KV cache at F16 with the Vulkan GPU anyway.',
+    'Default 1: writes into a quantized KV cache run on the CPU because the GPU writes wrong data. 0 runs them on the GPU. On a driver with the 8-bit SSBO fix the GPU writes correct data, so 0 is safe there, and the KV cache type now follows Settings (it used to be forced to F16 on Vulkan).',
   ],
   [
     'GGML_VK_UNSUPPORTED_OPS=SSM_CONV,SOFT_MAX',
@@ -146,6 +146,10 @@ const ENV_HELP: Array<[string, string]> = [
   [
     'RNLLAMA_VK_LOG_PIPELINES=1',
     'Logs every shader the driver compiles to logcat (tag RNLlamaVk).',
+  ],
+  [
+    'RNLLAMA_VK_PIPELINE_CACHE=<path>',
+    'Path of the file the compiled Vulkan pipelines are saved to and reloaded from (the app sets it to the Turnip pipeline cache automatically; without it the cache is off and pipelines compile on every load). Set it empty to turn the cache off.',
   ],
 ];
 
@@ -445,7 +449,8 @@ export const TurnipDriverRow: React.FC = () => {
       </View>
       <Text variant="labelSmall" style={styles.textDescription}>
         Defaults: Set all known workarounds. Stock: Set no options. Safe: Stock
-        plus known safe options. With the Vulkan GPU the KV cache is always F16.
+        plus known safe options. On a driver with the 8-bit SSBO fix, use Stock
+        — the workarounds above are only needed on a stock driver.
       </Text>
       <Button
         testID="turnip-env-save-button"
