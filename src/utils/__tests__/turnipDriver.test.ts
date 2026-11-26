@@ -219,6 +219,15 @@ describe('turnipDriver (android)', () => {
       await api.clearTurnipSelfTest();
       await expect(api.getTurnipSelfTest()).resolves.toBe('');
     });
+
+    it('clears the last-pipeline notice', async () => {
+      fs = installFs(RNFS, {
+        [`${dir}/last_pipeline.txt`]: 'compiling soft_max_f32_f16_wg512\n',
+      });
+      await api.clearTurnipLastPipeline();
+      expect(fs.existing.has(`${dir}/last_pipeline.txt`)).toBe(false);
+      await expect(api.getTurnipLastPipeline()).resolves.toBe('');
+    });
   });
 
   describe('clearTurnipImportError', () => {
@@ -293,6 +302,7 @@ describe('turnipDriver (android)', () => {
         [`${dir}/libvulkan_old.so`]: 'binary',
         [`${dir}/meta.json`]: JSON.stringify({driverVersion: '24.0.0'}),
         [`${dir}/import_error.txt`]: 'Driver package has no meta.json',
+        [`${dir}/pipeline_cache.bin`]: 'cache',
       });
       picker.pick.mockResolvedValue([
         {uri: 'file:///tmp/turnip.zip', name: 'turnip.zip'},
@@ -307,6 +317,9 @@ describe('turnipDriver (android)', () => {
       expect(fs.existing.has(`${dir}/import.zip`)).toBe(true);
       // A stale failure from a previous import is cleared.
       expect(fs.existing.has(`${dir}/import_error.txt`)).toBe(false);
+      // The old driver's compiled pipelines are cleared: a new driver must
+      // not reuse them.
+      expect(fs.existing.has(`${dir}/pipeline_cache.bin`)).toBe(false);
     });
 
     it('imports a .so immediately and records its name', async () => {
@@ -314,6 +327,7 @@ describe('turnipDriver (android)', () => {
         [`${dir}/import.zip`]: 'zip',
         [`${dir}/meta.json`]: JSON.stringify({driverVersion: '24.0.0'}),
         [`${dir}/import_error.txt`]: 'old failure',
+        [`${dir}/pipeline_cache.bin`]: 'cache',
       });
       picker.pick.mockResolvedValue([
         {
@@ -331,6 +345,8 @@ describe('turnipDriver (android)', () => {
       expect(fs.existing.has(`${dir}/import.zip`)).toBe(false);
       expect(fs.existing.has(`${dir}/meta.json`)).toBe(false);
       expect(fs.existing.has(`${dir}/import_error.txt`)).toBe(false);
+      // The old driver's compiled pipelines are cleared as well.
+      expect(fs.existing.has(`${dir}/pipeline_cache.bin`)).toBe(false);
     });
 
     it('keeps a meta.json picked together with a .so', async () => {
@@ -420,6 +436,7 @@ describe('turnipDriver (ios)', () => {
     await api.setTurnipEnabled(true);
     await api.setTurnipEnv('GGML_VK_DISABLE_F16=1');
     await api.clearTurnipImportError();
+    await api.clearTurnipLastPipeline();
     await expect(api.getTurnipPipelineCacheSize(false)).resolves.toBeNull();
     await api.clearTurnipPipelineCache(false);
     expect(RNFS.writeFile).not.toHaveBeenCalled();

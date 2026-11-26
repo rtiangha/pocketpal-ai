@@ -5,6 +5,7 @@ import {fireEvent, render, waitFor} from '../../../../jest/test-utils';
 
 import {
   clearTurnipImportError,
+  clearTurnipLastPipeline,
   clearTurnipPipelineCache,
   clearTurnipSelfTest,
   getTurnipEnv,
@@ -28,6 +29,7 @@ jest.mock('../../../utils/turnipDriver', () => ({
   getTurnipLastPipeline: jest.fn(),
   getTurnipPipelineCacheSize: jest.fn(),
   clearTurnipSelfTest: jest.fn(),
+  clearTurnipLastPipeline: jest.fn(),
   clearTurnipImportError: jest.fn(),
   clearTurnipPipelineCache: jest.fn(),
   setTurnipEnabled: jest.fn(),
@@ -61,6 +63,7 @@ describe('TurnipDriverRow', () => {
     (setTurnipEnabled as jest.Mock).mockResolvedValue(undefined);
     (setTurnipEnv as jest.Mock).mockResolvedValue(undefined);
     (clearTurnipSelfTest as jest.Mock).mockResolvedValue(undefined);
+    (clearTurnipLastPipeline as jest.Mock).mockResolvedValue(undefined);
     (clearTurnipImportError as jest.Mock).mockResolvedValue(undefined);
     (importTurnipDriver as jest.Mock).mockResolvedValue({
       name: 'turnip.zip',
@@ -228,6 +231,23 @@ describe('TurnipDriverRow', () => {
     expect(clearTurnipSelfTest).toHaveBeenCalled();
     await waitFor(() => {
       expect(queryByText(/mul_mat: OK/)).toBeNull();
+    });
+  });
+
+  it('dismisses the last-pipeline notice', async () => {
+    (getTurnipLastPipeline as jest.Mock).mockResolvedValue(
+      'compiling soft_max_f32_f16_wg512',
+    );
+    const {findByText, getByTestId, queryByText} = await render(
+      <TurnipDriverRow />,
+    );
+    await findByText(/The last run ended while the GPU driver was compiling/);
+    await fireEvent.press(getByTestId('turnip-last-pipeline-dismiss'));
+    expect(clearTurnipLastPipeline).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(
+        queryByText(/The last run ended while the GPU driver was compiling/),
+      ).toBeNull();
     });
   });
 

@@ -13,6 +13,7 @@ import {Button, Switch, Text, TextInput} from 'react-native-paper';
 import {useTheme} from '../../hooks';
 import {
   clearTurnipImportError,
+  clearTurnipLastPipeline,
   clearTurnipPipelineCache,
   clearTurnipSelfTest,
   getTurnipEnv,
@@ -262,6 +263,15 @@ export const TurnipDriverRow: React.FC = () => {
     }
   };
 
+  const onDismissLastPipeline = async () => {
+    try {
+      await clearTurnipLastPipeline();
+      setLastPipeline('');
+    } catch (error) {
+      console.warn('Failed to dismiss the last-pipeline notice:', error);
+    }
+  };
+
   const onDismissImportError = async () => {
     try {
       await clearTurnipImportError();
@@ -457,12 +467,22 @@ export const TurnipDriverRow: React.FC = () => {
         Extended self-test (large sizes, may crash the app)
       </Button>
       {lastPipeline !== '' && (
-        <Text
-          selectable
-          variant="labelSmall"
-          style={[styles.textDescription, localStyles.report]}>
-          {`The last run ended while the GPU driver was compiling:\n${lastPipeline}`}
-        </Text>
+        <>
+          <Text
+            selectable
+            variant="labelSmall"
+            style={[styles.textDescription, localStyles.report]}>
+            {`The last run ended while the GPU driver was compiling:\n${lastPipeline}`}
+          </Text>
+          <View style={localStyles.buttonRow}>
+            <Button
+              testID="turnip-last-pipeline-dismiss"
+              compact
+              onPress={onDismissLastPipeline}>
+              Dismiss
+            </Button>
+          </View>
+        </>
       )}
       {selfTest !== '' && (
         <>

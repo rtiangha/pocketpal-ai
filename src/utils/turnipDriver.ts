@@ -184,6 +184,18 @@ export async function clearTurnipSelfTest(): Promise<void> {
   }
 }
 
+/**
+ * Deletes the "last run ended while the GPU driver was compiling" notice
+ * shown in Settings, once the user has seen it. The native side rewrites
+ * the file on the next model load ("ok" after a clean run), so a new crash
+ * still shows up.
+ */
+export async function clearTurnipLastPipeline(): Promise<void> {
+  if (isSupported) {
+    await removeIfExists(PIPELINE_FILE);
+  }
+}
+
 /** Deletes the last import failure shown in Settings, once the user has seen it. */
 export async function clearTurnipImportError(): Promise<void> {
   if (isSupported) {
@@ -280,6 +292,14 @@ export async function importTurnipDriver(): Promise<TurnipImportResult | null> {
   }
 
   await ensureDir();
+  // A new driver invalidates the saved compiled pipelines. The cache file
+  // carries the driver version, so a version-bumped swap is ignored anyway
+  // — but two builds of one Mesa version (e.g. stock HEAD and a patched
+  // HEAD) report the same version, and the driver's own cache check only
+  // covers vendor/device/UUID, so the old driver's pipelines would be
+  // reused. Clearing costs one cold recompile after the restart. Only the
+  // Turnip cache is cleared: the system driver's cache is separate.
+  await removeIfExists(PIPELINE_CACHE_FILE);
   if (isZip) {
     // Unpacked by llama.rn at the next start; meta.json tells it which library to use.
     // The previously installed driver stays in place until the new package has unpacked
