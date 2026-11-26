@@ -362,44 +362,51 @@ describe('TurnipDriverRow', () => {
   });
 
   describe('environment presets', () => {
+    const SAFE_ENV =
+      'GGML_VK_DISABLE_QUANT_GET_ROWS=1\nGGML_VK_UNSUPPORTED_TYPES=Q6_K,Q2_K,Q3_K,IQ1_S,IQ1_M,IQ2_XXS,IQ2_XS,IQ2_S,IQ3_XXS,IQ3_S,IQ4_XS\nGGML_VK_DISABLE_QUANT_SET_ROWS=1\nRNLLAMA_VK_NO_WG512=1';
     const MINIMAL_ENV =
-      'RNLLAMA_VK_NO_DEFAULTS=1\nGGML_VK_DISABLE_F16=1\nGGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1\nGGML_VK_DISABLE_FUSION=1';
+      'GGML_VK_DISABLE_F16=1\nGGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1\nGGML_VK_DISABLE_FUSION=1';
 
-    it('matches an empty box to Safe (the out-of-box setting)', () => {
-      expect(getActiveTurnipPreset('')).toBe('safe');
-      expect(getActiveTurnipPreset('  \n  ')).toBe('safe');
+    it('matches an empty box to Default (the out-of-box setting)', () => {
+      expect(getActiveTurnipPreset('')).toBe('default');
+      expect(getActiveTurnipPreset('  \n  ')).toBe('default');
     });
 
-    it('matches only NO_DEFAULTS to Default', () => {
-      expect(getActiveTurnipPreset('RNLLAMA_VK_NO_DEFAULTS=1')).toBe('default');
+    it('matches the four-line workaround set to Safe', () => {
+      expect(getActiveTurnipPreset(SAFE_ENV)).toBe('safe');
     });
 
-    it('matches the four-line conservative set to Minimal', () => {
+    it('matches the three-line conservative set to Minimal', () => {
       expect(getActiveTurnipPreset(MINIMAL_ENV)).toBe('minimal');
     });
 
     it('returns null for a hand-edited set', () => {
+      expect(getActiveTurnipPreset('GGML_VK_DISABLE_F16=1')).toBeNull();
+      expect(
+        getActiveTurnipPreset(
+          'GGML_VK_DISABLE_F16=1\nGGML_VK_DISABLE_FUSION=1',
+        ),
+      ).toBeNull();
+    });
+
+    it('treats the obsolete NO_DEFAULTS flag as matching nothing', () => {
+      expect(getActiveTurnipPreset('RNLLAMA_VK_NO_DEFAULTS=1')).toBeNull();
       expect(
         getActiveTurnipPreset(
           'RNLLAMA_VK_NO_DEFAULTS=1\nGGML_VK_DISABLE_F16=1',
         ),
       ).toBeNull();
-      expect(getActiveTurnipPreset('GGML_VK_DISABLE_F16=1')).toBeNull();
     });
 
     it('ignores a queued self-test line when matching', () => {
-      expect(
-        getActiveTurnipPreset(
-          'RNLLAMA_VK_NO_DEFAULTS=1\nRNLLAMA_VK_SELFTEST=1',
-        ),
-      ).toBe('default');
-      expect(getActiveTurnipPreset('RNLLAMA_VK_SELFTEST=2')).toBe('safe');
+      expect(getActiveTurnipPreset(SAFE_ENV + '\nRNLLAMA_VK_SELFTEST=1')).toBe(
+        'safe',
+      );
+      expect(getActiveTurnipPreset('RNLLAMA_VK_SELFTEST=2')).toBe('default');
     });
 
     it('ignores surrounding whitespace and blank lines', () => {
-      expect(getActiveTurnipPreset('  RNLLAMA_VK_NO_DEFAULTS=1  \n\n')).toBe(
-        'default',
-      );
+      expect(getActiveTurnipPreset('  ' + SAFE_ENV + '  \n\n')).toBe('safe');
     });
 
     // The highlight itself is the Button's `mode` (contained = active).
@@ -437,26 +444,26 @@ describe('TurnipDriverRow', () => {
     it('renders the active preset with a different label colour', async () => {
       const queries = await render(<TurnipDriverRow />);
       await queries.findByTestId('turnip-driver-switch');
-      // Empty box -> Safe is active.
-      const safeColour = labelColour(queries, 'turnip-preset-safe');
+      // Empty box -> Default is active.
       const defaultColour = labelColour(queries, 'turnip-preset-default');
+      const safeColour = labelColour(queries, 'turnip-preset-safe');
       const minimalColour = labelColour(queries, 'turnip-preset-minimal');
-      expect(safeColour).not.toBeNull();
-      expect(safeColour).not.toBe(defaultColour);
-      expect(safeColour).not.toBe(minimalColour);
-      expect(defaultColour).toBe(minimalColour);
+      expect(defaultColour).not.toBeNull();
+      expect(defaultColour).not.toBe(safeColour);
+      expect(defaultColour).not.toBe(minimalColour);
+      expect(safeColour).toBe(minimalColour);
     });
 
     it('applies each preset to the box and moves the highlight', async () => {
       const queries = await render(<TurnipDriverRow />);
       await queries.findByTestId('turnip-driver-switch');
 
-      await fireEvent.press(queries.getByTestId('turnip-preset-default'));
+      await fireEvent.press(queries.getByTestId('turnip-preset-safe'));
       expect(queries.getByTestId('turnip-env-input').props.value).toBe(
-        'RNLLAMA_VK_NO_DEFAULTS=1',
+        SAFE_ENV,
       );
-      expect(labelColour(queries, 'turnip-preset-default')).not.toBe(
-        labelColour(queries, 'turnip-preset-safe'),
+      expect(labelColour(queries, 'turnip-preset-safe')).not.toBe(
+        labelColour(queries, 'turnip-preset-default'),
       );
 
       await fireEvent.press(queries.getByTestId('turnip-preset-minimal'));
@@ -464,13 +471,13 @@ describe('TurnipDriverRow', () => {
         MINIMAL_ENV,
       );
       expect(labelColour(queries, 'turnip-preset-minimal')).not.toBe(
-        labelColour(queries, 'turnip-preset-safe'),
+        labelColour(queries, 'turnip-preset-default'),
       );
 
-      await fireEvent.press(queries.getByTestId('turnip-preset-safe'));
+      await fireEvent.press(queries.getByTestId('turnip-preset-default'));
       expect(queries.getByTestId('turnip-env-input').props.value).toBe('');
-      expect(labelColour(queries, 'turnip-preset-safe')).not.toBe(
-        labelColour(queries, 'turnip-preset-default'),
+      expect(labelColour(queries, 'turnip-preset-default')).not.toBe(
+        labelColour(queries, 'turnip-preset-safe'),
       );
     });
   });

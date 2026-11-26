@@ -43,18 +43,26 @@ const localStyles = StyleSheet.create({
 
 /** Starting points for the environment box (the Save button still has to be pressed). */
 const ENV_PRESETS = {
-  // The driver as it ships: no workarounds at all.
-  default: 'RNLLAMA_VK_NO_DEFAULTS=1',
+  // The driver as it ships: no workarounds at all. An empty box, because
+  // there are no automatic workarounds any more (see the llama.rn patch:
+  // the native code used to apply them unless RNLLAMA_VK_NO_DEFAULTS=1
+  // was set; that default is inverted, so the box is the only source).
+  default: '',
   // Default plus extra conservative disables: the GPU does the least.
+  // No NO_DEFAULTS line any more: there is nothing automatic to switch off.
   minimal: [
-    'RNLLAMA_VK_NO_DEFAULTS=1',
     'GGML_VK_DISABLE_F16=1',
     'GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1',
     'GGML_VK_DISABLE_FUSION=1',
   ].join('\n'),
-  // The app's known workarounds for this driver's bugs. This is also the
-  // out-of-box setting (an empty environment box).
-  safe: '',
+  // The app's known workarounds for this driver's bugs, listed explicitly
+  // (they used to be applied automatically for an empty box).
+  safe: [
+    'GGML_VK_DISABLE_QUANT_GET_ROWS=1',
+    'GGML_VK_UNSUPPORTED_TYPES=Q6_K,Q2_K,Q3_K,IQ1_S,IQ1_M,IQ2_XXS,IQ2_XS,IQ2_S,IQ3_XXS,IQ3_S,IQ4_XS',
+    'GGML_VK_DISABLE_QUANT_SET_ROWS=1',
+    'RNLLAMA_VK_NO_WG512=1',
+  ].join('\n'),
 };
 
 /**
@@ -87,19 +95,19 @@ export function getActiveTurnipPreset(envText: string): TurnipPreset | null {
 const ENV_HELP: Array<[string, string]> = [
   [
     'RNLLAMA_VK_NO_DEFAULTS=1',
-    'Turns off every automatic workaround below (and enables buffer device address): stock driver behaviour. Variables you add still apply.',
+    'Obsolete and ignored: there are no automatic workarounds any more. An empty box runs the driver as it ships; set the Safe preset variables explicitly to work around this driver\u2019s bugs.',
   ],
   [
     'GGML_VK_UNSUPPORTED_TYPES=Q6_K,Q2_K',
-    'Weight types whose matrix multiplications run on the CPU. Default: Q6_K, Q2_K, Q3_K, IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S, IQ4_XS (wrong results on this driver). Set it empty to run everything on the GPU. On a driver with the 8-bit SSBO fix these types compute correctly on the GPU, so the list can be emptied (use the Default preset).',
+    'Weight types whose matrix multiplications run on the CPU. Unset by default (everything runs on the GPU). The Safe preset sets it to Q6_K, Q2_K, Q3_K, IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S, IQ4_XS (wrong results on this driver). Set it empty to run everything on the GPU. On a driver with the 8-bit SSBO fix these types compute correctly on the GPU, so the list can be emptied (use the Default preset).',
   ],
   [
     'GGML_VK_DISABLE_QUANT_GET_ROWS=0',
-    'Default 1: get_rows (token embedding lookups) on quantized weights run on the CPU because the GPU returns wrong rows. 0 runs them on the GPU. On a driver with the 8-bit SSBO fix the GPU returns correct rows, so 0 is safe there.',
+    'Set to 1, get_rows (token embedding lookups) on quantized weights run on the CPU because the GPU returns wrong rows. Unset by default (they run on the GPU). The Safe preset sets it to 1. On a driver with the 8-bit SSBO fix the GPU returns correct rows, so leaving it unset is safe there.',
   ],
   [
     'GGML_VK_DISABLE_QUANT_SET_ROWS=0',
-    'Default 1: writes into a quantized KV cache run on the CPU because the GPU writes wrong data. 0 runs them on the GPU. On a driver with the 8-bit SSBO fix the GPU writes correct data, so 0 is safe there, and the KV cache type now follows Settings (it used to be forced to F16 on Vulkan).',
+    'Set to 1, writes into a quantized KV cache run on the CPU because the GPU writes wrong data. Unset by default (they run on the GPU). The Safe preset sets it to 1. On a driver with the 8-bit SSBO fix the GPU writes correct data, so leaving it unset is safe there, and the KV cache type now follows Settings (it used to be forced to F16 on Vulkan).',
   ],
   [
     'GGML_VK_UNSUPPORTED_OPS=SSM_CONV,SOFT_MAX',
@@ -111,7 +119,7 @@ const ENV_HELP: Array<[string, string]> = [
   ],
   [
     'RNLLAMA_VK_NO_WG512=0',
-    'Default 1: avoids the 512-wide soft_max shaders, which make the driver kill the app (long contexts without flash attention). 0 allows them.',
+    'Set to 1, avoids the 512-wide soft_max shaders, which make the driver kill the app (long contexts without flash attention). Unset by default (they are allowed). The Safe preset sets it to 1.',
   ],
   [
     'RNLLAMA_VK_ENABLE_BDA=1',
@@ -465,18 +473,18 @@ export const TurnipDriverRow: React.FC = () => {
           Default
         </Button>
         <Button
-          testID="turnip-preset-minimal"
-          compact
-          mode={activePreset === 'minimal' ? 'contained' : 'text'}
-          onPress={() => applyPreset(ENV_PRESETS.minimal)}>
-          Minimal
-        </Button>
-        <Button
           testID="turnip-preset-safe"
           compact
           mode={activePreset === 'safe' ? 'contained' : 'text'}
           onPress={() => applyPreset(ENV_PRESETS.safe)}>
           Safe
+        </Button>
+        <Button
+          testID="turnip-preset-minimal"
+          compact
+          mode={activePreset === 'minimal' ? 'contained' : 'text'}
+          onPress={() => applyPreset(ENV_PRESETS.minimal)}>
+          Minimal
         </Button>
         <Button
           testID="turnip-env-help-button"
@@ -486,13 +494,13 @@ export const TurnipDriverRow: React.FC = () => {
         </Button>
       </View>
       <Text variant="labelSmall" style={styles.textDescription}>
-        Default: The driver as it ships — no workarounds. Minimal: Default plus
-        extra conservative disables (no 16-bit float shaders, no integer dot
-        product, no fusion) — the GPU does the least. Safe: The app's known
-        workarounds for this driver's bugs; also the out-of-box setting (an
-        empty box). The highlighted button is the mode the box currently
-        matches. On a driver with the 8-bit SSBO fix, use Default — the
-        workarounds are only needed on a stock driver.
+        Default: The driver as it ships — no workarounds. Also the out-of-box
+        setting (an empty box). Safe: The app's known workarounds for this
+        driver's bugs, listed explicitly. Minimal: Default plus extra
+        conservative disables (no 16-bit float shaders, no integer dot product,
+        no fusion) — the GPU does the least. The highlighted button is the mode
+        the box currently matches. On a driver with the 8-bit SSBO fix, use
+        Default — the workarounds are only needed on a stock driver.
       </Text>
       <Button
         testID="turnip-env-save-button"

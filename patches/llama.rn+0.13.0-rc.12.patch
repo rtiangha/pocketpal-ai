@@ -241,7 +241,7 @@ index 0000000..6315268
 +    message(STATUS "rnllama Vulkan backend enabled for ${target_name}")
 +endfunction()
 diff --git a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
-index da47b6c..29b8ec9 100644
+index da47b6c..09b9509 100644
 --- a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
 +++ b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
 @@ -33,8 +33,8 @@ public class RNLlama {
@@ -255,7 +255,7 @@ index da47b6c..29b8ec9 100644
    private static final Pattern SNAPDRAGON_8_SERIES_NAME_PATTERN =
      Pattern.compile("SNAPDRAGON\\s*8");
    private static final Pattern HEXAGON_CODENAME_PATTERN =
-@@ -171,6 +171,280 @@ public class RNLlama {
+@@ -171,6 +171,197 @@ public class RNLlama {
      }
    }
  
@@ -263,28 +263,14 @@ index da47b6c..29b8ec9 100644
 +  // Custom Vulkan driver (Turnip) support.
 +  //
 +  // The app (JS side) controls it through plain files under <filesDir>/turnip/:
-+  //   enabled      marker file; present = the user turned the Vulkan driver on
++  //   enabled      marker file; present = the user turned the custom driver on
 +  //   driver_name  file name of the driver library inside that directory (written by the app for
 +  //                a raw .so import, or by installPendingTurnipImport for a zip)
 +  //   import.zip   a driver package (meta.json + library) waiting to be unpacked
 +  //   import_error.txt  why the last package import failed, if it did
-+  // With the switch on but no driver installed, the Vulkan variant still loads, on the system
-+  // driver (system mode): ggml-vulkan falls through to the system Vulkan loader when the driver
-+  // env vars are absent, so the same self-test runs against the Qualcomm blob driver as a control.
 +  // Changes take effect the next time the app starts, because the Vulkan variant is chosen here, once.
 +  // ---------------------------------------------------------------------------------------------
 +  private static final String TURNIP_DIR_NAME = "turnip";
-+
-+  /** Vulkan driver mode: off, a custom (Turnip) driver, or the system (Qualcomm) driver. */
-+  private static final int TURNIP_MODE_OFF = 0;
-+  private static final int TURNIP_MODE_CUSTOM = 1;
-+  private static final int TURNIP_MODE_SYSTEM = 2;
-+  private static int turnipMode = TURNIP_MODE_OFF;
-+
-+  private static String turnipModeName() {
-+    return turnipMode == TURNIP_MODE_CUSTOM ? "custom"
-+        : turnipMode == TURNIP_MODE_SYSTEM ? "system" : "off";
-+  }
 +
 +  private static String readSmallFile(File file) throws IOException {
 +    try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
@@ -373,112 +359,25 @@ index da47b6c..29b8ec9 100644
 +    }
 +  }
 +
-+  /**
-+   * Extra variables from the app's Settings screen (<filesDir>/turnip/env, KEY=VALUE per line).
-+   * RNLLAMA_VK_SELFTEST is one-shot: it is removed from the file once applied, so a self-test that
-+   * takes the GPU driver down does not turn into a crash on every launch.
-+   *
-+   * In system mode only the self-test variables apply (RNLLAMA_VK_SELFTEST / SELFTEST_ONLY /
-+   * SELFTEST_SKIP and RNLLAMA_VK_LOG_PIPELINES): the run is a clean control, so driver
-+   * workarounds from the env box are ignored and logged as such. Ignored lines are kept in the
-+   * file, so switching back to a custom driver keeps them.
-+   */
-+  private static void applyTurnipEnv(File dir, boolean systemMode) {
-+    File envFile = new File(dir, "env");
-+    if (!envFile.isFile()) return;
-+    java.util.List<String> keptLines = new java.util.ArrayList<>();
-+    boolean consumedSelfTest = false;
-+    try (BufferedReader envReader = new BufferedReader(new FileReader(envFile))) {
-+      String envLine;
-+      while ((envLine = envReader.readLine()) != null) {
-+        String trimmed = envLine.trim();
-+        int eq = trimmed.indexOf('=');
-+        if (trimmed.isEmpty() || trimmed.startsWith("#") || eq <= 0) {
-+          keptLines.add(envLine);
-+          continue;
-+        }
-+        String key = trimmed.substring(0, eq).trim();
-+        String value = trimmed.substring(eq + 1).trim();
-+        if (!key.matches("(GGML|RNLLAMA)_[A-Z0-9_]+")) {
-+          Log.w(TAG, "Ignoring environment variable " + key + " (only GGML_* and RNLLAMA_* are allowed)");
-+          keptLines.add(envLine);
-+          continue;
-+        }
-+        if (systemMode && !isSystemModeEnvKey(key)) {
-+          Log.i(TAG, "System driver: ignoring environment variable " + key + " (driver workarounds do not apply)");
-+          keptLines.add(envLine);
-+          continue;
-+        }
-+        android.system.Os.setenv(key, value, true);
-+        Log.i(TAG, "Environment from turnip/env: " + key + "=" + value);
-+        if (key.equals("RNLLAMA_VK_SELFTEST")) {
-+          consumedSelfTest = true;  // do not keep it for the next launch
-+        } else {
-+          keptLines.add(envLine);
-+        }
-+      }
-+    } catch (Throwable t) {
-+      Log.w(TAG, "Could not read turnip/env", t);
-+      consumedSelfTest = false;
-+    }
-+    if (consumedSelfTest) {
-+      try (java.io.FileWriter envWriter = new java.io.FileWriter(envFile, false)) {
-+        envWriter.write(android.text.TextUtils.join("\n", keptLines));
-+      } catch (Throwable t) {
-+        Log.w(TAG, "Could not update turnip/env", t);
-+      }
-+    }
-+  }
-+
-+  /** Variables that apply in system-driver mode: the self-test trigger, its filters, and pipeline logging. */
-+  private static boolean isSystemModeEnvKey(String key) {
-+    return key.equals("RNLLAMA_VK_SELFTEST")
-+        || key.equals("RNLLAMA_VK_SELFTEST_ONLY")
-+        || key.equals("RNLLAMA_VK_SELFTEST_SKIP")
-+        || key.equals("RNLLAMA_VK_LOG_PIPELINES");
-+  }
-+
-+  /** @return true when the Vulkan variant should be loaded (custom driver or system driver). */
++  /** @return true when the Vulkan variant with the custom driver should be loaded. */
 +  private static boolean prepareTurnipDriver(ReactApplicationContext context) {
-+    turnipMode = TURNIP_MODE_OFF;
 +    try {
 +      File dir = new File(context.getFilesDir(), TURNIP_DIR_NAME);
 +      if (!new File(dir, "enabled").exists()) return false;
 +
 +      installPendingTurnipImport(dir);
 +
-+      String name = null;
-+      File driver = null;
 +      File nameFile = new File(dir, "driver_name");
-+      if (nameFile.exists()) {
-+        String read = readSmallFile(nameFile);
-+        File candidate = new File(dir, read);
-+        if (!read.isEmpty() && !read.contains("/") && candidate.isFile()) {
-+          name = read;
-+          driver = candidate;
-+        } else {
-+          Log.w(TAG, "Turnip driver file is missing: " + candidate);
-+        }
++      if (!nameFile.exists()) {
++        Log.w(TAG, "Turnip is enabled but no driver is installed");
++        return false;
 +      }
-+
-+      if (driver == null) {
-+        // System mode: the switch is on but no custom driver is installed. Load the Vulkan
-+        // variant without the driver env vars, so ggml-vulkan falls through to the system
-+        // Vulkan loader (the Qualcomm blob driver). RNLLAMA_VK_DRIVER_DIR is still set to the
-+        // turnip dir, so the self-test report (and last_pipeline.txt) land where the Settings
-+        // screen reads them; ggml_vk_get_instance_proc_addr() needs the driver NAME too, so a
-+        // dir alone does not trigger the custom-driver path. No Turnip workarounds: the run is
-+        // a clean control. The pipeline cache gets its own file, so the blob run never touches
-+        // the Turnip cache.
-+        turnipMode = TURNIP_MODE_SYSTEM;
-+        android.system.Os.setenv("RNLLAMA_VK_DRIVER_DIR", dir.getAbsolutePath(), true);
-+        android.system.Os.setenv("RNLLAMA_VK_PIPELINE_CACHE",
-+            new File(dir, "pipeline_cache_system.bin").getAbsolutePath(), true);
-+        applyTurnipEnv(dir, true);
-+        Log.i(TAG, "System Vulkan driver enabled (no custom driver installed)");
-+        return true;
++      String name = readSmallFile(nameFile);
++      File driver = new File(dir, name);
++      if (name.isEmpty() || name.contains("/") || !driver.isFile()) {
++        Log.w(TAG, "Turnip driver file is missing: " + driver);
++        return false;
 +      }
-+
 +      driver.setReadable(true, true);
 +      driver.setExecutable(true, true);
 +
@@ -491,33 +390,52 @@ index da47b6c..29b8ec9 100644
 +      android.system.Os.setenv("RNLLAMA_VK_HOOK_DIR", context.getApplicationInfo().nativeLibraryDir, true);
 +      android.system.Os.setenv("RNLLAMA_VK_TMP_DIR", tmp.getAbsolutePath(), true);
 +      android.system.Os.setenv("RNLLAMA_VK_PIPELINE_CACHE", new File(dir, "pipeline_cache.bin").getAbsolutePath(), true);
-+      applyTurnipEnv(dir, false);
-+      // Automatic workarounds for the Turnip / Adreno 660 driver, found with the GPU self-test. Each one only
-+      // applies when its variable is not set already, and RNLLAMA_VK_NO_DEFAULTS=1 switches all of them off
-+      // (stock behaviour; variables from the env box still apply).
-+      String noDefaults = android.system.Os.getenv("RNLLAMA_VK_NO_DEFAULTS");
-+      if (noDefaults != null && !noDefaults.isEmpty() && !noDefaults.equals("0")) {
-+        Log.i(TAG, "RNLLAMA_VK_NO_DEFAULTS set: not applying the automatic Vulkan workarounds");
-+      } else {
-+        // get_rows on quantized weights (token embedding lookups) returns wrong rows: do those on the CPU.
-+        if (android.system.Os.getenv("GGML_VK_DISABLE_QUANT_GET_ROWS") == null) {
-+          android.system.Os.setenv("GGML_VK_DISABLE_QUANT_GET_ROWS", "1", true);
++      // Extra variables from the app's Settings screen (<filesDir>/turnip/env, KEY=VALUE per line).
++      // RNLLAMA_VK_SELFTEST is one-shot: it is removed from the file once applied, so a self-test that
++      // takes the GPU driver down does not turn into a crash on every launch.
++      File envFile = new File(dir, "env");
++      if (envFile.isFile()) {
++        java.util.List<String> keptLines = new java.util.ArrayList<>();
++        boolean consumedSelfTest = false;
++        try (BufferedReader envReader = new BufferedReader(new FileReader(envFile))) {
++          String envLine;
++          while ((envLine = envReader.readLine()) != null) {
++            String trimmed = envLine.trim();
++            int eq = trimmed.indexOf('=');
++            if (trimmed.isEmpty() || trimmed.startsWith("#") || eq <= 0) {
++              keptLines.add(envLine);
++              continue;
++            }
++            String key = trimmed.substring(0, eq).trim();
++            String value = trimmed.substring(eq + 1).trim();
++            if (!key.matches("(GGML|RNLLAMA)_[A-Z0-9_]+")) {
++              Log.w(TAG, "Ignoring environment variable " + key + " (only GGML_* and RNLLAMA_* are allowed)");
++              keptLines.add(envLine);
++              continue;
++            }
++            android.system.Os.setenv(key, value, true);
++            Log.i(TAG, "Environment from turnip/env: " + key + "=" + value);
++            if (key.equals("RNLLAMA_VK_SELFTEST")) {
++              consumedSelfTest = true;  // do not keep it for the next launch
++            } else {
++              keptLines.add(envLine);
++            }
++          }
++        } catch (Throwable t) {
++          Log.w(TAG, "Could not read turnip/env", t);
++          consumedSelfTest = false;
 +        }
-+        // Q6_K, Q2_K, Q3_K, IQ4_XS and IQ3_S matmuls were wrong; the other IQ types use the same lookup-table
-+        // approach and could not be tested, so they are kept off too. Set it, even empty, to override.
-+        if (android.system.Os.getenv("GGML_VK_UNSUPPORTED_TYPES") == null) {
-+          android.system.Os.setenv("GGML_VK_UNSUPPORTED_TYPES",
-+              "Q6_K,Q2_K,Q3_K,IQ1_S,IQ1_M,IQ2_XXS,IQ2_XS,IQ2_S,IQ3_XXS,IQ3_S,IQ4_XS", true);
-+        }
-+        // Writes into a quantized KV cache (set_rows to Q8_0 / Q4_0) are wrong on the GPU: keep them on the CPU.
-+        if (android.system.Os.getenv("GGML_VK_DISABLE_QUANT_SET_ROWS") == null) {
-+          android.system.Os.setenv("GGML_VK_DISABLE_QUANT_SET_ROWS", "1", true);
-+        }
-+        // The driver's shader compiler kills the app on the 512-wide soft_max shaders.
-+        if (android.system.Os.getenv("RNLLAMA_VK_NO_WG512") == null) {
-+          android.system.Os.setenv("RNLLAMA_VK_NO_WG512", "1", true);
++        if (consumedSelfTest) {
++          try (java.io.FileWriter envWriter = new java.io.FileWriter(envFile, false)) {
++            envWriter.write(android.text.TextUtils.join("\n", keptLines));
++          } catch (Throwable t) {
++            Log.w(TAG, "Could not update turnip/env", t);
++          }
 +        }
 +      }
++      // No automatic Vulkan workarounds: only the environment box applies.
++      // An empty box runs the driver as it ships; the Safe preset sets the
++      // known workarounds explicitly. RNLLAMA_VK_NO_DEFAULTS is obsolete.
 +      Log.i(TAG, "Custom Vulkan driver enabled: " + driver + " (" + driver.length() + " bytes)");
 +      StringBuilder hooks = new StringBuilder();
 +      for (String hook : new String[] {"libhook_impl.so", "libmain_hook.so", "libfile_redirect_hook.so", "libgsl_alloc_hook.so"}) {
@@ -525,7 +443,6 @@ index da47b6c..29b8ec9 100644
 +        hooks.append(hook).append(hookFile.isFile() ? "=ok " : "=MISSING ");
 +      }
 +      Log.i(TAG, "Hook libraries in " + context.getApplicationInfo().nativeLibraryDir + ": " + hooks);
-+      turnipMode = TURNIP_MODE_CUSTOM;
 +      return true;
 +    } catch (Throwable t) {
 +      Log.w(TAG, "Could not prepare the custom Vulkan driver", t);
@@ -536,7 +453,7 @@ index da47b6c..29b8ec9 100644
    public static synchronized boolean loadNative(ReactApplicationContext context) {
      if (libsLoaded) return true;
  
-@@ -193,12 +467,20 @@ public class RNLlama {
+@@ -193,12 +389,20 @@ public class RNLlama {
  
      boolean hasAdreno = hasAdrenoGpuHint();
      boolean hasHexagon = isHexagonSupported();
@@ -558,12 +475,12 @@ index da47b6c..29b8ec9 100644
            if (tryLoadLibrary("rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl")) {
              jniLoaded = true;
              loadedLib = "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl";
-@@ -258,6 +540,8 @@ public class RNLlama {
+@@ -258,6 +462,8 @@ public class RNLlama {
        }
  
        System.loadLibrary("rnllama");
 +      Log.i(TAG, "Loaded native library: " + loadedLib + " (dotprod=" + hasDotProd + ", adreno=" + hasAdreno
-+          + ", turnipMode=" + turnipModeName() + ")");
++          + ", turnipRequested=" + useTurnipVulkan + ")");
        nativeSetLoadedLibrary(loadedLib);
        libsLoaded = true;
        return true;
@@ -617,10 +534,10 @@ index 2b1b324..eaa0858 100644
      # x86_64 target
 diff --git a/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp b/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp
 new file mode 100644
-index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
+index 0000000..1afcfd1
 --- /dev/null
 +++ b/node_modules/llama.rn/android/src/main/rnllama/vk-selftest.cpp
-@@ -0,0 +1,887 @@
+@@ -0,0 +1,599 @@
 +// GPU self-test for the Vulkan variant (custom Turnip driver), ported from the OfflineLLM project.
 +//
 +// Runs a few ggml ops on the CPU backend and on the Vulkan backend with identical deterministic
@@ -651,17 +568,6 @@ index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
 +    std::string name;
 +    std::function<ggml_tensor *(ggml_context *, std::vector<ggml_tensor *> &)> build;
 +    bool heavy = false;  // realistic (large) sizes: only run at RNLLAMA_VK_SELFTEST=2, may hang a weak GPU driver
-+    // Byte-exact mode (byte-access tests): when set, fill() replaces the
-+    // standard deterministic fill for this case's inputs, and check()
-+    // replaces the normalised-error comparison. check() gets the raw result
-+    // bytes of the CPU reference and the GPU result and returns "" on a
-+    // match, or a multi-line string on a mismatch: the first line is the
-+    // one-line verdict (same text as v1), and the further lines are the
-+    // detail dump (first mismatches + per-block/per-row summaries) that
-+    // the caller emits as its own lines. Byte-exact cases are reported
-+    // OK/BAD only, never WARN.
-+    std::function<void(std::vector<ggml_tensor *> &)> fill;
-+    std::function<std::string(const std::vector<uint8_t> &, const std::vector<uint8_t> &)> check;
 +};
 +
 +void fillTensorDeterministic(ggml_tensor * t, uint32_t seed) {
@@ -723,9 +629,7 @@ index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
 +}
 +
 +// Returns 1 = computed, 0 = failed, -1 = op not supported by this backend.
-+// When rawOut is given it also receives the result tensor's raw bytes.
-+int runSelfTestCase(ggml_backend_t backend, const SelfTestCase & c, std::vector<float> & out,
-+                    std::vector<uint8_t> * rawOut = nullptr) {
++int runSelfTestCase(ggml_backend_t backend, const SelfTestCase & c, std::vector<float> & out) {
 +    ggml_init_params ip = {ggml_tensor_overhead() * 32 + ggml_graph_overhead(), nullptr, true};
 +    ggml_context * ctx = ggml_init(ip);
 +    if (ctx == nullptr) {
@@ -741,19 +645,11 @@ index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
 +        if (!ggml_backend_supports_op(backend, result)) {
 +            status = -1;
 +        } else {
-+            if (c.fill) {
-+                c.fill(inputs);
-+            } else {
-+                for (size_t i = 0; i < inputs.size(); i++) {
-+                    fillTensorDeterministic(inputs[i], (uint32_t) (1 + i));
-+                }
++            for (size_t i = 0; i < inputs.size(); i++) {
++                fillTensorDeterministic(inputs[i], (uint32_t) (1 + i));
 +            }
 +            if (ggml_backend_graph_compute(backend, gf) == GGML_STATUS_SUCCESS) {
 +                status = readResultAsFloat(result, out) ? 1 : 0;
-+                if (status == 1 && rawOut != nullptr) {
-+                    rawOut->resize(ggml_nbytes(result));
-+                    ggml_backend_tensor_get(result, rawOut->data(), 0, rawOut->size());
-+                }
 +            }
 +        }
 +        ggml_backend_buffer_free(buf);
@@ -918,231 +814,6 @@ index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
 +                             return ggml_get_rows(ctx, w, idx);
 +                         }});
 +    }
-+
-+    // ---- byte-access isolation (Turnip isam (u8) byte-load / stib byte-store hypothesis) ----
-+    // The IR3 for the get_rows / set_rows shaders is verified correct offline
-+    // (dequant/quantize ALU, addresses, stores), so a mismatch in these cases
-+    // isolates the 8-bit memory access: the output directly encodes the byte
-+    // that was loaded/stored. Both cases fill their inputs with a KNOWN byte
-+    // pattern (not the standard quantize-of-random-floats fill) and compare
-+    // byte-exactly, reporting the first mismatch with its location.
-+    cases.push_back(SelfTestCase{
-+        "byte-access get_rows Q4_0",
-+        [](ggml_context * ctx, std::vector<ggml_tensor *> & in) {
-+            ggml_tensor * w = ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0, 512, 64);
-+            ggml_tensor * idx = ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 8);
-+            in = {w, idx};
-+            return ggml_get_rows(ctx, w, idx);
-+        },
-+        false,
-+        [](std::vector<ggml_tensor *> & in) {
-+            // Q4_0 weight [512, 64]: 16 blocks of 32 per row, 18 bytes per
-+            // block (f16 scale d, then 16 qs bytes). Every block gets d = 1.0
-+            // and qs bytes = the global qs-byte index & 0xFF, so the output
-+            // for element j is exactly (nibble - 8.0f) and the nibble
-+            // identifies the byte that was loaded.
-+            ggml_tensor * w = in[0];
-+            ggml_tensor * idx = in[1];
-+            std::vector<uint8_t> bytes(ggml_nbytes(w));
-+            float one = 1.0f;
-+            ggml_fp16_t d16;
-+            ggml_fp32_to_fp16_row(&one, &d16, 1);
-+            for (int64_t r = 0; r < 64; r++) {
-+                for (int64_t b = 0; b < 16; b++) {
-+                    const size_t off = ((size_t) r * 16 + (size_t) b) * 18;
-+                    memcpy(&bytes[off], &d16, sizeof(d16));
-+                    for (int64_t k = 0; k < 16; k++) {
-+                        bytes[off + 2 + (size_t) k] = (uint8_t) ((((size_t) r * 16 + (size_t) b) * 16 + (size_t) k) & 0xFF);
-+                    }
-+                }
-+            }
-+            ggml_backend_tensor_set(w, bytes.data(), 0, bytes.size());
-+            std::vector<int32_t> rows = {0, 1, 2, 3, 4, 5, 6, 7};
-+            ggml_backend_tensor_set(idx, rows.data(), 0, rows.size() * sizeof(int32_t));
-+        },
-+        [](const std::vector<uint8_t> & ref, const std::vector<uint8_t> & got) -> std::string {
-+            // Result is F32 [512, 8]: out[r][j] = nibble - 8.0f. A mismatch
-+            // at (r, j) means the qs byte (block j/32, byte (j%32)/2, low/high
-+            // by j parity) was mis-loaded; the GPU nibble (got + 8) says
-+            // which value came back instead.
-+            // The return is multi-line: line 1 is the one-line verdict (same
-+            // text as v1), then the first 10 mismatches and the right-output
-+            // count per global block (128 blocks, 8 lines of 16). The dump
-+            // is what discriminates the x2 address scaling from a +2 offset:
-+            // under x2 the 2nd mismatch is nibble 4 (byte 6 loaded) and only
-+            // blocks 0 and 15 (mod 16) have any right outputs (8 each);
-+            // under +2 the 2nd mismatch is nibble 3 (byte 5 loaded) and
-+            // every block has ~14 right outputs. See BYTE-ACCESS-DUMP-NOTES.txt.
-+            const size_t n = ref.size() / sizeof(float);
-+            const float * rf = (const float *) ref.data();
-+            const float * gf = (const float *) got.data();
-+            size_t bad = 0;
-+            char buf[256];
-+            std::string first;
-+            std::string dump;
-+            size_t rightPerBlock[128] = {};
-+            size_t dumped = 0;
-+            for (size_t f = 0; f < n; f++) {
-+                const size_t r = f / 512, j = f % 512;
-+                const size_t blk = j / 32, k = (j % 32) / 2;
-+                const uint8_t byte = (uint8_t) ((((r * 16 + blk) * 16 + k) & 0xFF));
-+                if (rf[f] != gf[f]) {
-+                    if (bad == 0) {
-+                        snprintf(buf, sizeof(buf),
-+                                 "first mismatch out[row %zu][elem %zu] (block %zu, qs byte %zu, %s nibble, byte should be 0x%02x): "
-+                                 "CPU %.1f (nibble %.0f) GPU %.1f (nibble %.0f)",
-+                                 r, j, blk, k, (j % 2 == 0) ? "low" : "high", byte,
-+                                 rf[f], rf[f] + 8.0f, gf[f], gf[f] + 8.0f);
-+                        first = buf;
-+                    }
-+                    if (dumped < 10) {
-+                        char line[192];
-+                        snprintf(line, sizeof(line),
-+                                 "  mm[%zu] out[%zu] row %zu elem %zu blk %zu qs %zu %s: byte 0x%02x exp nib %.0f got nib %.0f",
-+                                 dumped, f, r, j, blk, k, (j % 2 == 0) ? "low" : "high", byte,
-+                                 rf[f] + 8.0f, gf[f] + 8.0f);
-+                        dump += line;
-+                        dump += "\n";
-+                        dumped++;
-+                    }
-+                    bad++;
-+                } else {
-+                    rightPerBlock[r * 16 + blk]++;
-+                }
-+            }
-+            if (bad == 0) {
-+                return "";
-+            }
-+            snprintf(buf, sizeof(buf), "%zu/%zu outputs wrong; %s", bad, n, first.c_str());
-+            std::string out = buf;
-+            out += "\n";
-+            out += dump;
-+            for (size_t g = 0; g < 128; g += 16) {
-+                char line[192];
-+                int w = snprintf(line, sizeof(line), "  right/blk %zu-%zu:", g, g + 15);
-+                for (size_t b = g; b < g + 16; b++) {
-+                    w += snprintf(line + w, sizeof(line) - (size_t) w, " %2zu", rightPerBlock[b]);
-+                }
-+                out += line;
-+                out += "\n";
-+            }
-+            return out;
-+        }});
-+    cases.push_back(SelfTestCase{
-+        "byte-access set_rows F32->Q8_0",
-+        [](ggml_context * ctx, std::vector<ggml_tensor *> & in) {
-+            ggml_tensor * dst = ggml_new_tensor_2d(ctx, GGML_TYPE_Q8_0, 256, 64);
-+            ggml_tensor * src = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, 256, 4);
-+            ggml_tensor * idx = ggml_new_tensor_1d(ctx, GGML_TYPE_I64, 4);
-+            in = {dst, src, idx};
-+            return ggml_set_rows(ctx, dst, src, idx);
-+        },
-+        false,
-+        [](std::vector<ggml_tensor *> & in) {
-+            // src values cycle {-1.0, -0.25, 0.0, 0.25, 1.0}: every 32-element
-+            // block contains -1.0 and 1.0, so amax = 1.0, d = 1/127, and the
-+            // quantized bytes are exactly {-127, -32, 0, 32, 127} — no
-+            // rounding ties. dst starts zeroed; only rows 0..3 are written.
-+            ggml_tensor * dst = in[0];
-+            ggml_tensor * src = in[1];
-+            ggml_tensor * idx = in[2];
-+            std::vector<uint8_t> zeros(ggml_nbytes(dst), 0);
-+            ggml_backend_tensor_set(dst, zeros.data(), 0, zeros.size());
-+            const float vals[5] = {-1.0f, -0.25f, 0.0f, 0.25f, 1.0f};
-+            std::vector<float> s(256 * 4);
-+            for (size_t i = 0; i < s.size(); i++) {
-+                s[i] = vals[i % 5];
-+            }
-+            ggml_backend_tensor_set(src, s.data(), 0, s.size() * sizeof(float));
-+            std::vector<int64_t> rows = {0, 1, 2, 3};
-+            ggml_backend_tensor_set(idx, rows.data(), 0, rows.size() * sizeof(int64_t));
-+        },
-+        [](const std::vector<uint8_t> & ref, const std::vector<uint8_t> & got) -> std::string {
-+            // Result is Q8_0 [256, 64]: 8 blocks of 34 bytes per row (f16 d,
-+            // then 32 qs bytes). Only rows 0..3 are written; compare those
-+            // rows' raw bytes, which are exactly the bytes the GPU stored.
-+            // The return is multi-line: line 1 is the one-line verdict (same
-+            // text as v1), then the first 10 mismatches, the wrong-byte count
-+            // per row, and the wrong-byte count per block (4 lines of 8).
-+            // Under x2 the mismatches start at byte 1 (scale d hi, 0x20 ->
-+            // 0x00) and every row has 217 wrong; under +2 they start at byte
-+            // 0 (scale d lo) and every row has 268 wrong. See
-+            // BYTE-ACCESS-DUMP-NOTES.txt.
-+            const size_t rowBytes = 8 * 34;
-+            size_t bad = 0;
-+            char buf[256];
-+            std::string first;
-+            std::string dump;
-+            size_t wrongPerRow[4] = {};
-+            size_t wrongPerBlock[32] = {};
-+            size_t dumped = 0;
-+            for (size_t r = 0; r < 4; r++) {
-+                for (size_t off = 0; off < rowBytes; off++) {
-+                    const size_t i = r * rowBytes + off;
-+                    if (ref[i] != got[i]) {
-+                        const size_t blk = off / 34, k = off % 34;
-+                        if (bad == 0) {
-+                            char where[32];
-+                            if (k < 2) {
-+                                snprintf(where, sizeof(where), "scale d");
-+                            } else {
-+                                snprintf(where, sizeof(where), "qs[%zu]", k - 2);
-+                            }
-+                            snprintf(buf, sizeof(buf),
-+                                     "first mismatch row %zu byte %zu (block %zu, %s): CPU 0x%02x GPU 0x%02x",
-+                                     r, off, blk, where, ref[i], got[i]);
-+                            first = buf;
-+                        }
-+                        if (dumped < 10) {
-+                            char where[32];
-+                            if (k == 0) {
-+                                snprintf(where, sizeof(where), "scale d lo");
-+                            } else if (k == 1) {
-+                                snprintf(where, sizeof(where), "scale d hi");
-+                            } else {
-+                                snprintf(where, sizeof(where), "qs[%zu]", k - 2);
-+                            }
-+                            char line[192];
-+                            snprintf(line, sizeof(line),
-+                                     "  mm[%zu] row %zu byte %zu blk %zu %s: exp 0x%02x got 0x%02x",
-+                                     dumped, r, off, blk, where, ref[i], got[i]);
-+                            dump += line;
-+                            dump += "\n";
-+                            dumped++;
-+                        }
-+                        bad++;
-+                        wrongPerRow[r]++;
-+                        wrongPerBlock[r * 8 + blk]++;
-+                    }
-+                }
-+            }
-+            if (bad == 0) {
-+                return "";
-+            }
-+            snprintf(buf, sizeof(buf), "%zu/%zu bytes wrong in rows 0..3; %s", bad, 4 * rowBytes, first.c_str());
-+            std::string out = buf;
-+            out += "\n";
-+            out += dump;
-+            {
-+                char line[192];
-+                int w = snprintf(line, sizeof(line), "  wrong/row:");
-+                for (size_t r = 0; r < 4; r++) {
-+                    w += snprintf(line + w, sizeof(line) - (size_t) w, " %zu", wrongPerRow[r]);
-+                }
-+                out += line;
-+                out += "\n";
-+            }
-+            for (size_t r = 0; r < 4; r++) {
-+                char line[192];
-+                int w = snprintf(line, sizeof(line), "  wrong/blk row %zu:", r);
-+                for (size_t b = 0; b < 8; b++) {
-+                    w += snprintf(line + w, sizeof(line) - (size_t) w, " %2zu", wrongPerBlock[r * 8 + b]);
-+                }
-+                out += line;
-+                out += "\n";
-+            }
-+            return out;
-+        }});
 +
 +    const size_t heavyStart = cases.size();
 +    // ---- realistic sizes ----
@@ -1413,9 +1084,8 @@ index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
 +                    writeReport(report, c.name.c_str());
 +                    __android_log_print(ANDROID_LOG_INFO, "RNLlamaVk", "selftest: running %s", c.name.c_str());
 +                    std::vector<float> ref, got;
-+                    std::vector<uint8_t> refRaw, gotRaw;
-+                    const int rc = runSelfTestCase(beCpu, c, ref, &refRaw);
-+                    const int gc = runSelfTestCase(beGpu, c, got, &gotRaw);
++                    const int rc = runSelfTestCase(beCpu, c, ref);
++                    const int gc = runSelfTestCase(beGpu, c, got);
 +                    if (gc < 0 || rc <= 0) {
 +                        snprintf(line, sizeof(line), "%s: skipped (%s)", c.name.c_str(),
 +                                 gc < 0 ? "GPU does not support this op" : "CPU reference failed");
@@ -1423,47 +1093,6 @@ index 0000000..49bfc0326f857c406c64aa350f67dcd110a04a4d
 +                    } else if (gc == 0 || got.size() != ref.size()) {
 +                        snprintf(line, sizeof(line), "%s: BAD (GPU compute failed)", c.name.c_str());
 +                        nBad++;
-+                    } else if (c.check) {
-+                        // Byte-exact case: compare the raw result bytes CPU vs GPU.
-+                        if (gotRaw.size() != refRaw.size()) {
-+                            snprintf(line, sizeof(line), "%s: BAD (result size differs)", c.name.c_str());
-+                            nBad++;
-+                        } else {
-+                            const std::string mismatch = c.check(refRaw, gotRaw);
-+                            if (mismatch.empty()) {
-+                                snprintf(line, sizeof(line), "%s: OK (byte-exact)", c.name.c_str());
-+                                nOk++;
-+                            } else {
-+                                // check() returns a multi-line string: the first
-+                                // line is the one-line verdict, the rest is the
-+                                // detail dump (first mismatches + summaries).
-+                                // The 256-byte line buffer would truncate the
-+                                // dump, so it is emitted line by line here
-+                                // instead of being snprintf'd into line.
-+                                const size_t nl = mismatch.find('\n');
-+                                const std::string head =
-+                                    (nl == std::string::npos) ? mismatch : mismatch.substr(0, nl);
-+                                snprintf(line, sizeof(line), "%s: BAD (%s)", c.name.c_str(), head.c_str());
-+                                nBad++;
-+                                emit(report, line);
-+                                if (nl != std::string::npos) {
-+                                    size_t pos = nl + 1;
-+                                    while (pos < mismatch.size()) {
-+                                        const size_t eol = mismatch.find('\n', pos);
-+                                        const std::string dl = mismatch.substr(
-+                                            pos, eol == std::string::npos ? std::string::npos : eol - pos);
-+                                        if (!dl.empty()) {
-+                                            emit(report, dl.c_str());
-+                                        }
-+                                        if (eol == std::string::npos) {
-+                                            break;
-+                                        }
-+                                        pos = eol + 1;
-+                                    }
-+                                }
-+                                continue;  // verdict + dump already emitted; skip the emit() below
-+                            }
-+                        }
 +                    } else {
 +                        double num = 0.0, den = 0.0;
 +                        size_t nonFinite = 0;
