@@ -624,11 +624,6 @@ class ModelStore {
     const flash_attn_type =
       this.contextInitParams.flash_attn_type ?? flashAttnModeDefault;
 
-    // Writes into a quantized KV cache give wrong results (or crash) with the Vulkan (Turnip)
-    // driver, so the cache stays F16 whenever the Vulkan GPU is selected.
-    const selectedDevices = this.contextInitParams.devices ?? [];
-    const usesVulkan = selectedDevices.some(d => d.startsWith('Vulkan'));
-
     // Build the params object, filtering out undefined values
     const params: Partial<Omit<ContextParams, 'model'>> = {
       n_ctx: effectiveContext,
@@ -636,12 +631,16 @@ class ModelStore {
       n_ubatch: effectiveUBatch,
       n_threads: this.contextInitParams.n_threads,
       flash_attn_type, // NEW: replaces flash_attn boolean
-      cache_type_k: usesVulkan
-        ? CacheType.F16
-        : this.contextInitParams.cache_type_k,
-      cache_type_v: usesVulkan
-        ? CacheType.F16
-        : this.contextInitParams.cache_type_v,
+      // The KV cache types now follow the user's Settings on every
+      // backend, including Vulkan. They used to be forced to F16 on
+      // Vulkan because writes into a quantized KV cache gave wrong
+      // results on the stock Turnip driver (8-bit SSBO byte-address
+      // bug); the storage_8bit PoC driver fixes that, and the stock
+      // driver's Safe preset still routes quantized set_rows to the
+      // CPU. If you go back to a stock driver, set the KV cache back
+      // to F16 in Settings or quantized KV will be wrong again.
+      cache_type_k: this.contextInitParams.cache_type_k,
+      cache_type_v: this.contextInitParams.cache_type_v,
       n_gpu_layers: this.contextInitParams.n_gpu_layers ?? 99,
       devices: this.contextInitParams.devices?.slice(),
       kv_unified: this.contextInitParams.kv_unified ?? true, // NEW (default true!)
