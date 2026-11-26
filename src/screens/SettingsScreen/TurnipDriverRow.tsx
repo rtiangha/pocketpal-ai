@@ -45,11 +45,11 @@ const localStyles = StyleSheet.create({
 const ENV_PRESETS = {
   // The driver as it ships: no workarounds at all. An empty box, because
   // there are no automatic workarounds any more (see the llama.rn patch:
-  // the native code used to apply them unless RNLLAMA_VK_NO_DEFAULTS=1
-  // was set; that default is inverted, so the box is the only source).
+  // the native code used to apply them automatically; that default
+  // is inverted, so the box is the only source).
   default: '',
   // Default plus extra conservative disables: the GPU does the least.
-  // No NO_DEFAULTS line any more: there is nothing automatic to switch off.
+  // There is nothing automatic to switch off any more.
   minimal: [
     'GGML_VK_DISABLE_F16=1',
     'GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1',
@@ -93,10 +93,6 @@ export function getActiveTurnipPreset(envText: string): TurnipPreset | null {
 
 /** Variables the driver environment box understands: [name, what it does]. */
 const ENV_HELP: Array<[string, string]> = [
-  [
-    'RNLLAMA_VK_NO_DEFAULTS=1',
-    'Obsolete and ignored: there are no automatic workarounds any more. An empty box runs the driver as it ships; set the Safe preset variables explicitly to work around this driver\u2019s bugs.',
-  ],
   [
     'GGML_VK_UNSUPPORTED_TYPES=Q6_K,Q2_K',
     'Weight types whose matrix multiplications run on the CPU. Unset by default (everything runs on the GPU). The Safe preset sets it to Q6_K, Q2_K, Q3_K, IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S, IQ4_XS (wrong results on this driver). Set it empty to run everything on the GPU. On a driver with the 8-bit SSBO fix these types compute correctly on the GPU, so the list can be emptied (use the Default preset).',

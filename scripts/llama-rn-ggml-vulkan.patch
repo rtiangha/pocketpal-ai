@@ -278,16 +278,13 @@
  
          device->device_fault = device->device_fault && fault_features.deviceFault;
  
-@@ -4942,7 +5167,15 @@
+@@ -4942,7 +5167,12 @@
                              getenv("GGML_VK_DISABLE_MULTI_ADD") == nullptr;
  
          device->shader_int64 = device_features2.features.shaderInt64;
 -        device->buffer_device_address = vk12_features.bufferDeviceAddress;
-+        // rnllama: BDA is only an optimisation and crashed Adreno 660 drivers; opt in with RNLLAMA_VK_ENABLE_BDA
-+        // (or RNLLAMA_VK_NO_DEFAULTS=1, which restores the stock behaviour).
-+        const char * no_defaults_env = getenv("RNLLAMA_VK_NO_DEFAULTS");
-+        const bool bda_wanted = getenv("RNLLAMA_VK_ENABLE_BDA") != nullptr ||
-+                                (no_defaults_env != nullptr && *no_defaults_env != '\0' && strcmp(no_defaults_env, "0") != 0);
++        // rnllama: BDA is only an optimisation and crashed Adreno 660 drivers; opt in with RNLLAMA_VK_ENABLE_BDA.
++        const bool bda_wanted = getenv("RNLLAMA_VK_ENABLE_BDA") != nullptr;
 +        device->buffer_device_address = vk12_features.bufferDeviceAddress && bda_wanted;
 +        RNLLAMA_VK_ALOG(INFO, "buffer_device_address=%d (driver reports %d, RNLLAMA_VK_ENABLE_BDA %s)",
 +                        (int) device->buffer_device_address, (int) vk12_features.bufferDeviceAddress,

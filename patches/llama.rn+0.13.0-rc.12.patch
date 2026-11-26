@@ -435,7 +435,7 @@ index da47b6c..09b9509 100644
 +      }
 +      // No automatic Vulkan workarounds: only the environment box applies.
 +      // An empty box runs the driver as it ships; the Safe preset sets the
-+      // known workarounds explicitly. RNLLAMA_VK_NO_DEFAULTS is obsolete.
++      // known workarounds explicitly.
 +      Log.i(TAG, "Custom Vulkan driver enabled: " + driver + " (" + driver.length() + " bytes)");
 +      StringBuilder hooks = new StringBuilder();
 +      for (String hook : new String[] {"libhook_impl.so", "libmain_hook.so", "libfile_redirect_hook.so", "libgsl_alloc_hook.so"}) {
