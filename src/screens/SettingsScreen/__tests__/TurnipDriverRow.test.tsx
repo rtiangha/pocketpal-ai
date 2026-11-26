@@ -19,7 +19,7 @@ import {
   setTurnipEnv,
 } from '../../../utils/turnipDriver';
 
-import {TurnipDriverRow} from '../TurnipDriverRow';
+import {getActiveTurnipPreset, TurnipDriverRow} from '../TurnipDriverRow';
 
 jest.mock('../../../utils/turnipDriver', () => ({
   getTurnipState: jest.fn(),
@@ -357,6 +357,120 @@ describe('TurnipDriverRow', () => {
     await waitFor(() => {
       expect(setTurnipEnv).toHaveBeenCalledWith(
         'GGML_VK_DISABLE_F16=1\nGGML_VK_UNSUPPORTED_OPS=SSM_CONV',
+      );
+    });
+  });
+
+  describe('environment presets', () => {
+    const MINIMAL_ENV =
+      'RNLLAMA_VK_NO_DEFAULTS=1\nGGML_VK_DISABLE_F16=1\nGGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1\nGGML_VK_DISABLE_FUSION=1';
+
+    it('matches an empty box to Safe (the out-of-box setting)', () => {
+      expect(getActiveTurnipPreset('')).toBe('safe');
+      expect(getActiveTurnipPreset('  \n  ')).toBe('safe');
+    });
+
+    it('matches only NO_DEFAULTS to Default', () => {
+      expect(getActiveTurnipPreset('RNLLAMA_VK_NO_DEFAULTS=1')).toBe('default');
+    });
+
+    it('matches the four-line conservative set to Minimal', () => {
+      expect(getActiveTurnipPreset(MINIMAL_ENV)).toBe('minimal');
+    });
+
+    it('returns null for a hand-edited set', () => {
+      expect(
+        getActiveTurnipPreset(
+          'RNLLAMA_VK_NO_DEFAULTS=1\nGGML_VK_DISABLE_F16=1',
+        ),
+      ).toBeNull();
+      expect(getActiveTurnipPreset('GGML_VK_DISABLE_F16=1')).toBeNull();
+    });
+
+    it('ignores a queued self-test line when matching', () => {
+      expect(
+        getActiveTurnipPreset(
+          'RNLLAMA_VK_NO_DEFAULTS=1\nRNLLAMA_VK_SELFTEST=1',
+        ),
+      ).toBe('default');
+      expect(getActiveTurnipPreset('RNLLAMA_VK_SELFTEST=2')).toBe('safe');
+    });
+
+    it('ignores surrounding whitespace and blank lines', () => {
+      expect(getActiveTurnipPreset('  RNLLAMA_VK_NO_DEFAULTS=1  \n\n')).toBe(
+        'default',
+      );
+    });
+
+    // The highlight itself is the Button's `mode` (contained = active).
+    // Paper does not forward `mode` to the host element, so verify it
+    // through the label colour: a contained button's label uses the
+    // theme's on-primary colour, a text button's uses the surface colour.
+    // Assert only that the active one differs from the inactive ones,
+    // not any particular hex value, so the test survives a theme change.
+    const labelColour = (queries: any, testID: string): string | null => {
+      const colours: string[] = [];
+      const collect = (style: any) => {
+        if (!style) {
+          return;
+        }
+        if (Array.isArray(style)) {
+          style.forEach(collect);
+        } else if (typeof style === 'object' && style.color) {
+          colours.push(style.color);
+        }
+      };
+      const walk = (node: any) => {
+        if (node.type === 'Text' || node.type?.displayName === 'Text') {
+          collect(node.props?.style);
+        }
+        (node.children || []).forEach((child: any) => {
+          if (typeof child === 'object' && child) {
+            walk(child);
+          }
+        });
+      };
+      walk(queries.getByTestId(testID));
+      return colours.length > 0 ? colours[colours.length - 1] : null;
+    };
+
+    it('renders the active preset with a different label colour', async () => {
+      const queries = await render(<TurnipDriverRow />);
+      await queries.findByTestId('turnip-driver-switch');
+      // Empty box -> Safe is active.
+      const safeColour = labelColour(queries, 'turnip-preset-safe');
+      const defaultColour = labelColour(queries, 'turnip-preset-default');
+      const minimalColour = labelColour(queries, 'turnip-preset-minimal');
+      expect(safeColour).not.toBeNull();
+      expect(safeColour).not.toBe(defaultColour);
+      expect(safeColour).not.toBe(minimalColour);
+      expect(defaultColour).toBe(minimalColour);
+    });
+
+    it('applies each preset to the box and moves the highlight', async () => {
+      const queries = await render(<TurnipDriverRow />);
+      await queries.findByTestId('turnip-driver-switch');
+
+      await fireEvent.press(queries.getByTestId('turnip-preset-default'));
+      expect(queries.getByTestId('turnip-env-input').props.value).toBe(
+        'RNLLAMA_VK_NO_DEFAULTS=1',
+      );
+      expect(labelColour(queries, 'turnip-preset-default')).not.toBe(
+        labelColour(queries, 'turnip-preset-safe'),
+      );
+
+      await fireEvent.press(queries.getByTestId('turnip-preset-minimal'));
+      expect(queries.getByTestId('turnip-env-input').props.value).toBe(
+        MINIMAL_ENV,
+      );
+      expect(labelColour(queries, 'turnip-preset-minimal')).not.toBe(
+        labelColour(queries, 'turnip-preset-safe'),
+      );
+
+      await fireEvent.press(queries.getByTestId('turnip-preset-safe'));
+      expect(queries.getByTestId('turnip-env-input').props.value).toBe('');
+      expect(labelColour(queries, 'turnip-preset-safe')).not.toBe(
+        labelColour(queries, 'turnip-preset-default'),
       );
     });
   });

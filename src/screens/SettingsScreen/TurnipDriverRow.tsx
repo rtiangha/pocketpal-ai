@@ -43,15 +43,45 @@ const localStyles = StyleSheet.create({
 
 /** Starting points for the environment box (the Save button still has to be pressed). */
 const ENV_PRESETS = {
-  defaults: '',
-  stock: 'RNLLAMA_VK_NO_DEFAULTS=1',
-  safe: [
+  // The driver as it ships: no workarounds at all.
+  default: 'RNLLAMA_VK_NO_DEFAULTS=1',
+  // Default plus extra conservative disables: the GPU does the least.
+  minimal: [
     'RNLLAMA_VK_NO_DEFAULTS=1',
     'GGML_VK_DISABLE_F16=1',
     'GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1',
     'GGML_VK_DISABLE_FUSION=1',
   ].join('\n'),
+  // The app's known workarounds for this driver's bugs. This is also the
+  // out-of-box setting (an empty environment box).
+  safe: '',
 };
+
+/**
+ * Normalise an environment-variable block for comparison: trim each line,
+ * drop blank lines, and drop the transient self-test line (added when a
+ * self-test is queued), so a preset still matches after a self-test run.
+ */
+const normalizeEnvText = (text: string): string =>
+  text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('RNLLAMA_VK_SELFTEST='))
+    .join('\n');
+
+export type TurnipPreset = keyof typeof ENV_PRESETS;
+
+/**
+ * Which preset an environment-variable block matches, or null for a
+ * hand-edited/custom set. Used to highlight the active preset button.
+ */
+export function getActiveTurnipPreset(envText: string): TurnipPreset | null {
+  return (
+    (Object.keys(ENV_PRESETS) as Array<TurnipPreset>).find(
+      key => normalizeEnvText(envText) === normalizeEnvText(ENV_PRESETS[key]),
+    ) ?? null
+  );
+}
 
 /** Variables the driver environment box understands: [name, what it does]. */
 const ENV_HELP: Array<[string, string]> = [
@@ -61,7 +91,7 @@ const ENV_HELP: Array<[string, string]> = [
   ],
   [
     'GGML_VK_UNSUPPORTED_TYPES=Q6_K,Q2_K',
-    'Weight types whose matrix multiplications run on the CPU. Default: Q6_K, Q2_K, Q3_K, IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S, IQ4_XS (wrong results on this driver). Set it empty to run everything on the GPU. On a driver with the 8-bit SSBO fix these types compute correctly on the GPU, so the list can be emptied (use the Stock preset).',
+    'Weight types whose matrix multiplications run on the CPU. Default: Q6_K, Q2_K, Q3_K, IQ1_S, IQ1_M, IQ2_XXS, IQ2_XS, IQ2_S, IQ3_XXS, IQ3_S, IQ4_XS (wrong results on this driver). Set it empty to run everything on the GPU. On a driver with the 8-bit SSBO fix these types compute correctly on the GPU, so the list can be emptied (use the Default preset).',
   ],
   [
     'GGML_VK_DISABLE_QUANT_GET_ROWS=0',
@@ -252,6 +282,11 @@ export const TurnipDriverRow: React.FC = () => {
     setEnvDirty(true);
   };
 
+  // Which preset the environment box currently matches (null for a
+  // hand-edited/custom set). Matches on the box contents, so the
+  // highlight follows a tap immediately, before Save is pressed.
+  const activePreset = getActiveTurnipPreset(envText);
+
   const onSaveEnv = () =>
     run(async () => {
       await setTurnipEnv(envText);
@@ -423,20 +458,23 @@ export const TurnipDriverRow: React.FC = () => {
       />
       <View style={localStyles.buttonRow}>
         <Button
-          testID="turnip-preset-defaults"
+          testID="turnip-preset-default"
           compact
-          onPress={() => applyPreset(ENV_PRESETS.defaults)}>
-          Defaults
+          mode={activePreset === 'default' ? 'contained' : 'text'}
+          onPress={() => applyPreset(ENV_PRESETS.default)}>
+          Default
         </Button>
         <Button
-          testID="turnip-preset-stock"
+          testID="turnip-preset-minimal"
           compact
-          onPress={() => applyPreset(ENV_PRESETS.stock)}>
-          Stock
+          mode={activePreset === 'minimal' ? 'contained' : 'text'}
+          onPress={() => applyPreset(ENV_PRESETS.minimal)}>
+          Minimal
         </Button>
         <Button
           testID="turnip-preset-safe"
           compact
+          mode={activePreset === 'safe' ? 'contained' : 'text'}
           onPress={() => applyPreset(ENV_PRESETS.safe)}>
           Safe
         </Button>
@@ -448,9 +486,13 @@ export const TurnipDriverRow: React.FC = () => {
         </Button>
       </View>
       <Text variant="labelSmall" style={styles.textDescription}>
-        Defaults: Set all known workarounds. Stock: Set no options. Safe: Stock
-        plus known safe options. On a driver with the 8-bit SSBO fix, use Stock
-        — the workarounds above are only needed on a stock driver.
+        Default: The driver as it ships — no workarounds. Minimal: Default plus
+        extra conservative disables (no 16-bit float shaders, no integer dot
+        product, no fusion) — the GPU does the least. Safe: The app's known
+        workarounds for this driver's bugs; also the out-of-box setting (an
+        empty box). The highlighted button is the mode the box currently
+        matches. On a driver with the 8-bit SSBO fix, use Default — the
+        workarounds are only needed on a stock driver.
       </Text>
       <Button
         testID="turnip-env-save-button"
