@@ -2,30 +2,33 @@
 #include <android/log.h>
 #include <dlfcn.h>
 #include <jni.h>
+#include <unistd.h>
 #include <string>
 #include <vector>
 
+#ifdef LOG_TAG
+#undef LOG_TAG
+#endif
 #define LOG_TAG "PocketPalOpenCL"
+
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 namespace {
 
-struct android_namespace_t;
-
-using CreateNamespaceFn = android_namespace_t* (*)(
+using CreateNamespaceFn = ::android_namespace_t* (*)(
     const char* name,
     const char* ld_library_path,
     const char* default_library_path,
     uint64_t type,
     const char* permitted_when_isolated_path,
-    android_namespace_t* parent);
+    ::android_namespace_t* parent);
 
 constexpr uint64_t kNsShared = 0x2;
 constexpr uint64_t kNsIsolated = 0x1;
 
-android_namespace_t* tryCreateCustomNamespace(const std::string& lib_dir) {
+::android_namespace_t* tryCreateCustomNamespace(const std::string& lib_dir) {
     void* dl_handle = dlopen("libdl.so", RTLD_NOW | RTLD_LOCAL);
     if (!dl_handle) {
         return nullptr;
@@ -40,7 +43,7 @@ android_namespace_t* tryCreateCustomNamespace(const std::string& lib_dir) {
 
     std::string ld_paths = lib_dir + ":/vendor/lib64:/system/lib64";
     std::string permitted = lib_dir + "/:/vendor/lib64/:/system/lib64/";
-    android_namespace_t* ns = create_ns(
+    ::android_namespace_t* ns = create_ns(
         "pocketpal_opencl_ns",
         ld_paths.c_str(),
         ld_paths.c_str(),
@@ -55,7 +58,7 @@ android_namespace_t* tryCreateCustomNamespace(const std::string& lib_dir) {
 void* openLibraryFromDir(
     const std::string& lib_dir,
     const char* soname,
-    android_namespace_t* custom_ns) {
+    ::android_namespace_t* custom_ns) {
     std::string full_path = lib_dir + "/" + soname;
 
     if (custom_ns != nullptr) {
@@ -97,7 +100,7 @@ bool verifyOpenClPlatform(void* opencl_handle) {
 }  // namespace
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_pocketpalai_OpenClDriverManager_nativeLoadOpenClStack(
+Java_com_pocketpal_OpenClDriverManager_nativeLoadOpenClStack(
     JNIEnv* env,
     jobject /* thiz */,
     jstring libDirStr) {
@@ -113,7 +116,7 @@ Java_com_pocketpalai_OpenClDriverManager_nativeLoadOpenClStack(
     std::string lib_dir(utf_chars);
     env->ReleaseStringUTFChars(libDirStr, utf_chars);
 
-    android_namespace_t* custom_ns = tryCreateCustomNamespace(lib_dir);
+    ::android_namespace_t* custom_ns = tryCreateCustomNamespace(lib_dir);
 
     // Load dependencies in order; skip optional ones if absent in your extracted set.
     const char* ordered_libs[] = {
