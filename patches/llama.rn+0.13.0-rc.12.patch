@@ -5869,7 +5869,7 @@ index 0ea4a82..4610ace 100644
      NSString * path_resource = [[NSProcessInfo processInfo].environment objectForKey:@"GGML_METAL_PATH_RESOURCES"];
      if (path_resource) {
 diff --git a/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp b/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp
-index 6dd93a1..8a0080a 100644
+index 6dd93a1..d7a1fc6 100644
 --- a/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp
 +++ b/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp
 @@ -5151,7 +5151,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
@@ -5962,3 +5962,23 @@ index 6dd93a1..8a0080a 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq2_xxs_q8_1_dp4a.cl.h"
+@@ -9287,8 +9287,17 @@ static ggml_backend_opencl_context * ggml_cl_init(ggml_backend_dev_t dev) {
+ #endif
+ 
+     // determine whether to use large buffer for Adreno
+-    backend_ctx->adreno_use_large_buffer = getenv("GGML_OPENCL_ADRENO_USE_LARGE_BUFFER") != nullptr &&
+-                                           backend_ctx->gpu_family == GPU_FAMILY::ADRENO;
++    // The extension must be checked here, before the compile options below are built:
++    // they add -qcom-enable-large-buffer, which drivers without cl_qcom_large_buffer
++    // (e.g. Adreno 660) reject, and a failed kernel build is fatal (exit(1)).
++    const bool adreno_large_buffer_requested =
++        getenv("GGML_OPENCL_ADRENO_USE_LARGE_BUFFER") != nullptr &&
++        backend_ctx->gpu_family == GPU_FAMILY::ADRENO;
++    if (adreno_large_buffer_requested && !backend_ctx->adreno_has_large_buffer) {
++        GGML_LOG_INFO("ggml_opencl: Adreno large buffer requested but not supported by driver, will use regular buffer\n");
++    }
++    backend_ctx->adreno_use_large_buffer =
++        adreno_large_buffer_requested && backend_ctx->adreno_has_large_buffer;
+ 
+     backend_ctx->kernel_compile_opts = ggml_opencl_make_compile_opts(backend_ctx.get());
+     CL_CHECK(clGetDeviceInfo(device, CL_DEVICE_MAX_COMPUTE_UNITS,
