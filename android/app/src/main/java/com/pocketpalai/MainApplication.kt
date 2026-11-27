@@ -55,8 +55,10 @@ class MainApplication : Application(), ReactApplication {
     // Must be set before SoLoader.init so the native library picks it up.
     // See: https://github.com/ggml-org/llama.cpp/pull/20997
     Os.setenv("GGML_OPENCL_ADRENO_USE_LARGE_BUFFER", "1", true)
-    OpenClDriverManager.prepareAndLoad(this)
     SoLoader.init(this, OpenSourceMergedSoMapping)
+    // Needs SoLoader (it loads libappmodules.so, which holds the JNI shim), so it
+    // runs after init. llama.rn only loads its OpenCL backend later, from JS.
+    OpenClDriverManager.prepareAndLoad(this)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()

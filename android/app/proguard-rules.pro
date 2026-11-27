@@ -22,6 +22,7 @@
 # reflection/Room/WorkManager rename breakage. Manifest-declared
 # components are kept by R8 anyway; this covers the rest.
 -keep class com.pocketpalai.** { *; }
+-keep class com.pocketpal.OpenClDriverManager { *; }
 
 # llama.rn — Java declares native methods (RNLlamaModule
 # installJSIBindings/cleanupJSIBindings, RNLlama nativeSetLoadedLibrary)
