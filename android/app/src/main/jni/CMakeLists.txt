@@ -11,10 +11,11 @@
 # default-app-setup/ReactNative-application.cmake does
 # `file(GLOB *.cpp)` non-recursively in this directory, treating the
 # presence of any *.cpp here as "user owns OnLoad.cpp too." Keeping
-# `hardware_info.cpp` under src/ leaves that glob empty so the upstream
-# default-app-setup/OnLoad.cpp (PlatformConstants + autolinked
-# TurboModules + Fabric registry) keeps being picked up. We then add
-# our source explicitly via `target_sources` after the include.
+# extra sources like `hardware_info.cpp` and `opencl_loader.cpp` under
+# src/ leaves that glob empty so the upstream default-app-setup/OnLoad.cpp
+# (PlatformConstants + autolinked TurboModules + Fabric registry) keeps
+# being picked up. We then add our sources explicitly via `target_sources`
+# after the include.
 # Net effect: no vendored Meta code, nothing to resync on RN bumps.
 
 cmake_minimum_required(VERSION 3.13)
@@ -24,7 +25,11 @@ project(appmodules)
 
 include(${REACT_ANDROID_DIR}/cmake-utils/ReactNative-application.cmake)
 
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/hardware_info.cpp)
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    src/hardware_info.cpp
+    src/opencl_loader.cpp
+)
 
 find_library(log-lib log)
 target_link_libraries(${CMAKE_PROJECT_NAME} ${log-lib})
+

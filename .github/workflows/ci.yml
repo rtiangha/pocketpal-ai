@@ -230,6 +230,28 @@ jobs:
       - name: Set up ccache
         uses: ./.github/actions/setup-ccache
 
+      - name: Stage Adreno OpenCL driver libraries
+        env:
+          OPENCL_BUNDLE_URL: ${{ secrets.ADRENO_OPENCL_BUNDLE_URL }}
+          OPENCL_BUNDLE_SHA256: ${{ secrets.ADRENO_OPENCL_BUNDLE_SHA256 }}
+        run: |
+          set -euo pipefail
+          DEST_DIR="android/app/src/main/assets/opencl/arm64-v8a"
+          WORK_DIR="${RUNNER_TEMP}/opencl-stage"
+
+          rm -rf "$DEST_DIR" "$WORK_DIR"
+          mkdir -p "$DEST_DIR" "$WORK_DIR"
+
+          curl -fsSL "$OPENCL_BUNDLE_URL" -o "$WORK_DIR/opencl-libs.tar.gz"
+          if [ -n "${OPENCL_BUNDLE_SHA256:-}" ]; then
+            echo "${OPENCL_BUNDLE_SHA256}  ${WORK_DIR}/opencl-libs.tar.gz" | sha256sum -c -
+          fi
+
+          tar -xzf "$WORK_DIR/opencl-libs.tar.gz" -C "$DEST_DIR"
+          ls -lh "$DEST_DIR"
+          test -s "$DEST_DIR/libCB.so"
+          test -s "$DEST_DIR/libOpenCL.so" || test -s "$DEST_DIR/libOpenCL_adreno.so"
+
       - name: Create dummy google-services.json for CI
         run: |
           cat > android/app/google-services.json << 'EOL'

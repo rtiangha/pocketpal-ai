@@ -614,6 +614,22 @@ function checkArtifact({archive, kind, manifest, report, failures}) {
       );
     }
 
+    // Optional, non-blocking report for staged OpenCL driver libraries under
+    // assets/opencl/<abi>/. Kept separate from requiredAssets so ARM64 .so
+    // files are not checked against requiredAssetElfMachine (164 / EM_QDSP6).
+    const stagedOpenClPrefix = `${prefix}assets/opencl/${abi.abi}/`;
+    const stagedOpenClLibs = [...entries]
+      .filter(
+        entry => entry.startsWith(stagedOpenClPrefix) && !entry.endsWith('/'),
+      )
+      .map(entry => path.basename(entry))
+      .sort();
+    report.push(
+      `    staged opencl assets: ${
+        stagedOpenClLibs.length > 0 ? stagedOpenClLibs.join(', ') : 'none'
+      }`,
+    );
+
     const extras = [...entries]
       .filter(entry => entry.startsWith(`${prefix}lib/${abi.abi}/librnllama`))
       .map(entry => path.basename(entry))
