@@ -2527,11 +2527,23 @@ class ModelStore {
         try {
           console.log('Initializing multimodal support with path:', mmProjPath);
 
+          // The projector must follow the same device choice as the text model.
+          // `no_gpu_devices` is deprecated and stays false after the 2.0
+          // migration, so it cannot be the only signal: a CPU-only selection
+          // (devices ['CPU'] / n_gpu_layers 0, or no devices on Android) would
+          // otherwise still start the GPU backend for the projector.
+          const mmprojCpuOnly =
+            this.contextInitParams.no_gpu_devices === true ||
+            effectiveSettings.n_gpu_layers === 0 ||
+            (Platform.OS === 'android' && !effectiveSettings.devices?.length) ||
+            (!!effectiveSettings.devices?.length &&
+              effectiveSettings.devices.every(d => d === 'CPU'));
+
           // Initialize multimodal with the new API format
           // Apply effective value: clamp image_max_tokens to n_ctx
           const success = await ctx.initMultimodal({
             path: mmProjPath,
-            use_gpu: !this.contextInitParams.no_gpu_devices,
+            use_gpu: !mmprojCpuOnly,
             image_max_tokens: Math.min(
               this.contextInitParams.image_max_tokens ?? 512,
               this.contextInitParams.n_ctx,

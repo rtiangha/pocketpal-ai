@@ -2,6 +2,7 @@
 #include <android/log.h>
 #include <dlfcn.h>
 #include <jni.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <string>
 #include <vector>
@@ -28,15 +29,22 @@ using CreateNamespaceFn = ::android_namespace_t* (*)(
 constexpr uint64_t kNsShared = 0x2;
 constexpr uint64_t kNsIsolated = 0x1;
 
+const char* dlerr() {
+    const char* e = dlerror();
+    return e ? e : "(no dlerror)";
+}
+
 ::android_namespace_t* tryCreateCustomNamespace(const std::string& lib_dir) {
     void* dl_handle = dlopen("libdl.so", RTLD_NOW | RTLD_LOCAL);
     if (!dl_handle) {
+        LOGW("custom namespace: dlopen(libdl.so) failed: %s", dlerr());
         return nullptr;
     }
 
     auto create_ns = reinterpret_cast<CreateNamespaceFn>(
         dlsym(dl_handle, "android_create_namespace"));
     if (!create_ns) {
+        LOGW("custom namespace: android_create_namespace not resolvable: %s", dlerr());
         dlclose(dl_handle);
         return nullptr;
     }
@@ -50,6 +58,12 @@ constexpr uint64_t kNsIsolated = 0x1;
         kNsShared | kNsIsolated,
         permitted.c_str(),
         nullptr);
+
+    if (ns == nullptr) {
+        LOGW("custom namespace: android_create_namespace returned null: %s", dlerr());
+    } else {
+        LOGI("custom namespace created for %s", lib_dir.c_str());
+    }
 
     dlclose(dl_handle);
     return ns;
@@ -99,6 +113,65 @@ bool verifyOpenClPlatform(void* opencl_handle) {
 
 }  // namespace
 
+// ---------------------------------------------------------------------------
+// TEMPORARY DIAGNOSTIC: forward stderr to logcat (tag "PocketPalStderr").
+//
+// llama.rn's ggml log callback defaults to stderr, which Android discards, so
+// messages such as "ggml_opencl: kernel compile error: ..." never reach logcat.
+// ggml-opencl calls exit(1) right after printing that, and the JS native-log
+// listener is asynchronous and would lose it. This pipe + reader thread
+// forwards the text synchronously. Remove once the OpenCL crash is understood.
+// Runs when libappmodules.so is loaded.
+// ---------------------------------------------------------------------------
+namespace {
+
+void* stderrPump(void* arg) {
+    const int fd = static_cast<int>(reinterpret_cast<intptr_t>(arg));
+    char buf[2048];
+    std::string line;
+    ssize_t n;
+    while ((n = read(fd, buf, sizeof(buf))) > 0) {
+        for (ssize_t i = 0; i < n; ++i) {
+            if (buf[i] == '\n') {
+                if (!line.empty()) {
+                    __android_log_write(ANDROID_LOG_INFO, "PocketPalStderr", line.c_str());
+                    line.clear();
+                }
+            } else if (buf[i] != '\r') {
+                line.push_back(buf[i]);
+            }
+        }
+        // Flush a partial line too: the process may exit before a newline arrives.
+        if (!line.empty()) {
+            __android_log_write(ANDROID_LOG_INFO, "PocketPalStderr", line.c_str());
+            line.clear();
+        }
+    }
+    return nullptr;
+}
+
+__attribute__((constructor)) void redirectStderrToLogcat() {
+    int fds[2];
+    if (pipe(fds) != 0) {
+        return;
+    }
+    if (dup2(fds[1], STDERR_FILENO) < 0) {
+        close(fds[0]);
+        close(fds[1]);
+        return;
+    }
+    close(fds[1]);  // STDERR_FILENO now holds the only write end.
+    pthread_t thread;
+    if (pthread_create(&thread, nullptr, stderrPump,
+                       reinterpret_cast<void*>(static_cast<intptr_t>(fds[0]))) == 0) {
+        pthread_detach(thread);
+    } else {
+        close(fds[0]);
+    }
+}
+
+}  // namespace
+
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_pocketpal_OpenClDriverManager_nativeLoadOpenClStack(
     JNIEnv* env,
@@ -117,6 +190,11 @@ Java_com_pocketpal_OpenClDriverManager_nativeLoadOpenClStack(
     env->ReleaseStringUTFChars(libDirStr, utf_chars);
 
     ::android_namespace_t* custom_ns = tryCreateCustomNamespace(lib_dir);
+    if (custom_ns == nullptr) {
+        LOGW("No custom namespace: staged libs will be dlopen'd in the app namespace, "
+             "where system libs they need (libcutils, libc++, libvndksupport, ...) "
+             "are not visible, so the staged stack is expected to fail to load.");
+    }
 
     // Load dependencies in order; skip optional ones if absent in your extracted set.
     const char* ordered_libs[] = {
@@ -140,6 +218,8 @@ Java_com_pocketpal_OpenClDriverManager_nativeLoadOpenClStack(
         if (!handle) {
             if (std::string(lib_name) == "libOpenCL.so" ||
                 std::string(lib_name) == "libCB.so") {
+                LOGE("Required staged library %s failed to load; giving up on the staged "
+                     "OpenCL stack (the device's own OpenCL driver will be used)", lib_name);
                 return JNI_FALSE;
             }
             continue;
