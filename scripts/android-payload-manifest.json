@@ -24,6 +24,8 @@
         "librnllama_jni_v8_2_dotprod_i8mm.so",
         "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
         "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+        "librnllama_v8_2_dotprod_hexagon_opencl.so",
+        "librnllama_jni_v8_2_dotprod_hexagon_opencl.so",
         "librnllama_v8_2_dotprod_vulkan.so",
         "librnllama_jni_v8_2_dotprod_vulkan.so"
       ],
@@ -37,6 +39,14 @@
       "requiredSymbols": [
         {
           "lib": "librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so",
+          "kind": "backend",
+          "mustExport": [
+            "ggml_backend_hexagon_reg",
+            "ggml_backend_is_hexagon"
+          ]
+        },
+        {
+          "lib": "librnllama_v8_2_dotprod_hexagon_opencl.so",
           "kind": "backend",
           "mustExport": [
             "ggml_backend_hexagon_reg",
@@ -133,6 +143,22 @@
         },
         {
           "lib": "librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so",
+          "kind": "patch-marker",
+          "mustExport": [
+            "rnllama_jsi_patch_ownership_v3"
+          ],
+          "why": "The llama.rn patch in patches/ is not in this library: patch-package must apply it at install and llama.rn must be built from source (ORG_GRADLE_PROJECT_rnllamaBuildFromSource=true)."
+        },
+        {
+          "lib": "librnllama_v8_2_dotprod_hexagon_opencl.so",
+          "kind": "patch-marker",
+          "mustExport": [
+            "rnllama_patch_abort_v3"
+          ],
+          "why": "The llama.rn patch in patches/ is not in this library: patch-package must apply it at install and llama.rn must be built from source (ORG_GRADLE_PROJECT_rnllamaBuildFromSource=true)."
+        },
+        {
+          "lib": "librnllama_jni_v8_2_dotprod_hexagon_opencl.so",
           "kind": "patch-marker",
           "mustExport": [
             "rnllama_jsi_patch_ownership_v3"

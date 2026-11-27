@@ -125,9 +125,9 @@ describe('the parse itself', () => {
     ['library', librarySites],
     ['JNI wrapper', jniSites],
   ])('finds the expected %s call sites', (_label, sites) => {
-    expect(sites).toHaveLength(9);
+    expect(sites).toHaveLength(10);
     expect(sites.filter(site => site.abi === null)).toHaveLength(1);
-    expect(sites.filter(site => site.abi === 'arm64-v8a')).toHaveLength(7);
+    expect(sites.filter(site => site.abi === 'arm64-v8a')).toHaveLength(8);
     expect(sites.filter(site => site.abi === 'x86_64')).toHaveLength(1);
   });
 });

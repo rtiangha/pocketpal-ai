@@ -89,11 +89,15 @@ const whisperSetenvNames = setenvNames.filter(name =>
   name.startsWith('WSP_GGML_'),
 );
 
-const hexagonMustExport = MANIFEST.abis.flatMap(abi =>
-  abi.requiredSymbols
-    .filter(rule => rule.kind === 'backend')
-    .flatMap(rule => rule.mustExport),
-);
+const hexagonMustExport = [
+  ...new Set(
+    MANIFEST.abis.flatMap(abi =>
+      abi.requiredSymbols
+        .filter(rule => rule.kind === 'backend')
+        .flatMap(rule => rule.mustExport),
+    ),
+  ),
+];
 
 describe('the parse itself', () => {
   // Without these, a rename on either side makes every assertion below pass
