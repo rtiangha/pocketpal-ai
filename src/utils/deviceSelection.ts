@@ -128,6 +128,24 @@ async function hasHexagonDspByChipset(): Promise<boolean> {
   }
 }
 
+/**
+ * Whether the device has an Adreno GPU, for synthesizing the backends of
+ * the other library. Defensive on purpose: the hardware check is only a
+ * best-effort hint for the one-tap switch, and `getDeviceOptions()` must
+ * never throw because a capability helper is unavailable (consumers such
+ * as the benchmark runner mock `deviceCapabilities` without it). On any
+ * failure, no backend is synthesized and the loaded library's options are
+ * returned as before.
+ */
+async function hasAdrenoGpu(): Promise<boolean> {
+  try {
+    const {details} = await checkGpuSupport();
+    return details?.hasAdreno ?? false;
+  } catch {
+    return false;
+  }
+}
+
 export async function resolveDeviceSelection(selection: {
   devices?: string[];
   n_gpu_layers?: number;
@@ -264,8 +282,7 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
       deviceInfo: gpuDev,
     });
   } else if (vulkanLoaded) {
-    const {details} = await checkGpuSupport();
-    if (details?.hasAdreno) {
+    if (await hasAdrenoGpu()) {
       options.push({
         id: 'gpu',
         label: 'GPU (OpenCL)',
@@ -306,8 +323,7 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
       deviceInfo: gpuDev,
     });
   } else if (!vulkanLoaded) {
-    const {details} = await checkGpuSupport();
-    if (details?.hasAdreno) {
+    if (await hasAdrenoGpu()) {
       options.push({
         id: 'vulkan',
         label: 'GPU (Vulkan)',
