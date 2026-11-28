@@ -5869,7 +5869,7 @@ index 0ea4a82..4610ace 100644
      NSString * path_resource = [[NSProcessInfo processInfo].environment objectForKey:@"GGML_METAL_PATH_RESOURCES"];
      if (path_resource) {
 diff --git a/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp b/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp
-index 6dd93a1..1c716e4 100644
+index 6dd93a1..a01bca8 100644
 --- a/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp
 +++ b/node_modules/llama.rn/vendor/llama.cpp/ggml/src/ggml-opencl/ggml-opencl.cpp
 @@ -1588,6 +1588,20 @@ inline std::string read_file(const std::string &path) {
@@ -5926,7 +5926,102 @@ index 6dd93a1..1c716e4 100644
          free(program_log);
          clReleaseProgram(p);
          if (fatal) {
-@@ -5151,7 +5185,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -1641,6 +1675,52 @@ static cl_program build_program_from_source_ex(cl_context ctx, cl_device_id dev,
+     return NULL;
+ }
+ 
++#include <algorithm>
++#include <stdexcept>
++#include <vector>
++
++// Init-time kernel build failures are collected here so one run reports every program the
++// driver cannot compile, instead of dying on the first one (see build_program_from_source).
++static std::vector<std::string> g_cl_failed_programs;
++static bool g_cl_collect_failures = false;
++
++// Builds a program of empty stand-in kernels with the same names as the kernels in `src`, so
++// the init code can keep creating kernels. The stand-ins must never run or be cached:
++// load_cl_kernels() throws after loading if any program was replaced by one.
++static cl_program cl_make_stub_program(cl_context ctx, const char * src) {
++    std::vector<std::string> names;
++    for (const char * q = src; (q = strstr(q, "kernel void ")) != nullptr; ) {
++        q += strlen("kernel void ");
++        std::string n;
++        while (*q && ((*q >= 'a' && *q <= 'z') || (*q >= 'A' && *q <= 'Z') || (*q >= '0' && *q <= '9') || *q == '_')) {
++            n.push_back(*q++);
++        }
++        if (!n.empty() && std::find(names.begin(), names.end(), n) == names.end()) {
++            names.push_back(n);
++        }
++    }
++    if (names.empty()) {
++        return nullptr;
++    }
++    std::string stub;
++    for (const auto & n : names) {
++        stub += "__kernel void " + n + "(void) {}\n";
++    }
++    const char * stub_c = stub.c_str();
++    size_t stub_len = stub.size();
++    cl_int err = CL_SUCCESS;
++    cl_program prog = clCreateProgramWithSource(ctx, 1, &stub_c, &stub_len, &err);
++    if (err < 0 || prog == nullptr) {
++        return nullptr;
++    }
++    err = clBuildProgram(prog, 0, NULL, "", NULL, NULL);
++    if (err != CL_SUCCESS) {
++        clReleaseProgram(prog);
++        return nullptr;
++    }
++    return prog;
++}
++
+ static cl_program build_program_from_source(ggml_backend_opencl_context * backend_ctx, const char* program_buffer, const std::string &compile_opts) {
+     cl_context   ctx = backend_ctx->context;
+     cl_device_id dev = backend_ctx->device;
+@@ -1653,12 +1733,25 @@ static cl_program build_program_from_source(ggml_backend_opencl_context * backen
+         return p_cached;
+     }
+ 
+-    cl_program p = build_program_from_source_ex(ctx, dev, program_buffer, compile_opts, /*fatal=*/true);
++    // Never exit(1) the whole app on a compile failure: the error is already logged by the
++    // helper. While load_cl_kernels() runs, record the failure and stand in empty kernels so
++    // every failing program is reported in one go (it throws afterwards). Anywhere else, throw
++    // right away so a stand-in kernel can never run.
++    cl_program p = build_program_from_source_ex(ctx, dev, program_buffer, compile_opts, /*fatal=*/false);
++    if (p == nullptr) {
++        const std::string first_kernel = cl_first_kernel_name(program_buffer);
++        if (g_cl_collect_failures) {
++            g_cl_failed_programs.push_back(first_kernel);
++            cl_program stub = cl_make_stub_program(ctx, program_buffer);
++            if (stub != nullptr) {
++                return stub;  // deliberately not cached
++            }
++        }
++        throw std::runtime_error("ggml_opencl: kernel compile failed (program starting with kernel " + first_kernel + ")");
++    }
+ 
+     // Best-effort save of the freshly-built binary (no-op if cache disabled).
+-    if (p != nullptr) {
+-        cl_program_cache_try_save(backend_ctx->program_cache, p, dev, program_buffer, compile_opts);
+-    }
++    cl_program_cache_try_save(backend_ctx->program_cache, p, dev, program_buffer, compile_opts);
+     return p;
+ }
+ 
+@@ -1974,6 +2067,11 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+         return;
+     }
+ 
++    struct collect_failures_guard {
++        collect_failures_guard()  { g_cl_failed_programs.clear(); g_cl_collect_failures = true; }
++        ~collect_failures_guard() { g_cl_collect_failures = false; }
++    } collect_guard;
++
+     cl_int err;
+     const std::string & compile_opts = backend_ctx->kernel_compile_opts;
+     const std::string opencl_c_std = "CL" + std::to_string(backend_ctx->opencl_c_version.major) +
+@@ -5151,7 +5249,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_q3_k_q8_1_dp4a
@@ -5935,7 +6030,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_q3_k_q8_1_dp4a.cl.h"
-@@ -5169,7 +5203,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5169,7 +5267,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_q2_0_q8_1_dp4a
@@ -5944,7 +6039,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_q2_0_q8_1_dp4a.cl.h"
-@@ -5187,7 +5221,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5187,7 +5285,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq4_xs_q8_1_dp4a
@@ -5953,7 +6048,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq4_xs_q8_1_dp4a.cl.h"
-@@ -5309,7 +5343,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5309,7 +5407,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq1_s_q8_1_dp4a
@@ -5962,7 +6057,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq1_s_q8_1_dp4a.cl.h"
-@@ -5396,7 +5430,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5396,7 +5494,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq1_m_q8_1_dp4a
@@ -5971,7 +6066,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq1_m_q8_1_dp4a.cl.h"
-@@ -5464,7 +5498,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5464,7 +5562,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq3_s_q8_1_dp4a
@@ -5980,7 +6075,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq3_s_q8_1_dp4a.cl.h"
-@@ -5551,7 +5585,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5551,7 +5649,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq3_xxs_q8_1_dp4a
@@ -5989,7 +6084,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq3_xxs_q8_1_dp4a.cl.h"
-@@ -5638,7 +5672,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5638,7 +5736,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq2_s_q8_1_dp4a
@@ -5998,7 +6093,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq2_s_q8_1_dp4a.cl.h"
-@@ -5656,7 +5690,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5656,7 +5754,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq2_xs_q8_1_dp4a
@@ -6007,7 +6102,7 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq2_xs_q8_1_dp4a.cl.h"
-@@ -5674,7 +5708,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+@@ -5674,7 +5772,7 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
      }
  
      // gemm_noshuffle_iq2_xxs_q8_1_dp4a
@@ -6016,7 +6111,28 @@ index 6dd93a1..1c716e4 100644
  #ifdef GGML_OPENCL_EMBED_KERNELS
          const std::string kernel_src {
              #include "gemm_noshuffle_iq2_xxs_q8_1_dp4a.cl.h"
-@@ -9287,8 +9321,17 @@ static ggml_backend_opencl_context * ggml_cl_init(ggml_backend_dev_t dev) {
+@@ -7703,6 +7801,20 @@ static void load_cl_kernels(ggml_backend_opencl_context *backend_ctx) {
+     load_cl_kernels_gemm_coopk(backend_ctx);
+ #endif // GGML_OPENCL_USE_ADRENO_KERNELS
+     GGML_LOG_CONT("\n");
++
++    if (!g_cl_failed_programs.empty()) {
++        std::string list;
++        for (const auto & k : g_cl_failed_programs) {
++            list += (list.empty() ? "" : ", ") + k;
++        }
++        const std::string msg = "ggml_opencl: " + std::to_string(g_cl_failed_programs.size()) +
++            " kernel program(s) failed to compile on this driver (first kernel of each): " + list +
++            "; the OpenCL backend cannot be used";
++        g_cl_failed_programs.clear();
++        GGML_LOG_ERROR("%s\n", msg.c_str());
++        throw std::runtime_error(msg);
++    }
++
+     backend_ctx->kernels_loaded = true;
+ }
+ 
+@@ -9287,8 +9399,17 @@ static ggml_backend_opencl_context * ggml_cl_init(ggml_backend_dev_t dev) {
  #endif
  
      // determine whether to use large buffer for Adreno
