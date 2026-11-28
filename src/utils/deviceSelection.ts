@@ -4,13 +4,24 @@
  */
 
 import {Platform} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getBackendDevicesInfo, NativeBackendDeviceInfo} from 'llama.rn';
+import {checkGpuSupport, getChipsetInfo} from './deviceCapabilities';
 
 /**
- * Device option for UI selection
+ * Device option for UI selection.
+ *
+ * Android shows four tabs — CPU, GPU (OpenCL), GPU (Vulkan), Hexagon — even
+ * though only one native library is loaded at a time (the Vulkan variant or
+ * the OpenCL/Hexagon variant). The two GPU backends have distinct ids
+ * ('gpu' = OpenCL, 'vulkan' = Vulkan) so the segmented control can tell them
+ * apart. An option whose backend lives in the other library has
+ * requiresRestart set: tapping it flips the Turnip driver switch and records
+ * a pending device, and the app restart loads the other library, after which
+ * the pending device is applied.
  */
 export interface DeviceOption {
-  id: 'auto' | 'gpu' | 'hexagon' | 'cpu';
+  id: 'auto' | 'gpu' | 'vulkan' | 'hexagon' | 'cpu';
   label: string;
   description: string;
   devices?: string[]; // undefined for auto-select or CPU
@@ -21,6 +32,8 @@ export interface DeviceOption {
   experimental?: boolean;
   platform: 'ios' | 'android' | 'both';
   deviceInfo?: NativeBackendDeviceInfo; // Original device info from llama.rn
+  /** True when this backend lives in the other native library and needs an app restart to switch to. */
+  requiresRestart?: boolean;
 }
 
 /**
@@ -43,6 +56,94 @@ function selectHexagonDevice(devices: NativeBackendDeviceInfo[]) {
     device =>
       device.deviceName?.startsWith('HTP') && !/[*?]/.test(device.deviceName),
   );
+}
+
+/**
+ * Pending device selection, for the one-tap backend switch. When the user
+ * taps a backend that lives in the other native library, the Turnip driver
+ * switch is flipped and this id is stored; after the app restarts and the
+ * other library loads, Settings applies it (the real device name is only
+ * known once the new library reports it). Stored in AsyncStorage so it
+ * survives the restart.
+ */
+const PENDING_DEVICE_KEY = 'pendingDeviceId';
+
+export async function getPendingDeviceId(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(PENDING_DEVICE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function setPendingDeviceId(
+  id: DeviceOption['id'] | null,
+): Promise<void> {
+  try {
+    if (id) {
+      await AsyncStorage.setItem(PENDING_DEVICE_KEY, id);
+    } else {
+      await AsyncStorage.removeItem(PENDING_DEVICE_KEY);
+    }
+  } catch {
+    // A failed write just means the pending switch won't apply; the user
+    // can still switch manually.
+  }
+}
+
+/**
+ * SoC identifiers for Snapdragon chips that ship a Hexagon DSP. Mirrors
+ * src/utils/hexagonDetection.ts HEXAGON_VERSION_MAP (kept in sync by hand;
+ * that module imports getAvailableDevices from this file, so it can't be
+ * imported here). Used to offer the Hexagon tab when the Vulkan library is
+ * loaded and the loaded library therefore doesn't report the HTP device.
+ */
+const HEXAGON_SOCS = [
+  'SM8150',
+  'SM8250',
+  'SM8350',
+  'SM8450',
+  'SM8550',
+  'SM8650',
+  'SM8750',
+  'Snapdragon 855',
+  'Snapdragon 865',
+  'Snapdragon 888',
+  'Snapdragon 8 Gen 1',
+  'Snapdragon 8 Gen 2',
+  'Snapdragon 8 Gen 3',
+  'Snapdragon 8 Elite',
+];
+
+async function hasHexagonDspByChipset(): Promise<boolean> {
+  try {
+    const chipset = await getChipsetInfo();
+    if (!chipset) {
+      return false;
+    }
+    const lower = chipset.toLowerCase();
+    return HEXAGON_SOCS.some(soc => lower.includes(soc.toLowerCase()));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether the device has an Adreno GPU, for synthesizing the backends of
+ * the other library. Defensive on purpose: the hardware check is only a
+ * best-effort hint for the one-tap switch, and `getDeviceOptions()` must
+ * never throw because a capability helper is unavailable (consumers such
+ * as the benchmark runner mock `deviceCapabilities` without it). On any
+ * failure, no backend is synthesized and the loaded library's options are
+ * returned as before.
+ */
+async function hasAdrenoGpu(): Promise<boolean> {
+  try {
+    const {details} = await checkGpuSupport();
+    return details?.hasAdreno ?? false;
+  } catch {
+    return false;
+  }
 }
 
 export async function resolveDeviceSelection(selection: {
@@ -136,10 +237,17 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
     return options;
   }
 
-  // Android: Build options based on available devices
+  // Android: Build options based on available devices. All four tabs are
+  // shown — CPU, GPU (OpenCL), GPU (Vulkan), Hexagon — even though only one
+  // native library is loaded at a time. Backends in the other library are
+  // synthesized from hardware detection and marked requiresRestart; tapping
+  // one flips the Turnip driver switch, records a pending device, and asks
+  // for an app restart, after which the other library loads and the pending
+  // device is applied.
   const devices = await getAvailableDevices();
   const hexagonDevice = selectHexagonDevice(devices);
   const gpuDev = devices.find(d => d.type === 'gpu' || isVulkanGpu(d));
+  const vulkanLoaded = gpuDev?.deviceName?.startsWith('Vulkan') ?? false;
 
   // Option 1: CPU (always available, recommended for reliability)
   // CPU supports all flash attention types
@@ -155,43 +263,87 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
     platform: 'android',
   });
 
-  // Option 2: GPU (if available). Either OpenCL, or Vulkan when the custom (Turnip)
-  // driver is enabled and the Vulkan build of llama.rn was loaded.
-  if (gpuDev) {
-    if (gpuDev.deviceName?.startsWith('Vulkan')) {
+  // GPU (OpenCL): from the loaded library, or synthesized when the Vulkan
+  // library is loaded (the standard library is the one that has OpenCL).
+  // Adreno is the hardware gate — the standard library only offers OpenCL
+  // on Adreno, and the Vulkan variant only loads on Adreno either.
+  if (!vulkanLoaded && gpuDev) {
+    // According to FLASH_ATTN.md Matrix 1: OpenCL only supports 'off' flash attention
+    options.push({
+      id: 'gpu',
+      label: `GPU (OpenCL)`,
+      description: 'OpenCL GPU acceleration (Only for Q4_0/Q6_K models)',
+      devices: [gpuDev.deviceName!],
+      n_gpu_layers: 99,
+      default_flash_attn_type: 'off', // Required for OpenCL
+      valid_flash_attn_types: ['off'], // OpenCL only supports 'off'
+      tag: 'Fastest',
+      platform: 'android',
+      deviceInfo: gpuDev,
+    });
+  } else if (vulkanLoaded) {
+    if (await hasAdrenoGpu()) {
       options.push({
         id: 'gpu',
+        label: 'GPU (OpenCL)',
+        description:
+          'OpenCL GPU acceleration (Only for Q4_0/Q6_K models). Restart to switch.',
+        // Placeholder: the real device name is resolved after the restart,
+        // when the standard library reports it. handleDeviceSelect never
+        // applies this directly — it uses the pending device instead.
+        devices: undefined,
+        n_gpu_layers: 99,
+        default_flash_attn_type: 'off',
+        valid_flash_attn_types: ['off'],
+        tag: 'Fastest',
+        platform: 'android',
+        requiresRestart: true,
+      });
+    }
+  }
+
+  // GPU (Vulkan): from the loaded library, or synthesized when the standard
+  // library is loaded. Available on any Adreno device — the Turnip switch
+  // loads the Vulkan variant, and system-driver mode works with no driver
+  // imported, so no imported driver is required to offer the switch.
+  if (vulkanLoaded && gpuDev) {
+    options.push({
+      id: 'vulkan',
+      label: 'GPU (Vulkan)',
+      description:
+        'Vulkan GPU acceleration through the custom driver (Experimental)',
+      devices: [gpuDev.deviceName],
+      n_gpu_layers: 99,
+      // Flash attention misbehaves on some Adreno drivers, so keep it off by default.
+      default_flash_attn_type: 'off',
+      valid_flash_attn_types: ['auto', 'on', 'off'],
+      tag: 'Experimental',
+      experimental: true,
+      platform: 'android',
+      deviceInfo: gpuDev,
+    });
+  } else if (!vulkanLoaded) {
+    if (await hasAdrenoGpu()) {
+      options.push({
+        id: 'vulkan',
         label: 'GPU (Vulkan)',
         description:
-          'Vulkan GPU acceleration through the custom driver (Experimental)',
-        devices: [gpuDev.deviceName],
+          'Vulkan GPU acceleration through the custom driver (Experimental). Restart to switch.',
+        // Placeholder, resolved after the restart like the OpenCL one above.
+        devices: ['Vulkan'],
         n_gpu_layers: 99,
-        // Flash attention misbehaves on some Adreno drivers, so keep it off by default.
         default_flash_attn_type: 'off',
         valid_flash_attn_types: ['auto', 'on', 'off'],
         tag: 'Experimental',
         experimental: true,
         platform: 'android',
-        deviceInfo: gpuDev,
-      });
-    } else {
-      // According to FLASH_ATTN.md Matrix 1: OpenCL only supports 'off' flash attention
-      options.push({
-        id: 'gpu',
-        label: `GPU (OpenCL)`,
-        description: 'OpenCL GPU acceleration (Only for Q4_0/Q6_K models)',
-        devices: [gpuDev.deviceName!],
-        n_gpu_layers: 99,
-        default_flash_attn_type: 'off', // Required for OpenCL
-        valid_flash_attn_types: ['off'], // OpenCL only supports 'off'
-        tag: 'Fastest',
-        platform: 'android',
-        deviceInfo: gpuDev,
+        requiresRestart: true,
       });
     }
   }
 
-  // Option 3: Hexagon (if available)
+  // Hexagon: from the loaded library, or synthesized when the Vulkan
+  // library is loaded (the standard library is the one that has it).
   if (hexagonDevice) {
     // Hexagon varies, but 'off' is safest
     // Conservative: only allow 'off' to avoid runtime errors
@@ -207,6 +359,22 @@ export async function getDeviceOptions(): Promise<DeviceOption[]> {
       experimental: true,
       platform: 'android',
       deviceInfo: hexagonDevice,
+    });
+  } else if (vulkanLoaded && (await hasHexagonDspByChipset())) {
+    options.push({
+      id: 'hexagon',
+      label: 'Hexagon',
+      description:
+        'Qualcomm NPU (Experimental, fastest but may be unstable). Restart to switch.',
+      // Placeholder, resolved after the restart like the others above.
+      devices: undefined,
+      n_gpu_layers: 99,
+      default_flash_attn_type: 'off',
+      valid_flash_attn_types: ['off'],
+      tag: 'Experimental',
+      experimental: true,
+      platform: 'android',
+      requiresRestart: true,
     });
   }
 
@@ -351,7 +519,7 @@ export async function isGpuAvailable(): Promise<boolean> {
  * Get recommended device option ID based on platform and availability
  */
 export async function getRecommendedDeviceId(): Promise<
-  'auto' | 'gpu' | 'hexagon' | 'cpu'
+  'auto' | 'gpu' | 'vulkan' | 'hexagon' | 'cpu'
 > {
   // iOS: Always auto (Metal)
   if (Platform.OS === 'ios') {

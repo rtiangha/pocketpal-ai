@@ -92,7 +92,13 @@ import {type AvailableLanguage, languageDisplayNames, t} from '../../locales';
 import {asrTierHint, asrTierLabel} from '../../utils/asrTierLabel';
 import {checkGpuSupport} from '../../utils/deviceCapabilities';
 import {exportLegacyChatSessions} from '../../utils/exportUtils';
-import {getDeviceOptions, DeviceOption} from '../../utils/deviceSelection';
+import {
+  getDeviceOptions,
+  getPendingDeviceId,
+  setPendingDeviceId,
+  DeviceOption,
+} from '../../utils/deviceSelection';
+import {setTurnipEnabled} from '../../utils/turnipDriver';
 import {
   inferBackendType,
   getAllowedCacheTypeKOptions,
@@ -107,6 +113,27 @@ const languageName = (code: string): string =>
   code in languageDisplayNames
     ? languageDisplayNames[code as AvailableLanguage]
     : code.toUpperCase();
+
+/**
+ * Apply a device option (set the backend devices, and fix up flash attention
+ * if the current value isn't valid for the new device). Module-level so the
+ * mount effect can apply a pending backend switch without ordering issues;
+ * it only touches the MobX store, which is a module import.
+ */
+const applyDeviceOption = (option: DeviceOption) => {
+  modelStore.setDevices(option.devices);
+
+  // Only update flash attention if current value is not valid for the selected device
+  const currentFlashAttn =
+    modelStore.contextInitParams.flash_attn_type ??
+    (Platform.OS === 'ios' ? 'auto' : 'off');
+
+  if (!option.valid_flash_attn_types.includes(currentFlashAttn)) {
+    // Current setting is invalid for this device, use the default
+    modelStore.setFlashAttnType(option.default_flash_attn_type);
+  }
+  // Otherwise, keep the user's current flash attention preference
+};
 
 export const SettingsScreen: React.FC = observer(() => {
   const l10n = useContext(L10nContext);
@@ -157,6 +184,20 @@ export const SettingsScreen: React.FC = observer(() => {
       try {
         const options = await getDeviceOptions();
         setDeviceOptions(options);
+        // One-tap backend switch, applied after the restart: if the user
+        // tapped a backend in the other library, the Turnip switch was
+        // flipped and the pending device was recorded. Now that the other
+        // library has loaded, the option exists — apply it. If it doesn't
+        // exist (the other library failed to load), drop the pending switch
+        // and leave the device as it was.
+        const pendingId = await getPendingDeviceId();
+        if (pendingId) {
+          const pendingOption = options.find(o => o.id === pendingId);
+          if (pendingOption && !pendingOption.requiresRestart) {
+            applyDeviceOption(pendingOption);
+          }
+          await setPendingDeviceId(null);
+        }
       } catch (error) {
         console.warn('Failed to load device options:', error);
       }
@@ -330,23 +371,46 @@ export const SettingsScreen: React.FC = observer(() => {
       return 'hexagon';
     }
 
+    if (devices[0].startsWith('Vulkan')) {
+      return 'vulkan';
+    }
+
     // GPU device (Adreno, etc.)
     return 'gpu';
   };
 
   const handleDeviceSelect = (option: DeviceOption) => {
-    modelStore.setDevices(option.devices);
-
-    // Only update flash attention if current value is not valid for the selected device
-    const currentFlashAttn =
-      modelStore.contextInitParams.flash_attn_type ??
-      (Platform.OS === 'ios' ? 'auto' : 'off');
-
-    if (!option.valid_flash_attn_types.includes(currentFlashAttn)) {
-      // Current setting is invalid for this device, use the default
-      modelStore.setFlashAttnType(option.default_flash_attn_type);
+    // One-tap backend switch: this backend lives in the other native
+    // library, so the device can't be applied until the app restarts and
+    // the other library loads. Flip the Turnip driver switch, record the
+    // pending device (applied on the next Settings load), and ask the user
+    // to restart. The device itself is not set yet — setting it now would
+    // point at a backend that isn't loaded and the next model load would fail.
+    if (option.requiresRestart) {
+      const toVulkan = option.id === 'vulkan';
+      setTurnipEnabled(toVulkan)
+        .then(() => setPendingDeviceId(option.id))
+        .then(() => {
+          Alert.alert(
+            'Restart to switch',
+            `Switching to ${option.label} needs an app restart — the driver switch is set, just restart the app and ${option.label} will be selected.`,
+            [{text: 'OK'}],
+          );
+        })
+        .catch(error => {
+          console.warn('Failed to switch backend:', error);
+          Alert.alert(
+            'Could not switch',
+            'The backend switch could not be saved. Try toggling the Vulkan driver switch below and restarting the app manually.',
+            [{text: 'OK'}],
+          );
+        });
+      return;
     }
-    // Otherwise, keep the user's current flash attention preference
+
+    // Same library: clear any pending switch and apply immediately.
+    setPendingDeviceId(null).catch(() => {});
+    applyDeviceOption(option);
   };
 
   const activeSearchProvider = searchProviderStore.providers.find(
@@ -394,7 +458,9 @@ export const SettingsScreen: React.FC = observer(() => {
                       density="medium"
                       buttons={deviceOptions.map(option => ({
                         value: option.id,
-                        label: option.label,
+                        label: option.requiresRestart
+                          ? `${option.label} ↻`
+                          : option.label,
                         labelStyle: {
                           fontSize: 10,
                         },
@@ -402,6 +468,12 @@ export const SettingsScreen: React.FC = observer(() => {
                       }))}
                       style={styles.segmentedButtons}
                     />
+                    {deviceOptions.some(o => o.requiresRestart) && (
+                      <Text variant="labelSmall" style={styles.textDescription}>
+                        A ↻ option lives in the other driver build — tapping it
+                        sets the driver switch and restarts the app to switch.
+                      </Text>
+                    )}
 
                     {/* GPU Layers Slider */}
                     <InputSlider
