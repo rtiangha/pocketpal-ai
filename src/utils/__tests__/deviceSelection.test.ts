@@ -1,5 +1,6 @@
 import {Platform} from 'react-native';
 import {getBackendDevicesInfo} from 'llama.rn';
+import NativeHardwareInfo from '../../specs/NativeHardwareInfo';
 
 import {
   getDeviceOptions,
@@ -150,8 +151,8 @@ describe('Vulkan (Turnip) device selection', () => {
     async type => {
       const devices = [vulkanDevice('Vulkan0', type)];
       discover.mockResolvedValue(devices);
-      expect((await getDeviceOptions()).find(o => o.id === 'gpu')).toEqual({
-        id: 'gpu',
+      expect((await getDeviceOptions()).find(o => o.id === 'vulkan')).toEqual({
+        id: 'vulkan',
         label: 'GPU (Vulkan)',
         description:
           'Vulkan GPU acceleration through the custom driver (Experimental)',
@@ -178,5 +179,102 @@ describe('Vulkan (Turnip) device selection', () => {
     discover.mockResolvedValue([vulkanDevice('Adreno (TM) 840', 'igpu')]);
     expect((await getDeviceOptions()).map(o => o.id)).toEqual(['cpu']);
     expect(await isGpuAvailable()).toBe(false);
+  });
+});
+
+describe('One-tap backend switch', () => {
+  const originalOS = Platform.OS;
+  const gpuInfo = NativeHardwareInfo.getGPUInfo as jest.Mock;
+  const chipsetFn = NativeHardwareInfo.getChipset as jest.Mock | undefined;
+
+  beforeEach(() => {
+    Platform.OS = 'android';
+    discover.mockReset().mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    Platform.OS = originalOS;
+    // Restore the global hardware mocks so other suites are unaffected.
+    gpuInfo.mockResolvedValue({
+      renderer: 'Mock GPU',
+      vendor: 'Mock Vendor',
+      version: 'Mock Version',
+      hasAdreno: false,
+      hasMali: false,
+      hasPowerVR: false,
+      supportsOpenCL: false,
+      gpuType: 'Mock GPU',
+    });
+    chipsetFn?.mockResolvedValue('Mock Chipset');
+  });
+
+  const openclDevice = (deviceName: string) => ({
+    backend: 'OpenCL',
+    type: 'gpu',
+    deviceName,
+    maxMemorySize: 0,
+  });
+
+  const vulkanDevice = (deviceName: string) => ({
+    backend: 'Vulkan',
+    type: 'igpu',
+    deviceName,
+    maxMemorySize: 0,
+  });
+
+  it('synthesizes OpenCL + Hexagon as restart options when Vulkan is loaded', async () => {
+    gpuInfo.mockResolvedValue({
+      renderer: 'Adreno (TM) 660',
+      vendor: 'Qualcomm',
+      version: 'Mock Version',
+      hasAdreno: true,
+      hasMali: false,
+      hasPowerVR: false,
+      supportsOpenCL: true,
+      gpuType: 'Adreno',
+    });
+    chipsetFn?.mockResolvedValue('SM8350');
+    discover.mockResolvedValue([vulkanDevice('Vulkan0')]);
+
+    const options = await getDeviceOptions();
+    expect(options.map(o => o.id)).toEqual(['cpu', 'gpu', 'vulkan', 'hexagon']);
+    const opencl = options.find(o => o.id === 'gpu');
+    expect(opencl?.requiresRestart).toBe(true);
+    expect(opencl?.label).toBe('GPU (OpenCL)');
+    const vulkan = options.find(o => o.id === 'vulkan');
+    expect(vulkan?.requiresRestart).toBeUndefined();
+    expect(vulkan?.devices).toEqual(['Vulkan0']);
+    const hexagon = options.find(o => o.id === 'hexagon');
+    expect(hexagon?.requiresRestart).toBe(true);
+  });
+
+  it('synthesizes Vulkan as a restart option when the standard library is loaded', async () => {
+    gpuInfo.mockResolvedValue({
+      renderer: 'Adreno (TM) 660',
+      vendor: 'Qualcomm',
+      version: 'Mock Version',
+      hasAdreno: true,
+      hasMali: false,
+      hasPowerVR: false,
+      supportsOpenCL: true,
+      gpuType: 'Adreno',
+    });
+    discover.mockResolvedValue([openclDevice('Adreno (TM) 660')]);
+
+    const options = await getDeviceOptions();
+    expect(options.map(o => o.id)).toEqual(['cpu', 'gpu', 'vulkan']);
+    const vulkan = options.find(o => o.id === 'vulkan');
+    expect(vulkan?.requiresRestart).toBe(true);
+    expect(vulkan?.label).toBe('GPU (Vulkan)');
+    const opencl = options.find(o => o.id === 'gpu');
+    expect(opencl?.requiresRestart).toBeUndefined();
+    expect(opencl?.devices).toEqual(['Adreno (TM) 660']);
+  });
+
+  it('does not synthesize the other library when there is no Adreno GPU', async () => {
+    // Global mock already has hasAdreno: false.
+    discover.mockResolvedValue([vulkanDevice('Vulkan0')]);
+    const options = await getDeviceOptions();
+    expect(options.map(o => o.id)).toEqual(['cpu', 'vulkan']);
   });
 });
