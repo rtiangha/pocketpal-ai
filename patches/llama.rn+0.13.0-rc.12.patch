@@ -23,13 +23,14 @@ index 974aa85..20567dd 100644
        println("✅ Hexagon SDK detected — enabling DSP build")
        cmakeArgs += [
 diff --git a/node_modules/llama.rn/android/src/main/CMakeLists.txt b/node_modules/llama.rn/android/src/main/CMakeLists.txt
-index f3178fd..ff7998a 100644
+index f3178fd..ad97421 100644
 --- a/node_modules/llama.rn/android/src/main/CMakeLists.txt
 +++ b/node_modules/llama.rn/android/src/main/CMakeLists.txt
-@@ -158,6 +158,7 @@ if (ANDROID_ABI AND ANDROID_ABI STREQUAL "arm64-v8a")
+@@ -158,6 +158,8 @@ if (ANDROID_ABI AND ANDROID_ABI STREQUAL "arm64-v8a")
      build_rnllama_jni("rnllama_jni_v8_2_i8mm" "rnllama_v8_2_i8mm" "arm" "-march=armv8.2-a+i8mm")
      build_rnllama_jni("rnllama_jni_v8_2_dotprod_i8mm" "rnllama_v8_2_dotprod_i8mm" "arm" "-march=armv8.2-a+dotprod+i8mm")
      build_rnllama_jni("rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl" "rnllama_v8_2_dotprod_i8mm_hexagon_opencl" "arm" "-march=armv8.2-a+dotprod+i8mm")
++    build_rnllama_jni("rnllama_jni_v8_2_dotprod_hexagon_opencl" "rnllama_v8_2_dotprod_hexagon_opencl" "arm" "-march=armv8.2-a+dotprod")
 +    build_rnllama_jni("rnllama_jni_v8_2_dotprod_vulkan" "rnllama_v8_2_dotprod_vulkan" "arm" "-march=armv8.2-a+dotprod")
  
      # https://github.com/ggerganov/llama.cpp/blob/master/docs/android.md#cross-compile-using-android-ndk
@@ -241,7 +242,7 @@ index 0000000..6315268
 +    message(STATUS "rnllama Vulkan backend enabled for ${target_name}")
 +endfunction()
 diff --git a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
-index da47b6c..09b9509 100644
+index da47b6c..8ed1e0c 100644
 --- a/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
 +++ b/node_modules/llama.rn/android/src/main/java/com/rnllama/RNLlama.java
 @@ -33,8 +33,8 @@ public class RNLlama {
@@ -453,7 +454,7 @@ index da47b6c..09b9509 100644
    public static synchronized boolean loadNative(ReactApplicationContext context) {
      if (libsLoaded) return true;
  
-@@ -193,12 +389,20 @@ public class RNLlama {
+@@ -193,18 +384,33 @@ public class RNLlama {
  
      boolean hasAdreno = hasAdrenoGpuHint();
      boolean hasHexagon = isHexagonSupported();
@@ -475,7 +476,20 @@ index da47b6c..09b9509 100644
            if (tryLoadLibrary("rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl")) {
              jniLoaded = true;
              loadedLib = "rnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl";
-@@ -258,6 +462,8 @@ public class RNLlama {
+           }
+         }
+ 
++        if (!jniLoaded && hasDotProd && hasHexagon && hasAdreno) {
++          if (tryLoadLibrary("rnllama_jni_v8_2_dotprod_hexagon_opencl")) {
++            jniLoaded = true;
++            loadedLib = "rnllama_jni_v8_2_dotprod_hexagon_opencl";
++          }
++        }
++
+         if (!jniLoaded && hasDotProd && hasI8mm) {
+           if (tryLoadLibrary("rnllama_jni_v8_2_dotprod_i8mm")) {
+             jniLoaded = true;
+@@ -258,6 +464,8 @@ public class RNLlama {
        }
  
        System.loadLibrary("rnllama");
@@ -485,7 +499,7 @@ index da47b6c..09b9509 100644
        libsLoaded = true;
        return true;
 diff --git a/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt b/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt
-index 2b1b324..eaa0858 100644
+index 2b1b324..4c5941d 100644
 --- a/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt
 +++ b/node_modules/llama.rn/android/src/main/rnllama/CMakeLists.txt
 @@ -39,6 +39,8 @@ set(RNLLAMA_VARIANT_MACROS
@@ -522,10 +536,15 @@ index 2b1b324..eaa0858 100644
      target_link_options(${target_name} PRIVATE -Wl,--gc-sections)
      # ggml/llama symbols keep upstream names. Bind this library's own references
      # at link time so a second ggml copy in the process (e.g. whisper.rn) can
-@@ -326,6 +339,9 @@ if (ANDROID_ABI AND ANDROID_ABI STREQUAL "arm64-v8a")
+@@ -326,6 +339,14 @@ if (ANDROID_ABI AND ANDROID_ABI STREQUAL "arm64-v8a")
      build_rnllama_library("rnllama_v8_2_i8mm" "arm" "-march=armv8.2-a+i8mm")
      build_rnllama_library("rnllama_v8_2_dotprod_i8mm" "arm" "-march=armv8.2-a+dotprod+i8mm")
      build_rnllama_library("rnllama_v8_2_dotprod_i8mm_hexagon_opencl" "arm" "-march=armv8.2-a+dotprod+i8mm")
++    # Non-i8mm Hexagon + OpenCL, for phones whose kernel does not report i8mm in
++    # /proc/cpuinfo (e.g. Galaxy S21 / Snapdragon 888): the i8mm variant is gated
++    # on hasI8mm, so it never loads there, and RNLlama already tries this
++    # non-i8mm name as a fallback. Same backends, no i8mm instructions.
++    build_rnllama_library("rnllama_v8_2_dotprod_hexagon_opencl" "arm" "-march=armv8.2-a+dotprod")
 +    # Vulkan + custom (Turnip) driver loading via libadrenotools. Selected at runtime only
 +    # when the user turned the Turnip driver on (see RNLlama.java).
 +    build_rnllama_library("rnllama_v8_2_dotprod_vulkan" "arm" "-march=armv8.2-a+dotprod")

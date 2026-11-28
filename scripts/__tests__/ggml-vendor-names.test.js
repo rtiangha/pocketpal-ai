@@ -119,7 +119,13 @@ describe('the parse itself', () => {
   });
 
   it('finds the Hexagon symbols the payload gate requires', () => {
-    expect(hexagonMustExport.length).toBe(2);
+    // Two backend rules (i8mm and non-i8mm Hexagon variants) require the
+    // same symbols, so count the distinct ones.
+    expect(new Set(hexagonMustExport).size).toBe(2);
+    expect([...new Set(hexagonMustExport)].sort()).toEqual([
+      'ggml_backend_hexagon_reg',
+      'ggml_backend_is_hexagon',
+    ]);
   });
 });
 
